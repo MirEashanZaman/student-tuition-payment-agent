@@ -1,4 +1,11 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
@@ -415,6 +422,94 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     t.updated_at = new Date();
     this.memoryStore.transfers.set(id, t);
     return t;
+  }
+
+  async rollbackTransferAndRestoreFunds(
+    transferId: string,
+  ): Promise<{ transfer: TransferRecord; account: AccountRecord }> {
+    const rollbackEligibleStatuses: TransferRecord['status'][] = ['CONFIRMED', 'EXECUTED', 'FAILED'];
+
+    if (!this.useMemoryStore && this.pool) {
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+        const transferResult = await client.query(
+          'SELECT * FROM transfers WHERE id = $1 FOR UPDATE',
+          [transferId],
+        );
+        if (!transferResult.rows[0]) {
+          throw new NotFoundException(`Transfer ${transferId} not found`);
+        }
+
+        const transfer = this.formatTransfer(transferResult.rows[0]);
+        if (!rollbackEligibleStatuses.includes(transfer.status)) {
+          throw new BadRequestException(
+            `Cannot roll back transfer with status "${transfer.status}".`,
+          );
+        }
+
+        const accountResult = await client.query(
+          'SELECT * FROM accounts WHERE id = $1 FOR UPDATE',
+          [transfer.account_id],
+        );
+        if (!accountResult.rows[0]) {
+          throw new NotFoundException('Account not found for transfer');
+        }
+
+        const accountUpdate = await client.query(
+          `UPDATE accounts
+           SET balance = balance + $1,
+               daily_spent = GREATEST(0, daily_spent - $1),
+               updated_at = NOW()
+           WHERE id = $2
+           RETURNING *`,
+          [transfer.source_amount_bdt, transfer.account_id],
+        );
+        const transferUpdate = await client.query(
+          `UPDATE transfers
+           SET status = 'ROLLED_BACK', updated_at = NOW()
+           WHERE id = $1
+           RETURNING *`,
+          [transferId],
+        );
+
+        await client.query('COMMIT');
+        return {
+          transfer: this.formatTransfer(transferUpdate.rows[0]),
+          account: this.formatAccount(accountUpdate.rows[0]),
+        };
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    const transfer = this.memoryStore.transfers.get(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+    if (!rollbackEligibleStatuses.includes(transfer.status)) {
+      throw new BadRequestException(`Cannot roll back transfer with status "${transfer.status}".`);
+    }
+
+    const account = this.memoryStore.accounts.get(transfer.account_id);
+    if (!account) {
+      throw new NotFoundException('Account not found for transfer');
+    }
+
+    account.balance = +(account.balance + transfer.source_amount_bdt).toFixed(2);
+    account.daily_spent = +Math.max(0, account.daily_spent - transfer.source_amount_bdt).toFixed(2);
+    account.updated_at = new Date();
+    transfer.status = 'ROLLED_BACK';
+    transfer.updated_at = new Date();
+
+    this.memoryStore.accounts.set(account.id, account);
+    this.memoryStore.accounts.set(account.student_id, account);
+    this.memoryStore.transfers.set(transfer.id, transfer);
+
+    return { transfer, account };
   }
 
   async updateTransferDraft(

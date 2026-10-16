@@ -9,14 +9,22 @@ import {
   Param,
   Query,
   Headers,
+  Req,
   Optional,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { IsNotEmpty, IsString, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './tools/agent-tools.service';
 import { DatabaseService } from '../database/database.service';
 import { JwtService } from '../auth/jwt.service';
+import {
+  JwtAuthGuard,
+  PermissionTierGuard,
+  RequirePermissionTier,
+} from '../auth/auth.guard';
+import { PermissionTier } from './guardrails/permission-tier.guard';
 
 export class ChatDto {
   @IsString()
@@ -274,9 +282,19 @@ export class AgentController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
   @Post('transfers/:id/compensate')
-  async compensateTransfer(@Param('id') id: string, @Body() dto: CompensateTransferDto) {
-    await this.toolsService.compensateTransfer(id, dto.reason || 'Simulated settlement failure rollback');
+  async compensateTransfer(
+    @Param('id') id: string,
+    @Body() dto: CompensateTransferDto,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    await this.toolsService.compensateTransfer(
+      id,
+      dto.reason || 'Simulated settlement failure rollback',
+      request.user.studentId,
+    );
     return {
       success: true,
       transferId: id,
