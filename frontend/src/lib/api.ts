@@ -7,6 +7,7 @@ import {
   AuditLog,
   AuthSession,
   LoginCredentials,
+  RegistrationData,
 } from '../types';
 import {
   ChatMessageInputSchema,
@@ -16,6 +17,7 @@ import {
   UpdateDailyLimitInputSchema,
   DepositFundsInputSchema,
   LoginInputSchema,
+  RegistrationInputSchema,
 } from './schemas';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
@@ -98,6 +100,19 @@ export const api = {
       return response.data;
     } catch (error) {
       handleApiError(error, 'Login failed');
+    }
+  },
+
+  async registration(data: RegistrationData): Promise<AuthSession> {
+    try {
+      const validated = RegistrationInputSchema.parse(data);
+      const response = await apiClient.post<AuthSession>('/auth/registration', validated);
+      if (response.data?.accessToken) {
+        authStorage.setToken(response.data.accessToken);
+      }
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Registration failed');
     }
   },
   async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
