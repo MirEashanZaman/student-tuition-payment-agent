@@ -50,6 +50,7 @@
 │   │   │   ├── guardrails/    # Permission tiers, financial limits, prompt injection filter
 │   │   │   ├── tools/         # getBalance, compareRoutes, createDraft, confirmTransfer, getAuditLog
 │   │   │   └── agent.service.ts
+│   │   ├── auth/              # Scrypt password hashing, JWT service, guards & controller
 │   │   ├── database/          # PostgreSQL driver, migrations schema.sql, and seed scripts
 │   │   ├── app.module.ts
 │   │   └── main.ts
@@ -157,16 +158,31 @@ npm test
 10. `should handle invalid inputs and unexpected data formats gracefully` (PASSED)
 11. `should validate inputs using Zod schemas and reject malformed payloads` (PASSED)
 12. `should verify accounts and settle transfers using Axios HTTP bank gateway` (PASSED)
+13. `should hash password and verify with scrypt correctly` (PASSED)
+14. `should reject login with wrong password and write an audit log entry` (PASSED)
+15. `should successfully login with valid credentials and return JWT session` (PASSED)
+16. `should decode and verify valid JWT session token` (PASSED)
+17. `should reject expired or tampered JWT token` (PASSED)
 
 ---
 
 ## Seed Data & Demonstration Persona
 
-The database automatically seeds an initial student persona and 4 mock remittance corridors:
+The database automatically seeds an initial student persona, authentication credentials, and 4 mock remittance corridors:
 
-- **Student:** Tanvir Ahmed (`STU-2026-BDT01`)
+- **Student ID:** `STU-2026-BDT01`
+- **Student Name:** Tanvir Ahmed
+- **Email:** `tanvir.student@fintechathon.org`
+- **Default Password:** `student123` (Hashed with Node.js scrypt)
+- **Role:** `STUDENT`
 - **Initial Balance:** `850,000.00 BDT` (~$7,112 USD)
 - **Daily Spending Limit:** `1,000,000.00 BDT`
+
+### Authentication Endpoints:
+- `POST /api/auth/login` - Authenticate credentials (`studentIdOrEmail`, `password`) and receive signed JWT
+- `GET /api/auth/session` - Verify active JWT bearer token and retrieve student profile
+- `POST /api/auth/logout` - Terminate session and record audit event
+- `GET /api/auth/demo-credentials` - Quick sandbox demo credentials
 
 ### Mock Corridors:
 | Provider | Inverse Rate | Fees | Speed | Reliability | Rating |
