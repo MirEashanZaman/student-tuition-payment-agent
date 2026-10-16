@@ -118,7 +118,6 @@ export class OptionalJwtAuthGuard implements CanActivate {
             permissionTier: payload.permissionTier || PermissionTier.READ_ONLY,
           };
         } catch {
-          // In optional mode, invalid tokens do not reject, request proceeds as guest
         }
       }
     }

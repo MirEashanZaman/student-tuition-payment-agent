@@ -47,7 +47,6 @@ export default function Home() {
   const [activeDraft, setActiveDraft] = useState<TransferDraft | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  // Authentication State
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginInput, setLoginInput] = useState({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
@@ -1012,7 +1011,6 @@ export default function Home() {
           </div>
         )}
       </main>
-      {/* Login Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
@@ -1030,7 +1028,7 @@ export default function Home() {
                 className="btn btn-sm btn-ghost btn-circle text-slate-400 hover:text-slate-600"
                 onClick={() => setShowLoginModal(false)}
               >
-                ✕
+                X
               </button>
             </div>
 
@@ -1132,7 +1130,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* JWT Session Inspector Modal */}
       {showTokenInspector && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
@@ -1150,7 +1147,7 @@ export default function Home() {
                 className="btn btn-sm btn-ghost btn-circle text-slate-400 hover:text-slate-600"
                 onClick={() => setShowTokenInspector(false)}
               >
-                ✕
+                X
               </button>
             </div>
 

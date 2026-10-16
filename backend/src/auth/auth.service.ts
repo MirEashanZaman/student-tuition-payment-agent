@@ -36,9 +36,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  /**
-   * Authenticates student credentials and returns a signed JWT session.
-   */
   async login(
     studentIdOrEmail: string,
     plainPassword: string,
@@ -124,9 +121,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Validates a JWT session token and returns fresh student state.
-   */
   async validateSession(token: string) {
     const payload = this.jwtService.verify(token);
     const account = await this.db.getAccountByStudentId(payload.studentId);
@@ -151,9 +145,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Records a user logout in the audit log.
-   */
   async logout(studentId?: string, ipAddress = '127.0.0.1') {
     if (studentId) {
       await this.db.insertAuditLog({
@@ -173,9 +164,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Helper returning standard pre-seeded sandbox credentials for quick demo evaluations.
-   */
   getDemoCredentials() {
     return {
       studentId: 'STU-2026-BDT01',

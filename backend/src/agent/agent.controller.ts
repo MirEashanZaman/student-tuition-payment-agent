@@ -143,7 +143,6 @@ export class AgentController {
           const payload = this.jwtService.verify(token);
           if (payload?.studentId) return payload.studentId;
         } catch {
-          // ignore invalid token for fallback
         }
       }
     }

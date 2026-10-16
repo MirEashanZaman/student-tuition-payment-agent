@@ -42,9 +42,6 @@ export class JwtService {
     return Buffer.from(base64, 'base64').toString('utf8');
   }
 
-  /**
-   * Signs a JWT payload with HMAC-SHA256.
-   */
   sign(payload: JwtPayload, expiresInSeconds = this.defaultExpiresInSeconds): string {
     const header = { alg: 'HS256', typ: 'JWT' };
     const now = Math.floor(Date.now() / 1000);
@@ -67,10 +64,6 @@ export class JwtService {
     return `${dataToSign}.${encodedSignature}`;
   }
 
-  /**
-   * Verifies and returns the validated payload of a JWT.
-   * Throws UnauthorizedException if expired, malformed, or signature does not match.
-   */
   verify(token: string): JwtPayload {
     if (!token || typeof token !== 'string') {
       throw new UnauthorizedException('Authentication token is missing or invalid.');
@@ -90,7 +83,6 @@ export class JwtService {
       .digest();
     const expectedEncodedSignature = this.base64UrlEncode(expectedSignature);
 
-    // Timing-safe check of signatures
     const sigBuffer = Buffer.from(encodedSignature);
     const expectedBuffer = Buffer.from(expectedEncodedSignature);
     if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
@@ -112,9 +104,6 @@ export class JwtService {
     return payload;
   }
 
-  /**
-   * Safely decodes a JWT token without verifying signature (useful for inspection/debugging).
-   */
   decode(token: string): DecodedToken | null {
     if (!token || typeof token !== 'string') return null;
     const parts = token.split('.');

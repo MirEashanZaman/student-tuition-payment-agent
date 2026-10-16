@@ -65,7 +65,7 @@ export class AuthController {
           const session = await this.authService.validateSession(token);
           studentId = session.user.studentId;
         } catch {
-          // ignore error on logout
+          studentId = studentId || undefined;
         }
       }
     }

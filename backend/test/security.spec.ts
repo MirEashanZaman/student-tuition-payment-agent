@@ -322,11 +322,9 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
         role: 'STUDENT',
       };
 
-      // Expired token test
       const expiredToken = jwtService.sign(payload, -100);
       expect(() => jwtService.verify(expiredToken)).toThrow(UnauthorizedException);
 
-      // Tampered token test
       const validToken = jwtService.sign(payload, 3600);
       const parts = validToken.split('.');
       const tamperedToken = `${parts[0]}.${parts[1]}.tamperedSignatureHere`;
