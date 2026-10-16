@@ -13,6 +13,21 @@
 
 ---
 
+## Enterprise Architectural Patterns
+
+| Feature | Pattern | How it is used |
+|---|---|---|
+| Route comparison and ranking | Strategy | Scoring classes for balanced, cheapest, fastest, and reliable (`RouteScoringStrategy`). Dynamic strategy swapping when user requests speed or cost priority. |
+| Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Statuses: pending -> confirmed -> executed. If execution fails, an automated compensating step releases reserved funds back to student account. |
+| Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small checks run in order: injection check, permission check, anomaly check, limit check, confirmation check. Any check can block and give an explicit reason. |
+| The 5 agent tools exposed to the LLM | Facade | `AgentToolsService` hides the bank gateway, rates repository, safety guards, and audit services behind a simple interface. |
+| LLM and mock bank | Dependency Inversion (the D in SOLID) | Code to interfaces like `ILlmClient` and `IBankGateway`. In tests fakes are swapped in without external dependencies. |
+| Audit logging | Observer (NestJS events) | Services emit events like `transfer.confirmed`, and an audit listener writes the log. Safety and domain code stays free of logging code. |
+| Database access | Repository | Repositories (`AccountRepository`, `RateRepository`, `TransferRepository`, `AuditRepository`) keep SQL and storage logic out of services. |
+| Services in general | SOLID, Singleton | NestJS providers are singletons by default with single responsibility isolation. |
+
+---
+
 ## Monorepo Project Structure
 
 ```
