@@ -9,6 +9,38 @@ import { AuthService } from '../src/auth/auth.service';
 import { JwtService } from '../src/auth/jwt.service';
 import { PasswordHasher } from '../src/auth/password.util';
 
+import {
+  BalancedScoringStrategy,
+  CheapestScoringStrategy,
+  FastestScoringStrategy,
+  ReliableScoringStrategy,
+  RouteScoringStrategyFactory,
+} from '../src/agent/strategies/route-scoring.strategy';
+import { TransferStateMachine } from '../src/agent/saga/transfer-state-machine';
+import { BANK_GATEWAY_TOKEN } from '../src/agent/gateways/bank-gateway.interface';
+import { MockBankGateway } from '../src/agent/gateways/mock-bank.gateway';
+import { LLM_CLIENT_TOKEN } from '../src/agent/gateways/llm-client.interface';
+import { OfflineLlmClient } from '../src/agent/gateways/offline-llm.client';
+import { AccountRepository } from '../src/database/repositories/account.repository';
+import { RateRepository } from '../src/database/repositories/rate.repository';
+import { TransferRepository } from '../src/database/repositories/transfer.repository';
+import { AuditRepository } from '../src/database/repositories/audit.repository';
+import {
+  ACCOUNT_REPOSITORY_TOKEN,
+  RATE_REPOSITORY_TOKEN,
+  TRANSFER_REPOSITORY_TOKEN,
+  AUDIT_REPOSITORY_TOKEN,
+} from '../src/database/repositories/interfaces/repository.tokens';
+import { TuitionCalculationService } from '../src/agent/services/tuition-calculation.service';
+import { TUITION_CALCULATOR_TOKEN } from '../src/agent/services/tuition-calculation.interface';
+import {
+  SafetyRuleEngine,
+  PerTransferLimitRule,
+  DailyLimitRule,
+  AccountBalanceRule,
+} from '../src/agent/guardrails/rules/safety-rule.engine';
+import { ISafetyRule } from '../src/agent/guardrails/rules/safety-rule.interface';
+
 describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
   let db: DatabaseService;
   let toolsService: AgentToolsService;
@@ -28,6 +60,7 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       ],
     }).compile();
 
+    testModule = module;
     db = module.get<DatabaseService>(DatabaseService);
     toolsService = module.get<AgentToolsService>(AgentToolsService);
     agentService = module.get<AgentService>(AgentService);

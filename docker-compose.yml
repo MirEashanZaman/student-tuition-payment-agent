@@ -27,7 +27,7 @@ services:
     restart: always
     environment:
       NODE_ENV: production
-      PORT: 3001
+      PORT: 4568
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-fintech_agent}?schema=public
       GEMINI_API_KEY: ${GEMINI_API_KEY:-mock_key_offline_agent}
       MAX_TRANSFER_LIMIT_BDT: 400000
@@ -35,7 +35,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-fintechathon-2026-sandbox-secret-jwt-key-bdt}
       FRONTEND_URL: http://localhost:3000
     ports:
-      - "3001:3001"
+      - "4568:4568"
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,10 +48,10 @@ services:
     restart: always
     environment:
       NODE_ENV: production
-      PORT: 3000
-      NEXT_PUBLIC_API_URL: http://localhost:3001/api
+      PORT: 4567
+      NEXT_PUBLIC_API_URL: http://localhost:4568/api
     ports:
-      - "3000:3000"
+      - "4567:4567"
     depends_on:
       - backend
 

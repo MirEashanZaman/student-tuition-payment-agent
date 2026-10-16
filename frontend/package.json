@@ -4,9 +4,9 @@
   "description": "Next.js UI & Dashboard for FinTechathon 2026 Student Tuition Payment Agent",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 4567",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p 4567",
     "lint": "next lint"
   },
   "dependencies": {

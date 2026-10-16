@@ -7,7 +7,7 @@ import {
   AuthSession,
 } from '../types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
 
 let memoryToken: string | null = null;
 
@@ -106,6 +106,26 @@ export const api = {
     return res.json();
   },
 
+  async updateDailyLimit(studentId: string, dailyLimitBdt: number): Promise<Account> {
+    const res = await fetch(`${API_BASE}/accounts/${studentId}/limits`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dailyLimitBdt }),
+    });
+    if (!res.ok) throw new Error('Failed to update daily limit');
+    return res.json();
+  },
+
+  async depositFunds(studentId: string, amountBdt: number): Promise<Account> {
+    const res = await fetch(`${API_BASE}/accounts/${studentId}/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amountBdt }),
+    });
+    if (!res.ok) throw new Error('Failed to deposit funds');
+    return res.json();
+  },
+
   async sendChatMessage(message: string, studentId = 'STU-2026-BDT01'): Promise<any> {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
@@ -133,6 +153,39 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to compare routes');
     }
+    return res.json();
+  },
+
+  async getRates(activeOnly = true, targetCurrency?: string): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (activeOnly) query.append('activeOnly', 'true');
+    if (targetCurrency) query.append('targetCurrency', targetCurrency);
+    const res = await fetch(`${API_BASE}/rates?${query.toString()}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async getRateById(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/rates/${id}`);
+    if (!res.ok) throw new Error(`Failed to fetch rate ${id}`);
+    return res.json();
+  },
+
+  async updateRate(id: string, updates: { exchangeRate?: number; isActive?: boolean }): Promise<any> {
+    const res = await fetch(`${API_BASE}/rates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error(`Failed to update rate ${id}`);
+    return res.json();
+  },
+
+  async deleteRate(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/rates/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete rate ${id}`);
     return res.json();
   },
 
@@ -194,6 +247,20 @@ export const api = {
       headers: getHeaders(),
     });
     if (!res.ok) return [];
+    return res.json();
+  },
+
+  async getAuditLogById(id: string): Promise<AuditLog> {
+    const res = await fetch(`${API_BASE}/audit/${id}`);
+    if (!res.ok) throw new Error(`Audit log ${id} not found`);
+    return res.json();
+  },
+
+  async deleteAuditLog(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/audit/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete audit log ${id}`);
     return res.json();
   },
 

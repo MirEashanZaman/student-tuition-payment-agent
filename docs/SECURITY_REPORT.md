@@ -27,7 +27,7 @@ export class PermissionTierValidator {
         reason: 'Security Policy Violation: Agent cannot execute fund transfers unilaterally. Explicit user confirmation via the secure confirmation token is strictly required.',
       };
     }
-    // ...
+    return { allowed: true };
   }
 }
 ```
