@@ -1,5 +1,5 @@
-# Security Self-Assessment Report
-
+# Security & Compliance Assessment Report
+**FinTechathon 2026 | International Track — Topic C: Cross-Border & Student Finance Assistant**
 **Project:** Student Tuition Payment Agent
 **Assessment date:** 2026-10-16
 **Scope:** Repository implementation for the FinTechathon sandbox. This is a self-assessment, not an independent penetration test, compliance certification, or production-readiness approval.
