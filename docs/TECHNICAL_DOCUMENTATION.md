@@ -205,3 +205,48 @@ The backend controller exposes full RESTful lifecycle operations incorporating `
 | POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state |
 | GET | `/api/sandbox/export-logs` | None | None | Export audit log archive |
 
+---
+
+## 8. SOLID Architectural Principles Implementation
+
+The codebase adheres strictly to all five Object-Oriented SOLID design principles:
+
+### 1. Single Responsibility Principle (SRP)
+- Each service and component owns one single reason to change.
+- `TuitionCalculationService`: Exclusively calculates exchange conversions, fee structures, benchmark FX markup losses, delivery estimates, and composite ranking scores without performing database I/O or network requests.
+- `AgentToolsService`: Operates purely as an orchestration Facade coordinating services.
+- `PromptInjectionFilter`: Focuses solely on detecting and neutralizing adversarial prompt injections.
+
+### 2. Open / Closed Principle (OCP)
+- Modules are open for extension but closed for modification.
+- `RouteScoringStrategy`: Adding a new corridor ranking strategy (e.g. `DiscountScoringStrategy`) requires creating a new strategy class inheriting `RouteScoringStrategy` without altering existing strategies.
+- `SafetyRuleEngine`: Safety policies implement `ISafetyRule` (`PerTransferLimitRule`, `DailyLimitRule`, `AccountBalanceRule`). New regulatory checks (e.g. `SanctionedCountryRule`) can be registered into the engine dynamically without modifying the engine.
+
+### 3. Liskov Substitution Principle (LSP)
+- Subtypes can substitute their base abstractions without altering program correctness.
+- `IBankGateway`: `MockBankGateway` and live banking integrations fulfill the identical behavioral contract, allowing seamless test substitution.
+- `ILlmClient`: `OfflineLlmClient` and `GeminiLlmClient` can substitute each other transparently.
+- `IAccountRepository` / `ITransferRepository`: Repository implementations conform strictly to interface contracts.
+
+### 4. Interface Segregation Principle (ISP)
+- Clients are not forced to depend on methods they do not need.
+- Repository operations are segregated into read-only and write interfaces:
+  - `IAccountReader` & `IAccountWriter`
+  - `IRateReader` & `IRateWriter`
+  - `ITransferReader` & `ITransferWriter`
+  - `IAuditReader` & `IAuditWriter`
+- Read-only consumers (such as rate inspection endpoints) depend solely on reader interfaces (`IRateReader`).
+
+### 5. Dependency Inversion Principle (DIP)
+- High-level business logic depends on abstract interfaces, never on concrete implementations.
+- Dependencies are bound via injection tokens:
+  - `ACCOUNT_REPOSITORY_TOKEN`
+  - `RATE_REPOSITORY_TOKEN`
+  - `TRANSFER_REPOSITORY_TOKEN`
+  - `AUDIT_REPOSITORY_TOKEN`
+  - `TUITION_CALCULATOR_TOKEN`
+  - `BANK_GATEWAY_TOKEN`
+  - `LLM_CLIENT_TOKEN`
+- Modules resolve abstractions using `@Inject(TOKEN)`, decoupling core logic from underlying storage or API providers.
+
+
