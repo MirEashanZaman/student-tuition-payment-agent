@@ -276,4 +276,66 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(transferRecord?.status).toBe('ROLLED_BACK');
     });
   });
+
+  describe('7. RESTful CRUD & Parameter Query Filtering', () => {
+    it('should update draft transfer recipient via PUT before confirmation', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        500,
+        'Oxford University',
+      );
+
+      const updated = await toolsService.updateTransferDraft(draft.transferId, {
+        recipient_university: 'Cambridge University',
+        student_reg_number: 'CAM-2026-UPDATED',
+      });
+
+      expect(updated.recipient_university).toBe('Cambridge University');
+      expect(updated.student_reg_number).toBe('CAM-2026-UPDATED');
+    });
+
+    it('should delete draft transfer via DELETE endpoint', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        500,
+        'Stanford University',
+      );
+
+      const deleteRes = await toolsService.deleteTransferDraft(draft.transferId);
+      expect(deleteRes.success).toBe(true);
+
+      const fetched = await db.getTransferById(draft.transferId);
+      expect(fetched).toBeNull();
+    });
+
+    it('should update account daily limits via PUT and deposit funds via POST', async () => {
+      const updatedAccount = await toolsService.updateDailyLimit('STU-2026-BDT01', 1200000);
+      expect(updatedAccount.daily_limit).toBe(1200000);
+
+      const beforeBalance = updatedAccount.balance;
+      const depositedAccount = await toolsService.depositFunds('STU-2026-BDT01', 50000);
+      expect(depositedAccount.balance).toBe(beforeBalance + 50000);
+    });
+
+    it('should filter audit logs by permission tier and status using query parameters', async () => {
+      await toolsService.getBalance('STU-2026-BDT01');
+      const readOnlyLogs = await toolsService.getAuditLog(50, 'READ_ONLY');
+      expect(readOnlyLogs.length).toBeGreaterThan(0);
+      for (const log of readOnlyLogs) {
+        expect(log.permission_tier).toBe('READ_ONLY');
+      }
+    });
+
+    it('should delete audit log records via DELETE endpoint', async () => {
+      await toolsService.getBalance('STU-2026-BDT01');
+      const logs = await toolsService.getAuditLog(10);
+      const targetId = logs[0].id;
+      const res = await toolsService.deleteAuditLog(targetId);
+      expect(res.success).toBe(true);
+      const fetched = await db.getAuditLogById(targetId);
+      expect(fetched).toBeNull();
+    });
+  });
 });
