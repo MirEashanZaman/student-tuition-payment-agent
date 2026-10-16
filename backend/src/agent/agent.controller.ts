@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   Headers,
+  Req,
   Optional,
   BadRequestException,
   UseGuards,
@@ -280,11 +281,19 @@ export class AgentController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
   @RequirePermissionTier(PermissionTier.EXECUTE)
   @Post('transfers/:id/compensate')
-  async compensateTransfer(@Param('id') id: string, @Body() dto: CompensateTransferDto) {
-    await this.toolsService.compensateTransfer(id, dto.reason || 'Simulated settlement failure rollback');
+  async compensateTransfer(
+    @Param('id') id: string,
+    @Body() dto: CompensateTransferDto,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    await this.toolsService.compensateTransfer(
+      id,
+      dto.reason || 'Simulated settlement failure rollback',
+      request.user.studentId,
+    );
     return {
       success: true,
       transferId: id,
