@@ -7,7 +7,7 @@ import {
   AuthSession,
 } from '../types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 let memoryToken: string | null = null;
 
@@ -106,6 +106,7 @@ export const api = {
     return res.json();
   },
 
+<<<<<<< HEAD
   async updateDailyLimit(studentId: string, dailyLimitBdt: number): Promise<Account> {
     try {
       const validated = UpdateDailyLimitInputSchema.parse({ studentId, dailyLimitBdt });
@@ -130,6 +131,8 @@ export const api = {
     }
   },
 
+=======
+>>>>>>> e1c1492 (fix(backend): implement missing database repository methods and fix compilation error in security test)
   async sendChatMessage(message: string, studentId = 'STU-2026-BDT01'): Promise<any> {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
@@ -158,6 +161,7 @@ export const api = {
     }
   },
 
+<<<<<<< HEAD
   async getRates(activeOnly = true, targetCurrency?: string): Promise<any[]> {
     try {
       const params: Record<string, string> = {};
@@ -197,6 +201,8 @@ export const api = {
     }
   },
 
+=======
+>>>>>>> e1c1492 (fix(backend): implement missing database repository methods and fix compilation error in security test)
   async createDraft(params: {
     studentId?: string;
     routeId: string;
@@ -256,6 +262,7 @@ export const api = {
     return res.json();
   },
 
+<<<<<<< HEAD
   async getAuditLogById(id: string): Promise<AuditLog> {
     try {
       const response = await apiClient.get<AuditLog>(`/audit/${id}`);
@@ -274,6 +281,8 @@ export const api = {
     }
   },
 
+=======
+>>>>>>> e1c1492 (fix(backend): implement missing database repository methods and fix compilation error in security test)
   async resetSandbox(): Promise<any> {
     const res = await fetch(`${API_BASE}/sandbox/reset`, {
       method: 'POST',

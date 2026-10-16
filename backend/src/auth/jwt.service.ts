@@ -7,6 +7,7 @@ export interface JwtPayload {
   studentName: string;
   email: string;
   role: string;
+  permissionTier?: string;
   iat?: number;
   exp?: number;
   [key: string]: any;

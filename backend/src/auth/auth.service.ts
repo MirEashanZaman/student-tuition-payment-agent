@@ -7,6 +7,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { PasswordHasher } from './password.util';
 import { JwtService, JwtPayload } from './jwt.service';
+import { PermissionTier } from '../agent/guardrails/permission-tier.guard';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface AuthSessionResponse {
@@ -18,6 +19,7 @@ export interface AuthSessionResponse {
     studentName: string;
     email: string;
     role: string;
+    permissionTier: PermissionTier;
     balance: number;
     currency: string;
     dailyLimit: number;
@@ -86,6 +88,7 @@ export class AuthService {
       studentName: account.student_name,
       email: account.email,
       role: account.role || 'STUDENT',
+      permissionTier: PermissionTier.EXECUTE,
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -112,6 +115,7 @@ export class AuthService {
         studentName: account.student_name,
         email: account.email,
         role: account.role || 'STUDENT',
+        permissionTier: PermissionTier.EXECUTE,
         balance: account.balance,
         currency: account.currency,
         dailyLimit: account.daily_limit,
@@ -138,6 +142,7 @@ export class AuthService {
         studentName: account.student_name,
         email: account.email,
         role: account.role || 'STUDENT',
+        permissionTier: payload.permissionTier || PermissionTier.EXECUTE,
         balance: account.balance,
         currency: account.currency,
         dailyLimit: account.daily_limit,
@@ -178,6 +183,7 @@ export class AuthService {
       studentName: 'Tanvir Ahmed',
       email: 'tanvir.student@fintechathon.org',
       role: 'STUDENT',
+      permissionTier: PermissionTier.EXECUTE,
       note: 'Pre-seeded demo persona for FinTechathon 2026 sandbox testing.',
     };
   }

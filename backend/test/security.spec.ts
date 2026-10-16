@@ -48,6 +48,7 @@ import {
 import { ISafetyRule } from '../src/agent/guardrails/rules/safety-rule.interface';
 
 describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
+  let testModule: TestingModule;
   let db: DatabaseService;
   let toolsService: AgentToolsService;
   let agentService: AgentService;
