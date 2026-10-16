@@ -53,11 +53,42 @@ export class AgentService {
     }
   }
 
+  private async logAgentAction(
+    eventType: string,
+    actionSummary: string,
+    details: Record<string, any>,
+    studentId?: string,
+    permissionTier: 'READ_ONLY' | 'DRAFT' | 'EXECUTE' = 'READ_ONLY',
+  ) {
+    const account = studentId ? await this.db.getAccountByStudentId(studentId) : null;
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: eventType,
+      permission_tier: permissionTier,
+      account_id: account?.id,
+      action_summary: actionSummary,
+      details: JSON.stringify(details),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+  }
+
   async processChat(
     userMessage: string,
     studentId: string = this.defaultStudentId,
     conversationHistory: ChatMessage[] = [],
   ): Promise<ChatResponse> {
+    const cleanedInput = PromptInjectionFilter.sanitizeUserText(userMessage);
+
+    await this.logAgentAction(
+      'AGENT_CHAT_REQUEST',
+      `User prompt received for student ${studentId}`,
+      { studentId, messageLength: cleanedInput.length, hasConversationHistory: conversationHistory.length > 0 },
+      studentId,
+      'READ_ONLY',
+    );
+
     const injectionCheck = PromptInjectionFilter.inspect(userMessage);
     if (injectionCheck.isSuspicious) {
       await this.db.insertAuditLog({
@@ -67,6 +98,7 @@ export class AgentService {
         action_summary: 'Security Alert: Prompt injection pattern detected in user prompt',
         details: JSON.stringify({
           patterns: injectionCheck.flaggedPatterns,
+          sanitizedPrompt: injectionCheck.sanitizedText,
           rawPrompt: userMessage,
         }),
         status: 'FLAGGED',
@@ -74,11 +106,22 @@ export class AgentService {
         created_at: new Date(),
       });
       this.logger.warn(`Prompt injection pattern detected: ${injectionCheck.flaggedPatterns.join(', ')}`);
+      return {
+        message:
+          'Security Alert: Your message was treated as untrusted data and ignored. ' +
+          'User text never changes system limits, safety rules, permission tiers, or confirmation requirements.',
+        securityFlags: {
+          isSuspicious: true,
+          flaggedPatterns: injectionCheck.flaggedPatterns,
+        },
+      };
     }
+
+    const safeUserMessage = cleanedInput || userMessage;
 
     if (this.genAI) {
       try {
-        return await this.processWithGemini(userMessage, studentId, injectionCheck);
+        return await this.processWithGemini(safeUserMessage, studentId, injectionCheck);
       } catch (err) {
         this.logger.warn(`Gemini API call failed (${err.message}). Falling back to Sandbox Agent Engine.`);
       }
@@ -88,7 +131,7 @@ export class AgentService {
       this.logger.log('Engaging injected LLM client gateway.');
     }
 
-    return await this.processOfflineAgent(userMessage, studentId, injectionCheck);
+    return await this.processOfflineAgent(safeUserMessage, studentId, injectionCheck);
   }
 
   private async processWithGemini(
@@ -187,11 +230,26 @@ Your duties:
       let toolResult: any;
       if (toolName === 'getBalance') {
         toolResult = await this.toolsService.getBalance(args.studentId || studentId);
+        await this.logAgentAction(
+          'AGENT_BALANCE_CHECK',
+          `Balance reviewed for student ${args.studentId || studentId}`,
+          { studentId: args.studentId || studentId, toolName },
+          args.studentId || studentId,
+          'READ_ONLY',
+        );
       } else if (toolName === 'compareRoutes') {
         toolResult = await this.toolsService.compareRoutes(
           args.studentId || studentId,
           args.amountUsd,
           args.tuitionDeadline,
+          args.preference,
+        );
+        await this.logAgentAction(
+          'AGENT_ROUTE_COMPARE',
+          `Route comparison executed for student ${args.studentId || studentId}`,
+          { studentId: args.studentId || studentId, amountUsd: args.amountUsd, tuitionDeadline: args.tuitionDeadline, toolName },
+          args.studentId || studentId,
+          'READ_ONLY',
         );
       } else if (toolName === 'createTransferDraft') {
         toolResult = await this.toolsService.createTransferDraft(
@@ -201,6 +259,13 @@ Your duties:
           args.recipientUniversity,
           'REG-FALL-2026',
           args.tuitionDeadline,
+        );
+        await this.logAgentAction(
+          'AGENT_TRANSFER_DRAFT',
+          `Transfer draft created for student ${args.studentId || studentId}`,
+          { studentId: args.studentId || studentId, routeId: args.routeId, amountUsd: args.amountUsd, toolName },
+          args.studentId || studentId,
+          'DRAFT',
         );
         suggestedActions.push({
           label: 'Authorize & Confirm Transfer',
@@ -212,6 +277,13 @@ Your duties:
         });
       } else if (toolName === 'getAuditLog') {
         toolResult = await this.toolsService.getAuditLog(args.limit || 10);
+        await this.logAgentAction(
+          'AGENT_AUDIT_QUERY',
+          `Audit log queried for recent events`,
+          { limit: args.limit || 10, toolName },
+          studentId,
+          'READ_ONLY',
+        );
       }
 
       executedCalls.push({
@@ -260,6 +332,7 @@ Your duties:
       return {
         message:
           'Security Alert: Your request contains patterns that violate the Financial Safety Guardrails. ' +
+          'User text is treated as untrusted data and never as instructions. It cannot modify limits, safety rules, permission tiers, or confirmation requirements. ' +
           'All limits (per-transfer limit: 400,000 BDT, daily limit: 1,000,000 BDT) are enforced at the NestJS core architecture level and cannot be overridden through chat prompts. ' +
           'This security incident has been permanently recorded in the immutable audit log.',
         securityFlags: {
@@ -271,6 +344,13 @@ Your duties:
 
     if (lower.includes('balance') || lower.includes('how much money') || lower.includes('account status')) {
       const balanceData = await this.toolsService.getBalance(studentId);
+      await this.logAgentAction(
+        'AGENT_BALANCE_CHECK',
+        `Balance reviewed for student ${studentId}`,
+        { studentId, action: 'balance inquiry' },
+        studentId,
+        'READ_ONLY',
+      );
       executedCalls.push({
         toolName: 'getBalance',
         params: { studentId },
@@ -326,6 +406,13 @@ Your duties:
       if (lower.includes('relia') || lower.includes('trust') || lower.includes('safe')) preference = 'reliable';
 
       const comparison = await this.toolsService.compareRoutes(studentId, amountUsd, tuitionDeadline, preference);
+      await this.logAgentAction(
+        'AGENT_ROUTE_COMPARE',
+        `Route comparison performed for student ${studentId}`,
+        { studentId, amountUsd, tuitionDeadline, preference },
+        studentId,
+        'READ_ONLY',
+      );
       executedCalls.push({
         toolName: 'compareRoutes',
         params: { studentId, amountUsd, tuitionDeadline, preference },
@@ -379,6 +466,13 @@ Your duties:
 
     if (lower.includes('audit') || lower.includes('logs') || lower.includes('security history')) {
       const logs = await this.toolsService.getAuditLog(10);
+      await this.logAgentAction(
+        'AGENT_AUDIT_QUERY',
+        `Audit log reviewed for student ${studentId}`,
+        { studentId, limit: 10 },
+        studentId,
+        'READ_ONLY',
+      );
       executedCalls.push({
         toolName: 'getAuditLog',
         params: { limit: 10 },
