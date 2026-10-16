@@ -18,7 +18,7 @@
 | Feature | Pattern | How it is used |
 |---|---|---|
 | Route comparison and ranking | Strategy | Scoring classes for balanced, cheapest, fastest, and reliable (`RouteScoringStrategy`). Dynamic strategy swapping when user requests speed or cost priority. |
-| Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Statuses: pending -> confirmed -> executed. If execution fails, an automated compensating step releases reserved funds back to student account. |
+| Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Statuses: pending -> confirmed -> executed -> settled. Authenticated student owners can trigger atomic, idempotent saga rollback for confirmed or executed transfers to restore balances. |
 | Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small checks run in order: injection check, permission check, anomaly check, limit check, confirmation check. Any check can block and give an explicit reason. |
 | The 5 agent tools exposed to the LLM | Facade | `AgentToolsService` hides the bank gateway, rates repository, safety guards, and audit services behind a simple interface. |
 | LLM and mock bank | Dependency Inversion (the D in SOLID) | Code to interfaces like `ILlmClient` and `IBankGateway`. In tests fakes are swapped in without external dependencies. |
@@ -145,28 +145,42 @@ cd backend
 npm test
 ```
 
-### Verified Test Cases:
+### Verified Test Cases (35 Passed):
 1. `should block a single transfer draft exceeding the per-transfer limit (400,000 BDT)` (PASSED)
 2. `should block transfers that would breach the daily limit (1,000,000 BDT)` (PASSED)
 3. `should forbid the automated LLM/agent from unilaterally executing confirmTransfer` (PASSED)
 4. `should reject confirmation if user consent boolean is false` (PASSED)
-5. `should successfully execute transfer when valid token and explicit user consent are provided` (PASSED)
-6. `should rank routes using weighted multi-objective score and identify cheapest route` (PASSED)
-7. `should flag deadline warnings when route arrival date exceeds tuition deadline` (PASSED)
-8. `should write an audit log entry for every single agent action` (PASSED)
-9. `should safely flag and neutralize prompt injection attempts without crashing` (PASSED)
-10. `should handle invalid inputs and unexpected data formats gracefully` (PASSED)
-11. `should validate inputs using Zod schemas and reject malformed payloads` (PASSED)
-12. `should verify accounts and settle transfers using Axios HTTP bank gateway` (PASSED)
-13. `should hash password and verify with scrypt correctly` (PASSED)
-14. `should reject login with wrong password and write an audit log entry` (PASSED)
-15. `should successfully login with valid credentials and return JWT session` (PASSED)
-16. `should decode and verify valid JWT session token` (PASSED)
-17. `should reject expired or tampered JWT token` (PASSED)
-18. `should reject transfer execution when confirmation is missing` (PASSED)
-19. `should escape HTML and script payloads in user text` (PASSED)
-20. `should treat attempts to change permission tiers or rules as data, not instructions` (PASSED)
-21. `should deny access to another student account` (PASSED)
+5. `should reject transfer execution when confirmation is missing` (PASSED)
+6. `should successfully execute transfer when valid token and explicit user consent are provided` (PASSED)
+7. `should roll back a confirmed transfer once and restore its account balance` (PASSED)
+8. `should reject rollback of a pending transfer and transfers owned by another student` (PASSED)
+9. `should rank routes using weighted multi-objective score and identify cheapest route` (PASSED)
+10. `should flag deadline warnings when route arrival date exceeds tuition deadline` (PASSED)
+11. `should write an audit log entry for every single agent action` (PASSED)
+12. `should escape HTML and script payloads in user text` (PASSED)
+13. `should safely flag and neutralize prompt injection attempts without crashing` (PASSED)
+14. `should treat attempts to change permission tiers or rules as data, not instructions` (PASSED)
+15. `should deny access to another student account` (PASSED)
+16. `should handle invalid inputs and unexpected data formats gracefully` (PASSED)
+17. `should swap scoring strategy dynamically based on user preference` (PASSED)
+18. `should execute compensating transaction and roll back funds in Saga pattern` (PASSED)
+19. `should update draft transfer recipient via PUT before confirmation` (PASSED)
+20. `should delete draft transfer via DELETE endpoint` (PASSED)
+21. `should update account daily limits via PUT and deposit funds via POST` (PASSED)
+22. `should filter audit logs by permission tier and status using query parameters` (PASSED)
+23. `should delete audit log records via DELETE endpoint` (PASSED)
+24. `S - Single Responsibility: TuitionCalculationService computes route cost and deadline without database or HTTP side-effects` (PASSED)
+25. `O - Open/Closed Principle: SafetyRuleEngine is open for extension with custom rules without altering core code` (PASSED)
+26. `L - Liskov Substitution Principle: BankGateway and AccountRepository subtypes can substitute base contracts` (PASSED)
+27. `I - Interface Segregation: Client depending only on IAccountReader cannot mutate account state` (PASSED)
+28. `D - Dependency Inversion: Modules resolve interfaces via injection tokens rather than hardcoded implementations` (PASSED)
+29. `should validate inputs using Zod schemas and reject malformed payloads` (PASSED)
+30. `should verify accounts and settle transfers using Axios HTTP bank gateway` (PASSED)
+31. `should hash password and verify with scrypt correctly` (PASSED)
+32. `should reject login with wrong password and write an audit log entry` (PASSED)
+33. `should successfully login with valid credentials and return JWT session` (PASSED)
+34. `should decode and verify valid JWT session token` (PASSED)
+35. `should reject expired or tampered JWT token` (PASSED)
 
 ---
 
@@ -255,7 +269,7 @@ DAILY_TRANSFER_LIMIT_BDT=1000000
 
 The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main` and `Eashan`:
 
-1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (22/22 tests passing), and NestJS production build.
+1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (35/35 tests passing), and NestJS production build.
 2. **Frontend CI**: Dependency installation and Next.js static and server optimization build.
 3. **Docker Verification**: Builds multi-stage Docker images for both services to ensure container reproducibility.
 4. **Security & Cleanliness**: Automated Node.js audit ensuring zero exposed secrets and code policy compliance.
