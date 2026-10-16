@@ -163,6 +163,10 @@ npm test
 15. `should successfully login with valid credentials and return JWT session` (PASSED)
 16. `should decode and verify valid JWT session token` (PASSED)
 17. `should reject expired or tampered JWT token` (PASSED)
+18. `should reject transfer execution when confirmation is missing` (PASSED)
+19. `should escape HTML and script payloads in user text` (PASSED)
+20. `should treat attempts to change permission tiers or rules as data, not instructions` (PASSED)
+21. `should deny access to another student account` (PASSED)
 
 ---
 
