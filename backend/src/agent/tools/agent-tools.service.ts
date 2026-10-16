@@ -576,11 +576,138 @@ export class AgentToolsService {
     }
   }
 
-  async getAuditLog(limit = 50) {
-    if (this.auditRepo) {
+  async getAuditLog(limit = 50, tier?: string, status?: string) {
+    if (this.auditRepo && !tier && !status) {
       return this.auditRepo.findRecent(limit);
     }
-    const logs = await this.db.getAuditLogs(limit);
+    const logs = await this.db.getAuditLogs(limit, tier, status);
     return logs;
+  }
+
+  async getAuditLogById(id: string) {
+    const log = await this.db.getAuditLogById(id);
+    if (!log) {
+      throw new NotFoundException(`Audit record ${id} not found`);
+    }
+    return log;
+  }
+
+  async deleteAuditLog(id: string) {
+    const deleted = await this.db.deleteAuditLog(id);
+    if (!deleted) {
+      throw new NotFoundException(`Audit record ${id} not found`);
+    }
+    return { success: true, id };
+  }
+
+  async updateTransferDraft(
+    id: string,
+    updates: { recipient_university?: string; student_reg_number?: string },
+  ) {
+    const existing = await this.db.getTransferById(id);
+    if (!existing) {
+      throw new NotFoundException(`Transfer ${id} not found`);
+    }
+    if (existing.status !== 'PENDING_CONFIRMATION') {
+      throw new BadRequestException(`Cannot update transfer with status "${existing.status}". Only draft transfers can be modified.`);
+    }
+    const updated = await this.db.updateTransferDraft(id, updates);
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'DRAFT_UPDATED',
+      permission_tier: PermissionTier.DRAFT,
+      account_id: updated.account_id,
+      transfer_id: updated.id,
+      action_summary: `Draft updated for transfer ${id}`,
+      details: JSON.stringify(updates),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return updated;
+  }
+
+  async deleteTransferDraft(id: string) {
+    const existing = await this.db.getTransferById(id);
+    if (!existing) {
+      throw new NotFoundException(`Transfer ${id} not found`);
+    }
+    if (existing.status !== 'PENDING_CONFIRMATION' && existing.status !== 'BLOCKED') {
+      throw new BadRequestException(`Cannot delete transfer with status "${existing.status}".`);
+    }
+    await this.db.deleteTransfer(id);
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'DRAFT_DISCARDED',
+      permission_tier: PermissionTier.DRAFT,
+      account_id: existing.account_id,
+      transfer_id: id,
+      action_summary: `Transfer ${id} discarded`,
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return { success: true, id, status: 'DISCARDED' };
+  }
+
+  async depositFunds(studentId: string, amountBdt: number) {
+    if (amountBdt <= 0) {
+      throw new BadRequestException('Deposit amount must be greater than 0');
+    }
+    const account = await this.db.depositFunds(studentId, amountBdt);
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'FUNDS_DEPOSITED',
+      permission_tier: PermissionTier.EXECUTE,
+      account_id: account.id,
+      action_summary: `Deposited ${amountBdt.toLocaleString()} BDT to student account ${studentId}`,
+      details: JSON.stringify({ amountBdt, newBalance: account.balance }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return account;
+  }
+
+  async updateDailyLimit(studentId: string, newLimitBdt: number) {
+    if (newLimitBdt <= 0) {
+      throw new BadRequestException('Daily limit must be greater than 0');
+    }
+    const account = await this.db.updateDailyLimit(studentId, newLimitBdt);
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'DAILY_LIMIT_UPDATED',
+      permission_tier: PermissionTier.EXECUTE,
+      account_id: account.id,
+      action_summary: `Updated daily limit for student ${studentId} to ${newLimitBdt.toLocaleString()} BDT`,
+      details: JSON.stringify({ newDailyLimit: newLimitBdt }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return account;
+  }
+
+  async getRateById(id: string) {
+    const rate = this.rateRepo
+      ? await this.rateRepo.findById(id)
+      : await this.db.getRateById(id);
+    if (!rate) {
+      throw new NotFoundException(`Remittance route ${id} not found`);
+    }
+    return rate;
+  }
+
+  async updateRate(id: string, updates: any) {
+    const rate = await this.db.updateRate(id, updates);
+    return rate;
+  }
+
+  async deleteRate(id: string) {
+    const deleted = await this.db.deleteRate(id);
+    if (!deleted) {
+      throw new NotFoundException(`Remittance route ${id} not found`);
+    }
+    return { success: true, id, is_active: false };
   }
 }
