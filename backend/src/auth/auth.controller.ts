@@ -10,7 +10,7 @@ import {
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, IsEmail, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './auth.guard';
 
@@ -26,9 +26,46 @@ export class LoginDto {
   password: string;
 }
 
+export class RegistrationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  studentId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  studentName: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  @MaxLength(254)
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6)
+  @MaxLength(128)
+  password: string;
+}
+
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('registration')
+  async registration(@Body() body: RegistrationDto, @Req() req: any) {
+    if (!body || !body.studentId || !body.studentName || !body.email || !body.password) {
+      throw new BadRequestException('Student ID, student name, email, and password are required');
+    }
+    const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+    return await this.authService.registerStudent(body, ip);
+  }
+
+  @Post('register')
+  async registerAlias(@Body() body: RegistrationDto, @Req() req: any) {
+    return this.registration(body, req);
+  }
 
   @Post('login')
   async login(@Body() body: LoginDto, @Req() req: any) {
