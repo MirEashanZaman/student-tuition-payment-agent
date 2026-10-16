@@ -32,6 +32,13 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface RegistrationData {
+  studentId: string;
+  studentName: string;
+  email: string;
+  password: string;
+}
+
 export interface RouteItem {
   routeId: string;
   providerName: string;
