@@ -23,6 +23,7 @@ import {
 import { TransferStateMachine } from './saga/transfer-state-machine';
 import { BANK_GATEWAY_TOKEN } from './gateways/bank-gateway.interface';
 import { MockBankGateway } from './gateways/mock-bank.gateway';
+import { HttpBankGateway } from './gateways/http-bank.gateway';
 import { LLM_CLIENT_TOKEN } from './gateways/llm-client.interface';
 import { GeminiLlmClient } from './gateways/gemini-llm.client';
 import { OfflineLlmClient } from './gateways/offline-llm.client';
@@ -62,6 +63,7 @@ import {
     RouteScoringStrategyFactory,
     TransferStateMachine,
     MockBankGateway,
+    HttpBankGateway,
     { provide: BANK_GATEWAY_TOKEN, useClass: MockBankGateway },
     OfflineLlmClient,
     GeminiLlmClient,
@@ -81,6 +83,7 @@ import {
     RouteScoringStrategyFactory,
     TransferStateMachine,
     BANK_GATEWAY_TOKEN,
+    HttpBankGateway,
     LLM_CLIENT_TOKEN,
     TuitionCalculationService,
     TUITION_CALCULATOR_TOKEN,
