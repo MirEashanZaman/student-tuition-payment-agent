@@ -9,6 +9,30 @@ export interface Account {
   approximateUsdEquivalent: number;
 }
 
+export interface AuthUser {
+  studentId: string;
+  studentName: string;
+  email: string;
+  role: string;
+  permissionTier?: string;
+  balance: number;
+  currency: string;
+  dailyLimit?: number;
+  dailySpent?: number;
+}
+
+export interface AuthSession {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: AuthUser;
+}
+
+export interface LoginCredentials {
+  studentIdOrEmail: string;
+  password: string;
+}
+
 export interface RouteItem {
   routeId: string;
   providerName: string;

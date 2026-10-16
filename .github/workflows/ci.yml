@@ -111,7 +111,7 @@ jobs:
               if (ignore.includes(entry.name)) continue;
               const full = path.join(dir, entry.name);
               if (entry.isDirectory()) scan(full);
-              else if (/\.(ts|tsx|js|json|md)$/.test(entry.name)) {
+              else if (/\.(ts|tsx|js|json|md)$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
                 const content = fs.readFileSync(full, 'utf8');
                 const lines = content.split('\n');
                 lines.forEach((line, i) => {

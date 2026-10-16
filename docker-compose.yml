@@ -32,7 +32,8 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-mock_key_offline_agent}
       MAX_TRANSFER_LIMIT_BDT: 400000
       DAILY_TRANSFER_LIMIT_BDT: 1000000
-      FRONTEND_URL: http://localhost:4567
+      JWT_SECRET: ${JWT_SECRET:-fintechathon-2026-sandbox-secret-jwt-key-bdt}
+      FRONTEND_URL: http://localhost:3000
     ports:
       - "4568:4568"
     depends_on:
