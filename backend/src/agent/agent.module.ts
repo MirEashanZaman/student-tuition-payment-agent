@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { AgentService } from './agent.service';
 import { AgentController } from './agent.controller';
 import { AgentToolsService } from './tools/agent-tools.service';
@@ -43,6 +44,7 @@ import {
 } from './guardrails/rules/safety-rule.engine';
 
 @Module({
+  imports: [AuthModule],
   controllers: [AgentController],
   providers: [
     AgentService,

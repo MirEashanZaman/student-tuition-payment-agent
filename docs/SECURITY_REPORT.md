@@ -2,48 +2,47 @@
 
 **Project:** Student Tuition Payment Agent
 **Assessment date:** 2026-10-16
-**Scope:** Current repository implementation for the FinTechathon sandbox. This is a self-assessment, not an independent penetration test, compliance certification, or production-readiness approval.
+**Scope:** Repository implementation for the FinTechathon sandbox. This is a self-assessment, not an independent penetration test, compliance certification, or production-readiness approval.
 
-## 1. Permission Tiers
+## 1. Authorization and Data Isolation
 
-The backend defines three tiers in `backend/src/agent/guardrails/permission-tier.guard.ts`. HTTP routes use JWT authentication, a minimum-tier guard, and (on selected account and transfer routes) a student-scope guard.
+The API authenticates protected routes with JWTs, enforces minimum permission tiers, and scopes account and transfer access to the authenticated student's records. Transfer-ID operations load the transfer and compare its student owner rather than treating the transfer ID as a student ID. Audit reads are filtered by the authenticated account. Administrative mutations require a JWT whose database-backed role is `ADMIN`; sandbox reset and export are disabled in production.
 
-| Tier | Intended capability | Current enforcement |
-|---|---|---|
-| `READ_ONLY` | Read balances, compare remittance routes, and view audit data. | `PermissionTierValidator` permits `getBalance`, `compareRoutes`, and `getAuditLog`. Protected account, route-comparison, and transfer-list endpoints declare a minimum of `READ_ONLY`. |
-| `DRAFT` | Create or manage a pending tuition-transfer draft without settling funds. | The validator permits `createTransferDraft`; draft routes require at least `DRAFT`. Creation validates financial limits and produces a pending-confirmation transfer. |
-| `EXECUTE` | Confirm a pending transfer after consent and confirmation-token checks. | The validator rejects automated `confirmTransfer` calls. The confirmation service requires `userConsent: true`, a matching token, a pending transfer, and a fresh financial-limit check. The HTTP route declares `EXECUTE`. |
+The tiers are ordered minimum levels (`READ_ONLY` < `DRAFT` < `EXECUTE`), not independent roles. **Known limitation:** student logins are currently issued `EXECUTE`, so the app does not yet provide least-privilege tier assignment for different student workflows. Administrators must be provisioned through a trusted database/operations process; there is no public role-escalation route.
 
-The tiers are ordered minimum access levels (`READ_ONLY` < `DRAFT` < `EXECUTE`), not separate user roles. **Current limitation:** `AuthService.login` issues every successful student session with `permissionTier: EXECUTE`. Consequently, the HTTP tier guard does not currently provide role-based separation between read-only, draft, and execute users. The tool validator blocks agent-initiated confirmation, but the API relies on an authenticated session, a valid draft token, and a consent boolean; it does not independently prove that a human physically clicked the UI.
+## 2. Input, Abuse, and Runtime Controls
 
-## 2. Financial and Input Safeguards
+- JSON and URL-encoded request bodies are limited to 16 KB. DTO validation rejects unknown fields and validates relevant lengths, amounts, dates, and enumerated preferences.
+- The API applies bounded, per-IP in-memory rate limits: login 5 requests per 15 minutes, chat 20 per minute, and other API requests 120 per minute.
+- CORS origins use an explicit allowlist. The backend sets security response headers and disables `X-Powered-By`.
+- Production startup requires an explicitly configured JWT secret of at least 32 characters and a working PostgreSQL database. The known development signing-secret fallback is not accepted in production. Demo student credentials are not seeded or exposed in production.
+- Backend and frontend Docker services run as the unprivileged `node` user and have CPU, memory, process-count, capability, and `no-new-privileges` restrictions.
+- The source does not intentionally execute user-provided shell commands. The container limits reduce the impact of resource exhaustion; they do not make the application immune to denial-of-service attacks.
 
-- The financial guard defaults to a 400,000 BDT per-transfer limit and a 1,000,000 BDT daily limit. Environment variables can override these values.
-- Non-positive amounts and amounts above the 5,000,000 BDT anomaly ceiling are rejected.
-- Transfer confirmation checks available balance and limits again before settlement.
-- Confirmation requires a pending transfer, matching confirmation token, and explicit `userConsent: true`.
-- Prompt-injection detection blocks recognized override/bypass attempts before passing the message to the agent. User-facing text is escaped for HTML by the prompt-injection filter; React text rendering also avoids interpreting ordinary message strings as markup.
-- These controls have automated regression tests in `backend/test/security.spec.ts`. Passing tests are evidence of tested cases, not proof that all attack variants are prevented.
+The in-memory rate limiter is per process, not shared across replicas, and its IP identity depends on the network/proxy configuration. Production deployments need a trusted reverse proxy or gateway with shared rate limits, request timeouts, TLS, and WAF/DDoS protections. CORS is a browser control, not authentication.
 
-## 3. Audit Logging
+## 3. Financial and Prompt Safeguards
 
-The backend records operational events such as login outcomes, transfer confirmations or rejections, safety-limit blocks, prompt-injection flags, and agent actions. Logs are stored in the configured database or the in-memory sandbox.
+- Financial controls enforce configured per-transfer and daily limits, reject non-positive amounts, and flag unusually large amounts.
+- Transfer confirmation requires a pending transfer, a matching confirmation token, explicit user consent, and a fresh financial-limit check.
+- Prompt-injection detection blocks recognized override/bypass attempts before handing messages to the agent. User-facing text is escaped, and React renders ordinary text as text rather than markup.
+- These checks have regression coverage in `backend/test/security.spec.ts` and HTTP authorization/rate-limit coverage in `backend/test/security-hardening.spec.ts`. Passing tests establish only the tested cases, not complete attack prevention.
 
-**The audit log is not immutable in the current application.** The controller exposes audit deletion without an authorization guard, and there is no external append-only store, cryptographic chaining, or demonstrated tamper detection. Some agent log entries also use a fixed loopback IP rather than a verified client address. Treat the log as application audit data, not a tamper-proof compliance record.
+## 4. Audit Logging
 
-## 4. Known Risks and Follow-Up
+The backend records authentication, transfer, safety, and agent events. Audit reads are ownership-scoped; deletion is admin-only. The audit log is still ordinary mutable application/database data: it has no external append-only storage, cryptographic chaining, or demonstrated tamper detection. Some agent events use a loopback IP instead of verified client provenance. Do not treat these records as tamper-proof compliance evidence.
 
-| Priority | Known risk | Current exposure / impact | Recommended action |
+## 5. Known Risks and Follow-Up
+
+| Priority | Known risk | Exposure / impact | Recommended action |
 |---|---|---|---|
-| Critical | Unprotected administrative and data-management endpoints | Rate updates/deletions, audit-log deletion, sandbox reset, and log export do not declare authentication or permission guards in `AgentController`. A caller may change rates, erase evidence, reset data, or retrieve exported sandbox data. | Require authentication and explicit administrative permissions; disable sandbox-management endpoints outside development/test; restrict log export and deletion. |
-| High | Authenticated users all receive `EXECUTE` | Students do not receive differentiated least-privilege tiers. Any authenticated student session satisfies routes requiring `EXECUTE`. | Assign tier from trusted server-side role/policy, default to least privilege, and grant execution only through a separately approved workflow. |
-| High | Incomplete ownership enforcement on chat and transfer-ID operations | Chat accepts a caller-supplied student ID without the JWT/scope guards. Transfer-ID routes use `StudentScopeGuard`, which compares the route `id` directly with the JWT student ID rather than loading the transfer and checking its owner. This does not establish record ownership correctly. | Derive chat identity exclusively from the validated JWT. For every transfer operation, load the transfer and verify its owning account against the authenticated student before reading or mutating it; test cross-student IDs. |
-| High | JWT signing secret has a built-in fallback | `JwtService` uses a repository-defined fallback secret when `JWT_SECRET` is absent. Deployments that omit the environment variable could accept tokens signed with a publicly known default. | Fail application startup in non-development environments unless a strong secret is configured; rotate secrets and define a key-rotation plan. |
-| Medium | Confirmation is not strong step-up authentication | Confirmation checks a token and a request-provided consent boolean, but does not require re-authentication, MFA, or an independently verified approval channel. | Require step-up authentication or a trusted approval signal before real-money execution; keep the sandbox clearly separated from production. |
-| Medium | Sandbox data and mock clearing rails | Seeded identities, demo credentials, in-memory fallback, and mock financial corridors are not suitable for real student accounts or settlement. | Do not connect real funds until identity verification, live provider integration, operational reconciliation, and production data controls are implemented and reviewed. |
-| Medium | Audit evidence can be altered or incomplete | Logs are application/database records, can be deleted through an unguarded route, and do not have cryptographic tamper evidence or verified client-IP provenance. | Restrict write/delete access, use centralized append-only storage, add integrity verification and retention controls, and capture trusted network metadata. |
-| Medium | Security controls can be misconfigured | Financial thresholds can be overridden through environment variables; fallback behavior may apply to invalid or zero values. | Validate configuration at startup, reject invalid values, and enforce production-approved limits independently of agent prompts. |
+| High | Student sessions all receive `EXECUTE` | A student session satisfies routes requiring execution permission, even when its workflow should be read-only or draft-only. | Assign least-privilege tiers from trusted server-side policy and add an independent step-up approval for execution. |
+| High | Rate limiting is local and in-memory | Limits reset on restart and are not shared across replicas; proxy misconfiguration can also make IP-based limits ineffective. | Enforce shared limits, trusted proxy boundaries, connection/request timeouts, and DDoS controls at the edge. |
+| High | Demo financial model is not production settlement | Mock corridors, demo-only seed data, and the existing confirmation boolean/token are not identity verification, MFA, provider settlement, or reconciliation. | Keep real funds disconnected until identity verification, trusted step-up approval, production payment rails, reconciliation, and independent review exist. |
+| Medium | Audit records are mutable and may have incomplete provenance | An administrator can delete logs; some events record loopback addresses; no tamper-evident external retention exists. | Send logs to a restricted append-only system, retain integrity evidence, and record client metadata only from trusted proxy headers. |
+| Medium | No independent security assessment has been performed | Automated tests and code-level controls cannot establish resistance to all exploit chains, dependency vulnerabilities, or deployment misconfiguration. | Run dependency scanning and an independent penetration test before exposing the service to untrusted networks. |
+| Medium | Container limits do not replace host/network controls | Resource controls reduce process exhaustion impact but do not stop all CPU, network, or application-layer denial of service. | Add host-level isolation, monitoring/alerting, upstream request limits, TLS termination, and incident response procedures. |
 
-## 5. Self-Assessment Conclusion
+## 6. Conclusion
 
-The repository implements useful sandbox safeguards: tier definitions, transfer and daily limits, consent/token checks, prompt-injection handling, and regression tests. However, the current state has significant authorization and audit limitations described above. In particular, all student JWTs receive `EXECUTE`, several administrative endpoints are unguarded, and chat/transfer ownership checks are incomplete. **This implementation should be treated as a demonstration sandbox and must not be used to authorize or settle real funds until the high-priority risks are fixed and independently reviewed.**
+The repository now includes authentication and ownership guards for sensitive routes, protected administration, bounded request handling, production secret/database checks, container resource controls, and security regression tests. These are defense-in-depth improvements, not a guarantee against penetration, shell/resource-exhaustion attacks, or other attacks. Treat the project as a demonstration sandbox; do not use it to authorize or settle real funds without the follow-up controls and independent review above.

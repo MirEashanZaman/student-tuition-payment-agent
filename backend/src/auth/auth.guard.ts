@@ -101,6 +101,17 @@ export class StudentScopeGuard implements CanActivate {
 }
 
 @Injectable()
+export class AdminRoleGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    if (request.user?.role !== 'ADMIN') {
+      throw new ForbiddenException('Administrative access is required.');
+    }
+    return true;
+  }
+}
+
+@Injectable()
 export class OptionalJwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 

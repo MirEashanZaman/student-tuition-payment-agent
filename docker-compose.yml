@@ -7,14 +7,14 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-fintech_agent}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fintech_agent"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-fintech_agent}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,14 +28,22 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4568
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-fintech_agent}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-fintech_agent}?schema=public
       GEMINI_API_KEY: ${GEMINI_API_KEY:-mock_key_offline_agent}
       MAX_TRANSFER_LIMIT_BDT: 400000
       DAILY_TRANSFER_LIMIT_BDT: 1000000
-      JWT_SECRET: ${JWT_SECRET:-fintechathon-2026-sandbox-secret-jwt-key-bdt}
-      FRONTEND_URL: http://localhost:4567
+      JWT_SECRET: ${JWT_SECRET:?Set a strong JWT_SECRET in .env}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4567}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4567}
     ports:
       - "4568:4568"
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 100
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +60,13 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:4568/api
     ports:
       - "4567:4567"
+    cpus: 1.0
+    mem_limit: 768m
+    pids_limit: 100
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       - backend
 

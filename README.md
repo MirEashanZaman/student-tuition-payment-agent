@@ -8,7 +8,7 @@
 ## Key Highlights & Scoring Alignment
 
 - **Task Completion (40%):** Complete end-to-end tuition settlement flow from natural language query (`"Pay my $3,000 tuition from BDT"`), corridor comparison, draft creation, to settlement confirmation and receipt generation.
-- **Security & Compliance (30%):** Strict Tri-Tier Permission Model (`READ_ONLY`, `DRAFT`, `EXECUTE`). The autonomous LLM is strictly blocked from moving money unilaterally. Enforces 400,000 BDT per-transfer limit and 1,000,000 BDT daily limit in compiled backend code with tamper-evident audit logging.
+- **Security & Compliance (30%):** The API defines and enforces `READ_ONLY`, `DRAFT`, and `EXECUTE` permission tiers, with ownership checks on account and transfer records. The autonomous LLM is blocked from moving money unilaterally. The backend enforces transfer and daily limits and records application audit events.
 - **Innovation & Interaction (30%):** Rich Next.js dark fintech interface with glassmorphism, interactive corridor comparison cards, explainable "Why I chose this route" breakdown, and urgent tuition deadline warnings.
 
 ---
@@ -94,7 +94,7 @@
 
 ## Quick Start: One-Command Run
 
-### Option 1: Using Docker Compose (Recommended for Production)
+### Option 1: Using Docker Compose (Hardened Sandbox)
 
 ```bash
 # Clone the repository
@@ -103,6 +103,9 @@ cd "Student Tuition Payment Agent"
 
 # Copy environment variables
 cp .env.example .env
+
+# Generate distinct random values with `openssl rand -hex 32` and set them as
+# POSTGRES_PASSWORD and JWT_SECRET in .env. Do not commit .env.
 
 # Spin up PostgreSQL, Backend, and Frontend with one command
 docker compose up --build
@@ -116,7 +119,7 @@ Once started:
 
 ### Option 2: Running Locally (Development Mode)
 
-The backend features an intelligent automatic fallback: if PostgreSQL is not running locally, it seamlessly uses an embedded in-memory sandbox store so you can test immediately without any database installation!
+In development, the backend uses an in-memory sandbox store if PostgreSQL is unavailable. In production mode it requires PostgreSQL and fails startup rather than silently falling back to ephemeral storage. Demo student credentials are seeded only outside production.
 
 1. **Install and run Backend:**
    ```bash

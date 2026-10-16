@@ -20,9 +20,21 @@ export interface DecodedToken {
 
 @Injectable()
 export class JwtService {
-  private readonly defaultSecret =
-    process.env.JWT_SECRET || 'fintechathon-2026-sandbox-secret-jwt-key-bdt';
+  private readonly defaultSecret = this.getSigningSecret();
   private readonly defaultExpiresInSeconds = 86400;
+
+  private getSigningSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (
+      process.env.NODE_ENV === 'production' &&
+      (!secret ||
+        secret.length < 32 ||
+        secret === 'fintechathon-2026-sandbox-secret-jwt-key-bdt')
+    ) {
+      throw new Error('JWT_SECRET must be configured with at least 32 characters in production.');
+    }
+    return secret || 'fintechathon-2026-sandbox-secret-jwt-key-bdt';
+  }
 
   private base64UrlEncode(input: string | Buffer): string {
     const buf = Buffer.isBuffer(input) ? input : Buffer.from(input, 'utf8');
