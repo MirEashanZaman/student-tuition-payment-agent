@@ -106,8 +106,8 @@ cp .env.example .env
 docker compose up --build
 ```
 Once started:
-- **Frontend UI:** [http://localhost:3000](http://localhost:3000)
-- **Backend API:** [http://localhost:3001](http://localhost:3001)
+- **Frontend UI:** [http://localhost:4567](http://localhost:4567)
+- **Backend API:** [http://localhost:4568](http://localhost:4568)
 - **PostgreSQL Database:** `localhost:5432`
 
 ---
@@ -122,7 +122,7 @@ The backend features an intelligent automatic fallback: if PostgreSQL is not run
    npm install
    npm run start:dev
    ```
-   *Backend starts at http://localhost:3001*
+   *Backend starts at http://localhost:4568*
 
 2. **In a separate terminal, install and run Frontend:**
    ```bash
@@ -130,7 +130,7 @@ The backend features an intelligent automatic fallback: if PostgreSQL is not run
    npm install
    npm run dev
    ```
-   *Frontend starts at http://localhost:3000*
+   *Frontend starts at http://localhost:4567*
 
 ---
 
@@ -210,8 +210,8 @@ The system implements complete RESTful HTTP operations using `@Param()`, `@Body(
 See `.env.example` for details:
 ```env
 # Server
-PORT=3001
-FRONTEND_URL=http://localhost:3000
+PORT=4568
+FRONTEND_URL=http://localhost:4567
 
 # Database
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fintech_agent?schema=public
