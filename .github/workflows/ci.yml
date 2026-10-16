@@ -58,7 +58,7 @@ jobs:
       - name: Build Frontend Application
         working-directory: ./frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+          NEXT_PUBLIC_API_URL: http://localhost:4568/api
         run: npm run build
 
   docker-verification:
