@@ -417,6 +417,15 @@ export default function Home() {
               <span>Connecting...</span>
             )}
           </div>
+
+          <button
+            className="btn btn-xs bg-white/10 hover:bg-white text-white hover:text-[#1E3A8A] border border-white/20 font-semibold text-xs py-1 px-3 rounded-lg flex items-center gap-1.5 transition-all"
+            onClick={() => setShowLoginModal(true)}
+            id="login-modal-trigger"
+          >
+            <Lock className="w-3 h-3" />
+            <span>{authSession ? 'Switch User' : 'Sign In'}</span>
+          </button>
         </div>
       </header>
 
@@ -967,6 +976,103 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
+            <div className="bg-[#1E3A8A] p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-teal-300" />
+                <h3 className="font-bold text-base">Student Authentication</h3>
+              </div>
+              <button
+                className="btn btn-sm btn-circle btn-ghost text-white"
+                onClick={() => setShowLoginModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
+              {loginError && (
+                <div className="alert alert-error text-xs p-3 rounded-xl flex items-center gap-2 text-white bg-rose-600">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Student ID or Email
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full text-sm font-mono focus:border-[#1E3A8A]"
+                  value={loginInput.studentIdOrEmail}
+                  onChange={(e) => setLoginInput({ ...loginInput, studentIdOrEmail: e.target.value })}
+                  placeholder="STU-2026-BDT01"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="input input-bordered w-full text-sm focus:border-[#1E3A8A]"
+                    value={loginInput.password}
+                    onChange={(e) => setLoginInput({ ...loginInput, password: e.target.value })}
+                    placeholder="Enter password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 text-xs text-slate-500 font-medium"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+                <div className="font-semibold text-slate-700">Demo Persona:</div>
+                <div className="font-mono">ID: <span className="text-[#1E3A8A] font-bold">STU-2026-BDT01</span></div>
+                <div className="font-mono">Password: <span className="text-[#1E3A8A] font-bold">student123</span></div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                {authSession && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost text-rose-600"
+                    onClick={handleLogout}
+                  >
+                    Sign Out
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => setShowLoginModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-sm bg-[#1E3A8A] hover:bg-blue-900 text-white font-semibold px-5"
+                  disabled={loginLoading}
+                >
+                  {loginLoading ? 'Authenticating...' : 'Sign In'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
