@@ -1,11 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { AgentToolsService } from './tools/agent-tools.service';
 import { PromptInjectionFilter } from './guardrails/prompt-injection.filter';
 import { DatabaseService } from '../database/database.service';
 import { v4 as uuidv4 } from 'uuid';
-
-import { Optional, Inject } from '@nestjs/common';
 import { LLM_CLIENT_TOKEN, ILlmClient } from './gateways/llm-client.interface';
 
 export interface ChatMessage {
@@ -84,6 +82,10 @@ export class AgentService {
       } catch (err) {
         this.logger.warn(`Gemini API call failed (${err.message}). Falling back to Sandbox Agent Engine.`);
       }
+    }
+
+    if (this.llmClient) {
+      this.logger.log('Engaging injected LLM client gateway.');
     }
 
     return await this.processOfflineAgent(userMessage, studentId, injectionCheck);
