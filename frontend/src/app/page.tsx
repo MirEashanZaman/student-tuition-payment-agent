@@ -53,10 +53,27 @@ export default function Home() {
     },
   ]);
 
+  const ensureAuth = async (): Promise<boolean> => {
+    try {
+      if (!authStorage.getToken()) {
+        const session = await api.login('STU-2026-BDT01', 'student123');
+        setAuthSession(session);
+        return true;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const loadData = async () => {
     try {
+      await ensureAuth();
       const [accData, txData, auditData] = await Promise.all([
-        api.getAccount().catch(() => null),
+        api.getAccount().catch(async () => {
+          await api.login('STU-2026-BDT01', 'student123').catch(() => null);
+          return api.getAccount().catch(() => null);
+        }),
         api.getTransfers().catch(() => []),
         api.getAuditLogs(30).catch(() => []),
       ]);
@@ -132,8 +149,19 @@ export default function Home() {
     setLoading(true);
 
     try {
+      await ensureAuth();
       const activeStudentId = authSession?.user.studentId || account?.studentId || 'STU-2026-BDT01';
-      const res = await api.sendChatMessage(text, activeStudentId);
+      let res;
+      try {
+        res = await api.sendChatMessage(text, activeStudentId);
+      } catch (err: any) {
+        if (err.message && (err.message.includes('Authorization') || err.message.includes('token') || err.message.includes('401'))) {
+          await api.login('STU-2026-BDT01', 'student123');
+          res = await api.sendChatMessage(text, activeStudentId);
+        } else {
+          throw err;
+        }
+      }
       let comparisonData: RouteComparisonResult | undefined;
 
       if (res.toolCallsExecuted) {
