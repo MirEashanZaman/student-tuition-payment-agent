@@ -23,7 +23,7 @@ export class PromptInjectionFilter {
     /act\s+as\s+(admin|developer|root|system)/i,
   ];
 
-  static sanitizeUserText(userInput: string): string {
+  private static normalizeUserText(userInput: string): string {
     if (!userInput) {
       return '';
     }
@@ -40,12 +40,27 @@ export class PromptInjectionFilter {
     return normalized;
   }
 
+  private static escapeHtml(userInput: string): string {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return userInput.replace(/[&<>"']/g, (character) => entities[character]);
+  }
+
+  static sanitizeUserText(userInput: string): string {
+    return this.escapeHtml(this.normalizeUserText(userInput));
+  }
+
   static inspect(userInput: string): InjectionCheckResult {
     if (!userInput) {
       return { isSuspicious: false, flaggedPatterns: [], sanitizedText: '' };
     }
 
-    const normalizedInput = this.sanitizeUserText(userInput);
+    const normalizedInput = this.normalizeUserText(userInput);
     const flagged: string[] = [];
 
     for (const pattern of this.SUSPICIOUS_PATTERNS) {
@@ -56,7 +71,7 @@ export class PromptInjectionFilter {
 
     const sanitizedText = flagged.length > 0
       ? '[User content was blocked and treated as untrusted data only. No system rules, limits, or permission tiers were changed.]'
-      : normalizedInput;
+      : this.escapeHtml(normalizedInput);
 
     return {
       isSuspicious: flagged.length > 0,
