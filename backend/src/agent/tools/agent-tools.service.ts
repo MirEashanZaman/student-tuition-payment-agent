@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   Logger,
   Optional,
@@ -607,34 +608,57 @@ export class AgentToolsService {
     };
   }
 
-  async compensateTransfer(transferId: string, reason = 'Bank execution failure'): Promise<void> {
+  async compensateTransfer(
+    transferId: string,
+    reason = 'Bank execution failure',
+    requestingStudentId?: string,
+  ): Promise<void> {
     const transfer = await this.db.getTransferById(transferId);
     if (!transfer) {
       throw new NotFoundException(`Transfer ${transferId} not found`);
     }
 
-    const account = await this.db.getAccountById(transfer.account_id);
-    if (!account) {
-      throw new NotFoundException('Account not found for transfer');
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException('You can only roll back your own transfer.');
     }
 
-    const restoredBalance = +(account.balance + transfer.source_amount_bdt).toFixed(2);
-    const restoredDailySpent = +Math.max(0, account.daily_spent - transfer.source_amount_bdt).toFixed(2);
+    if (
+      transfer.status !== 'CONFIRMED' &&
+      transfer.status !== 'EXECUTED' &&
+      transfer.status !== 'FAILED'
+    ) {
+      throw new BadRequestException(`Cannot roll back transfer with status "${transfer.status}".`);
+    }
 
-    await this.db.updateAccountBalance(account.id, restoredBalance, restoredDailySpent);
-    await this.db.updateTransferStatus(transfer.id, 'ROLLED_BACK');
+    if (this.stateMachine) {
+      this.stateMachine.assertTransition(transfer.status, 'ROLLED_BACK');
+    }
 
     if (this.bankGateway) {
-      await this.bankGateway.releaseFunds(account.student_id, transfer.source_amount_bdt);
+      const released = await this.bankGateway.releaseFunds(
+        transfer.student_id,
+        transfer.source_amount_bdt,
+      );
+      if (!released) {
+        throw new BadRequestException('Bank gateway did not release reserved funds; rollback was not applied.');
+      }
     }
+
+    const rollback = await this.db.rollbackTransferAndRestoreFunds(transferId);
 
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: 'TRANSFER_COMPENSATED',
       permission_tier: PermissionTier.EXECUTE,
-      account_id: account.id,
-      transfer_id: transfer.id,
+      account_id: rollback.account.id,
+      transfer_id: rollback.transfer.id,
       action_summary: `Saga compensating transaction executed: ${transfer.source_amount_bdt.toLocaleString()} BDT restored to student account. Reason: ${reason}`,
+      details: JSON.stringify({
+        transferId: rollback.transfer.id,
+        restoredBalanceBdt: rollback.account.balance,
+        dailySpentBdt: rollback.account.daily_spent,
+        reason,
+      }),
       status: 'WARNING',
       ip_address: '127.0.0.1',
       created_at: new Date(),
@@ -643,7 +667,12 @@ export class AgentToolsService {
     if (this.eventEmitter) {
       this.eventEmitter.emit(
         'transfer.compensated',
-        new TransferCompensatedEvent(transfer.id, account.student_id, transfer.source_amount_bdt, reason),
+        new TransferCompensatedEvent(
+          rollback.transfer.id,
+          rollback.account.student_id,
+          transfer.source_amount_bdt,
+          reason,
+        ),
       );
     }
   }
