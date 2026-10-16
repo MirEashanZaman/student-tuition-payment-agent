@@ -51,7 +51,9 @@ export class AgentToolsService {
   ) {}
 
   async getBalance(studentId: string) {
-    const account = await this.db.getAccountByStudentId(studentId);
+    const account = this.accountRepo
+      ? await this.accountRepo.findByStudentId(studentId)
+      : await this.db.getAccountByStudentId(studentId);
     if (!account) {
       throw new NotFoundException(`Student account ${studentId} not found`);
     }
@@ -97,7 +99,9 @@ export class AgentToolsService {
       throw new BadRequestException('Amount in USD must be greater than 0');
     }
 
-    const rates = await this.db.getAllRates();
+    const rates = this.rateRepo
+      ? await this.rateRepo.findAllActive()
+      : await this.db.getAllRates();
     if (rates.length === 0) {
       throw new NotFoundException('No active remittance routes available');
     }
@@ -265,6 +269,10 @@ export class AgentToolsService {
     const feeBdt = +(route.transfer_fee_flat_bdt + sourceAmountBdt * route.transfer_fee_percent).toFixed(2);
     const totalRequiredBdt = +(sourceAmountBdt + feeBdt).toFixed(2);
 
+    if (this.safetyChain) {
+      this.logger.log(`SafetyChain active for ${studentId} draft.`);
+    }
+
     const limitCheck = FinancialLimitsGuard.validateTransfer(
       totalRequiredBdt,
       account.balance,
@@ -401,7 +409,9 @@ export class AgentToolsService {
       throw new BadRequestException('Transfer execution cancelled: User consent was not granted.');
     }
 
-    const transfer = await this.db.getTransferById(transferId);
+    const transfer = this.transferRepo
+      ? await this.transferRepo.findById(transferId)
+      : await this.db.getTransferById(transferId);
     if (!transfer) {
       throw new NotFoundException(`Transfer ${transferId} not found`);
     }
@@ -567,6 +577,9 @@ export class AgentToolsService {
   }
 
   async getAuditLog(limit = 50) {
+    if (this.auditRepo) {
+      return this.auditRepo.findRecent(limit);
+    }
     const logs = await this.db.getAuditLogs(limit);
     return logs;
   }
