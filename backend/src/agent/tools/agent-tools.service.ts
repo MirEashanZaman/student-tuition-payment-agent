@@ -26,6 +26,20 @@ import { RateRepository } from '../../database/repositories/rate.repository';
 import { TransferRepository } from '../../database/repositories/transfer.repository';
 import { AuditRepository } from '../../database/repositories/audit.repository';
 import {
+  ACCOUNT_REPOSITORY_TOKEN,
+  RATE_REPOSITORY_TOKEN,
+  TRANSFER_REPOSITORY_TOKEN,
+  AUDIT_REPOSITORY_TOKEN,
+} from '../../database/repositories/interfaces/repository.tokens';
+import { IAccountRepository } from '../../database/repositories/interfaces/account.interface';
+import { IRateRepository } from '../../database/repositories/interfaces/rate.interface';
+import { ITransferRepository } from '../../database/repositories/interfaces/transfer.interface';
+import { IAuditRepository } from '../../database/repositories/interfaces/audit.interface';
+import {
+  ITuitionCalculator,
+  TUITION_CALCULATOR_TOKEN,
+} from '../services/tuition-calculation.interface';
+import {
   TransferDraftedEvent,
   TransferConfirmedEvent,
   TransferExecutedEvent,
@@ -44,16 +58,35 @@ export class AgentToolsService {
     @Optional() private readonly stateMachine?: TransferStateMachine,
     @Optional() private readonly safetyChain?: SafetyChainCoordinator,
     @Optional() private readonly eventEmitter?: EventEmitter2,
+    @Optional() @Inject(ACCOUNT_REPOSITORY_TOKEN) private readonly accountRepository?: IAccountRepository,
+    @Optional() @Inject(RATE_REPOSITORY_TOKEN) private readonly rateRepository?: IRateRepository,
+    @Optional() @Inject(TRANSFER_REPOSITORY_TOKEN) private readonly transferRepository?: ITransferRepository,
+    @Optional() @Inject(AUDIT_REPOSITORY_TOKEN) private readonly auditRepository?: IAuditRepository,
+    @Optional() @Inject(TUITION_CALCULATOR_TOKEN) private readonly tuitionCalculator?: ITuitionCalculator,
     @Optional() private readonly accountRepo?: AccountRepository,
     @Optional() private readonly rateRepo?: RateRepository,
     @Optional() private readonly transferRepo?: TransferRepository,
     @Optional() private readonly auditRepo?: AuditRepository,
   ) {}
 
+  private get accountStore(): IAccountRepository | AccountRepository {
+    return this.accountRepository || this.accountRepo || (this.db as any);
+  }
+
+  private get rateStore(): IRateRepository | RateRepository {
+    return this.rateRepository || this.rateRepo || (this.db as any);
+  }
+
+  private get transferStore(): ITransferRepository | TransferRepository {
+    return this.transferRepository || this.transferRepo || (this.db as any);
+  }
+
+  private get auditStore(): IAuditRepository | AuditRepository {
+    return this.auditRepository || this.auditRepo || (this.db as any);
+  }
+
   async getBalance(studentId: string) {
-    const account = this.accountRepo
-      ? await this.accountRepo.findByStudentId(studentId)
-      : await this.db.getAccountByStudentId(studentId);
+    const account = await this.accountStore.findByStudentId(studentId);
     if (!account) {
       throw new NotFoundException(`Student account ${studentId} not found`);
     }
@@ -99,110 +132,117 @@ export class AgentToolsService {
       throw new BadRequestException('Amount in USD must be greater than 0');
     }
 
-    const rates = this.rateRepo
-      ? await this.rateRepo.findAllActive()
-      : await this.db.getAllRates();
+    const rates = await this.rateStore.findAllActive();
     if (rates.length === 0) {
       throw new NotFoundException('No active remittance routes available');
     }
 
     const now = new Date();
     const benchmarkRateBdt = 119.00;
-    const deadlineDate = tuitionDeadline ? new Date(tuitionDeadline) : undefined;
+    const activeStrategy = this.strategyFactory?.getStrategy(preference);
+    const weights = activeStrategy
+      ? activeStrategy.getWeights()
+      : { costWeight: 0.50, speedWeight: 0.30, reliabilityWeight: 0.20 };
 
     const routeItems: RouteComparisonItem[] = rates.map((route) => {
-      const sourceAmountBdt = +(amountUsd * route.inverse_rate).toFixed(2);
-      const flatFeeBdt = route.transfer_fee_flat_bdt;
-      const percentageFeeBdt = +(sourceAmountBdt * route.transfer_fee_percent).toFixed(2);
-      const totalFeeBdt = +(flatFeeBdt + percentageFeeBdt).toFixed(2);
+      const cost = this.tuitionCalculator
+        ? this.tuitionCalculator.calculateRouteCost(amountUsd, route, benchmarkRateBdt)
+        : {
+            sourceAmountBdt: +(amountUsd * route.inverse_rate).toFixed(2),
+            flatFeeBdt: route.transfer_fee_flat_bdt,
+            percentageFeeBdt: +(amountUsd * route.inverse_rate * route.transfer_fee_percent).toFixed(2),
+            totalFeeBdt: +(route.transfer_fee_flat_bdt + amountUsd * route.inverse_rate * route.transfer_fee_percent).toFixed(2),
+            fxMarkupLossBdt: +(Math.max(0, route.inverse_rate - benchmarkRateBdt) * amountUsd).toFixed(2),
+            totalCostBdt: 0,
+          };
 
-      const fxMarkupLossBdt = +(
-        Math.max(0, route.inverse_rate - benchmarkRateBdt) * amountUsd
-      ).toFixed(2);
+      if (!this.tuitionCalculator) {
+        cost.totalCostBdt = +(cost.totalFeeBdt + cost.fxMarkupLossBdt).toFixed(2);
+      }
 
-      const totalCostBdt = +(totalFeeBdt + fxMarkupLossBdt).toFixed(2);
+      const deadline = this.tuitionCalculator
+        ? this.tuitionCalculator.evaluateDeadline(route.speed_hours, tuitionDeadline, now)
+        : {
+            estimatedDelivery: new Date(now.getTime() + route.speed_hours * 3600 * 1000),
+            deadlineWarning: false,
+            deadlineNotice: undefined,
+          };
 
-      const estimatedDelivery = new Date(now.getTime() + route.speed_hours * 3600 * 1000);
-      let deadlineWarning = false;
-      let deadlineNotice: string | undefined;
-
-      if (deadlineDate && !isNaN(deadlineDate.getTime())) {
-        if (estimatedDelivery > deadlineDate) {
-          deadlineWarning = true;
-          const diffHours = Math.ceil((estimatedDelivery.getTime() - deadlineDate.getTime()) / (3600 * 1000));
-          deadlineNotice = `CRITICAL WARNING: Arrives ~${diffHours}h AFTER your tuition deadline! Late fees or registration block may apply.`;
-        } else {
-          deadlineNotice = `Safe: Arrives before your tuition deadline.`;
+      if (!this.tuitionCalculator && tuitionDeadline) {
+        const deadlineDate = new Date(tuitionDeadline);
+        if (!isNaN(deadlineDate.getTime()) && deadline.estimatedDelivery > deadlineDate) {
+          deadline.deadlineWarning = true;
+          const diffHours = Math.ceil((deadline.estimatedDelivery.getTime() - deadlineDate.getTime()) / (3600 * 1000));
+          deadline.deadlineNotice = `CRITICAL WARNING: Arrives ~${diffHours}h AFTER your tuition deadline! Late fees or registration block may apply.`;
         }
       }
 
       return {
         routeId: route.id,
         providerName: route.provider_name,
-        sourceAmountBdt,
+        sourceAmountBdt: cost.sourceAmountBdt,
         targetAmountUsd: amountUsd,
         exchangeRate: route.exchange_rate,
         inverseRate: route.inverse_rate,
-        flatFeeBdt,
-        percentageFeeBdt,
-        totalFeeBdt,
-        fxMarkupLossBdt,
-        totalCostBdt,
+        flatFeeBdt: cost.flatFeeBdt,
+        percentageFeeBdt: cost.percentageFeeBdt,
+        totalFeeBdt: cost.totalFeeBdt,
+        fxMarkupLossBdt: cost.fxMarkupLossBdt,
+        totalCostBdt: cost.totalCostBdt,
         speedHours: route.speed_hours,
         speedDescription: route.speed_description,
         reliabilityScore: route.reliability_score,
         complianceRating: route.compliance_rating,
         compositeScore: 0,
         rank: 0,
-        estimatedDeliveryDate: estimatedDelivery.toISOString(),
-        deadlineWarning,
-        deadlineNotice,
+        estimatedDeliveryDate: deadline.estimatedDelivery.toISOString(),
+        deadlineWarning: deadline.deadlineWarning,
+        deadlineNotice: deadline.deadlineNotice,
         recommendationReason: '',
       };
     });
 
-    const minCost = Math.min(...routeItems.map((r) => r.totalCostBdt));
-    const maxCost = Math.max(...routeItems.map((r) => r.totalCostBdt));
-    const minHours = Math.min(...routeItems.map((r) => r.speedHours));
-    const maxHours = Math.max(...routeItems.map((r) => r.speedHours));
+    if (this.tuitionCalculator) {
+      this.tuitionCalculator.rankRoutes(routeItems, activeStrategy);
+    } else {
+      const minCost = Math.min(...routeItems.map((r) => r.totalCostBdt));
+      const maxCost = Math.max(...routeItems.map((r) => r.totalCostBdt));
+      const minHours = Math.min(...routeItems.map((r) => r.speedHours));
+      const maxHours = Math.max(...routeItems.map((r) => r.speedHours));
 
-    const activeStrategy = this.strategyFactory?.getStrategy(preference);
-    const weights = activeStrategy
-      ? activeStrategy.getWeights()
-      : { costWeight: 0.50, speedWeight: 0.30, reliabilityWeight: 0.20 };
+      routeItems.forEach((r) => {
+        const costScore = maxCost === minCost ? 100 : ((maxCost - r.totalCostBdt) / (maxCost - minCost)) * 100;
+        const speedScore = maxHours === minHours ? 100 : ((maxHours - r.speedHours) / (maxHours - minHours)) * 100;
+        const relScore = r.reliabilityScore * 100;
+        const deadlinePenalty = r.deadlineWarning ? 40 : 0;
 
-    routeItems.forEach((r) => {
-      const costScore = maxCost === minCost ? 100 : ((maxCost - r.totalCostBdt) / (maxCost - minCost)) * 100;
-      const speedScore = maxHours === minHours ? 100 : ((maxHours - r.speedHours) / (maxHours - minHours)) * 100;
-      const relScore = r.reliabilityScore * 100;
-      const deadlinePenalty = r.deadlineWarning ? 40 : 0;
+        const rawComposite =
+          weights.costWeight * costScore +
+          weights.speedWeight * speedScore +
+          weights.reliabilityWeight * relScore -
+          deadlinePenalty;
 
-      const rawComposite =
-        weights.costWeight * costScore +
-        weights.speedWeight * speedScore +
-        weights.reliabilityWeight * relScore -
-        deadlinePenalty;
+        r.compositeScore = +Math.max(0, rawComposite).toFixed(1);
+      });
 
-      r.compositeScore = +Math.max(0, rawComposite).toFixed(1);
-    });
-
-    routeItems.sort((a, b) => b.compositeScore - a.compositeScore);
-    routeItems.forEach((r, idx) => {
-      r.rank = idx + 1;
-      if (idx === 0) {
-        r.recommendationReason = r.deadlineWarning
-          ? 'Highest ranked available, but please note arrival date warning.'
-          : activeStrategy
-          ? activeStrategy.getRecommendationReason()
-          : 'Best Overall: Optimal balance of lowest fees, fast clearance, and 99% reliability.';
-      } else if (r.speedHours === minHours) {
-        r.recommendationReason = 'Fastest Rail: Clears in 4 hours; ideal for urgent immediate tuition deadlines.';
-      } else if (r.totalCostBdt === minCost) {
-        r.recommendationReason = 'Lowest Raw Cost: Minimal processing fees.';
-      } else {
-        r.recommendationReason = 'Standard clearing rail with higher legacy telegraphic fees.';
-      }
-    });
+      routeItems.sort((a, b) => b.compositeScore - a.compositeScore);
+      routeItems.forEach((r, idx) => {
+        r.rank = idx + 1;
+        if (idx === 0) {
+          r.recommendationReason = r.deadlineWarning
+            ? 'Highest ranked available, but please note arrival date warning.'
+            : activeStrategy
+            ? activeStrategy.getRecommendationReason()
+            : 'Best Overall: Optimal balance of lowest fees, fast clearance, and 99% reliability.';
+        } else if (r.speedHours === minHours) {
+          r.recommendationReason = 'Fastest Rail: Clears in 4 hours; ideal for urgent immediate tuition deadlines.';
+        } else if (r.totalCostBdt === minCost) {
+          r.recommendationReason = 'Lowest Raw Cost: Minimal processing fees.';
+        } else {
+          r.recommendationReason = 'Standard clearing rail with higher legacy telegraphic fees.';
+        }
+      });
+    }
 
     const cheapestRoute = [...routeItems].sort((a, b) => a.totalCostBdt - b.totalCostBdt)[0];
     const fastestRoute = [...routeItems].sort((a, b) => a.speedHours - b.speedHours)[0];
