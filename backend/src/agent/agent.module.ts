@@ -28,6 +28,19 @@ import { GeminiLlmClient } from './gateways/gemini-llm.client';
 import { OfflineLlmClient } from './gateways/offline-llm.client';
 import { AuditLogListener } from './events/audit-log.listener';
 
+import {
+  TuitionCalculationService,
+} from './services/tuition-calculation.service';
+import {
+  TUITION_CALCULATOR_TOKEN,
+} from './services/tuition-calculation.interface';
+import {
+  PerTransferLimitRule,
+  DailyLimitRule,
+  AccountBalanceRule,
+  SafetyRuleEngine,
+} from './guardrails/rules/safety-rule.engine';
+
 @Module({
   controllers: [AgentController],
   providers: [
@@ -54,6 +67,12 @@ import { AuditLogListener } from './events/audit-log.listener';
     GeminiLlmClient,
     { provide: LLM_CLIENT_TOKEN, useClass: GeminiLlmClient },
     AuditLogListener,
+    TuitionCalculationService,
+    { provide: TUITION_CALCULATOR_TOKEN, useClass: TuitionCalculationService },
+    PerTransferLimitRule,
+    DailyLimitRule,
+    AccountBalanceRule,
+    SafetyRuleEngine,
   ],
   exports: [
     AgentService,
@@ -63,6 +82,9 @@ import { AuditLogListener } from './events/audit-log.listener';
     TransferStateMachine,
     BANK_GATEWAY_TOKEN,
     LLM_CLIENT_TOKEN,
+    TuitionCalculationService,
+    TUITION_CALCULATOR_TOKEN,
+    SafetyRuleEngine,
   ],
 })
 export class AgentModule {}
