@@ -1,5 +1,13 @@
 import axios, { AxiosError } from 'axios';
-import { Account, RouteComparisonResult, TransferDraft, TransferRecord, AuditLog } from '../types';
+import {
+  Account,
+  RouteComparisonResult,
+  TransferDraft,
+  TransferRecord,
+  AuditLog,
+  AuthSession,
+  LoginCredentials,
+} from '../types';
 import {
   ChatMessageInputSchema,
   CompareRoutesInputSchema,
@@ -7,6 +15,7 @@ import {
   ConfirmTransferInputSchema,
   UpdateDailyLimitInputSchema,
   DepositFundsInputSchema,
+  LoginInputSchema,
 } from './schemas';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
@@ -18,6 +27,16 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
+});
+
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('fintech_auth_token');
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return config;
 });
 
 function handleApiError(error: unknown, fallbackMessage: string): never {
@@ -36,7 +55,51 @@ function handleApiError(error: unknown, fallbackMessage: string): never {
   throw new Error(fallbackMessage);
 }
 
+export const authStorage = {
+  getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('fintech_auth_token');
+  },
+  setToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('fintech_auth_token', token);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  },
+  clearToken(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('fintech_auth_token');
+    delete apiClient.defaults.headers.common['Authorization'];
+  },
+};
+
 export const api = {
+  getAuthToken(): string | null {
+    return authStorage.getToken();
+  },
+
+  setAuthToken(token: string): void {
+    authStorage.setToken(token);
+  },
+
+  clearAuthToken(): void {
+    authStorage.clearToken();
+  },
+
+  async login(credentialsOrStudentId: LoginCredentials | string, maybePassword?: string): Promise<AuthSession> {
+    try {
+      const credentials = typeof credentialsOrStudentId === 'string'
+        ? { studentIdOrEmail: credentialsOrStudentId, password: maybePassword || '' }
+        : credentialsOrStudentId;
+      const validated = LoginInputSchema.parse(credentials);
+      const response = await apiClient.post<AuthSession>('/auth/login', validated);
+      if (response.data?.accessToken) {
+        authStorage.setToken(response.data.accessToken);
+      }
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Login failed');
+    }
+  },
   async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
     try {
       const response = await apiClient.get<Account>(`/accounts/${studentId}`);
@@ -257,6 +320,47 @@ export const api = {
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to export logs');
+    }
+  },
+
+
+
+  async getSession(): Promise<any> {
+    try {
+      const token = this.getAuthToken();
+      if (!token) return null;
+      const response = await apiClient.get('/auth/session', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      this.clearAuthToken();
+      return null;
+    }
+  },
+
+  async logout(studentId?: string): Promise<any> {
+    try {
+      const token = this.getAuthToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.post('/auth/logout', { studentId }, { headers });
+      this.clearAuthToken();
+      return response.data;
+    } catch (error) {
+      this.clearAuthToken();
+      return { success: true };
+    }
+  },
+
+  async getDemoCredentials(): Promise<any> {
+    try {
+      const response = await apiClient.get('/auth/demo-credentials');
+      return response.data;
+    } catch (error) {
+      return {
+        studentId: 'STU-2026-BDT01',
+        password: 'student123',
+      };
     }
   },
 };
