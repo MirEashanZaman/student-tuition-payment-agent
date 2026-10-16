@@ -1,8 +1,19 @@
-import { Controller, Post, Get, Body, Param, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  Headers,
+  Optional,
+  BadRequestException,
+} from '@nestjs/common';
 import { IsNotEmpty, IsString, IsOptional, IsNumber, IsBoolean } from 'class-validator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './tools/agent-tools.service';
 import { DatabaseService } from '../database/database.service';
+import { JwtService } from '../auth/jwt.service';
 
 export class ChatDto {
   @IsString()
@@ -54,14 +65,32 @@ export class AgentController {
     private readonly agentService: AgentService,
     private readonly toolsService: AgentToolsService,
     private readonly db: DatabaseService,
+    @Optional() private readonly jwtService?: JwtService,
   ) {}
 
+  private extractStudentId(authHeader?: string, explicitStudentId?: string): string {
+    if (explicitStudentId) return explicitStudentId;
+    if (authHeader && this.jwtService) {
+      const [type, token] = authHeader.split(' ');
+      if (type === 'Bearer' && token) {
+        try {
+          const payload = this.jwtService.verify(token);
+          if (payload?.studentId) return payload.studentId;
+        } catch {
+          // ignore invalid token for fallback
+        }
+      }
+    }
+    return 'STU-2026-BDT01';
+  }
+
   @Post('chat')
-  async chat(@Body() body: ChatDto) {
+  async chat(@Body() body: ChatDto, @Headers('authorization') authHeader?: string) {
     if (!body || !body.message) {
       throw new BadRequestException('Message is required');
     }
-    return await this.agentService.processChat(body.message, body.studentId);
+    const studentId = this.extractStudentId(authHeader, body.studentId);
+    return await this.agentService.processChat(body.message, studentId);
   }
 
   @Get('accounts/:id')
@@ -77,15 +106,20 @@ export class AgentController {
   @Post('routes/compare')
   async compareRoutes(
     @Body() body: { studentId?: string; amountUsd: number; tuitionDeadline?: string },
+    @Headers('authorization') authHeader?: string,
   ) {
-    const studentId = body.studentId || 'STU-2026-BDT01';
+    const studentId = this.extractStudentId(authHeader, body.studentId);
     return await this.toolsService.compareRoutes(studentId, body.amountUsd, body.tuitionDeadline);
   }
 
   @Post('transfers/draft')
-  async createDraft(@Body() dto: CreateDraftDto) {
+  async createDraft(
+    @Body() dto: CreateDraftDto,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const studentId = this.extractStudentId(authHeader, dto.studentId);
     return await this.toolsService.createTransferDraft(
-      dto.studentId || 'STU-2026-BDT01',
+      studentId,
       dto.routeId,
       dto.amountUsd,
       dto.recipientUniversity,
@@ -110,8 +144,11 @@ export class AgentController {
   }
 
   @Get('transfers')
-  async getTransfers(@Query('studentId') studentId?: string) {
-    const id = studentId || 'STU-2026-BDT01';
+  async getTransfers(
+    @Query('studentId') studentId?: string,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const id = this.extractStudentId(authHeader, studentId);
     return await this.db.getTransfersByStudentId(id);
   }
 
