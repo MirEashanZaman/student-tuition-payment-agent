@@ -389,14 +389,109 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return t;
   }
 
-  async getTransfersByStudentId(studentId: string): Promise<TransferRecord[]> {
+  async updateTransferDraft(
+    id: string,
+    updates: { recipient_university?: string; student_reg_number?: string },
+  ): Promise<TransferRecord> {
+    if (!this.useMemoryStore && this.pool) {
+      const res = await this.pool.query(
+        'UPDATE transfers SET recipient_university = COALESCE($1, recipient_university), student_reg_number = COALESCE($2, student_reg_number), updated_at = NOW() WHERE id = $3 RETURNING *',
+        [updates.recipient_university || null, updates.student_reg_number || null, id],
+      );
+      return this.formatTransfer(res.rows[0]);
+    }
+    const t = await this.getTransferById(id);
+    if (!t) throw new Error(`Transfer ${id} not found`);
+    if (updates.recipient_university) t.recipient_university = updates.recipient_university;
+    if (updates.student_reg_number) t.student_reg_number = updates.student_reg_number;
+    t.updated_at = new Date();
+    this.memoryStore.transfers.set(id, t);
+    return t;
+  }
+
+  async deleteTransfer(id: string): Promise<boolean> {
+    if (!this.useMemoryStore && this.pool) {
+      await this.pool.query('DELETE FROM transfers WHERE id = $1', [id]);
+      return true;
+    }
+    return this.memoryStore.transfers.delete(id);
+  }
+
+  async depositFunds(studentId: string, amountBdt: number): Promise<AccountRecord> {
+    const acc = await this.getAccountByStudentId(studentId);
+    if (!acc) throw new Error(`Student ${studentId} not found`);
+    const newBalance = +(acc.balance + amountBdt).toFixed(2);
+    return this.updateAccountBalance(acc.id, newBalance, acc.daily_spent);
+  }
+
+  async updateDailyLimit(studentId: string, newDailyLimit: number): Promise<AccountRecord> {
+    if (!this.useMemoryStore && this.pool) {
+      const res = await this.pool.query(
+        'UPDATE accounts SET daily_limit = $1, updated_at = NOW() WHERE student_id = $2 RETURNING *',
+        [newDailyLimit, studentId],
+      );
+      return this.formatAccount(res.rows[0]);
+    }
+    const acc = await this.getAccountByStudentId(studentId);
+    if (!acc) throw new Error(`Student ${studentId} not found`);
+    acc.daily_limit = newDailyLimit;
+    acc.updated_at = new Date();
+    this.memoryStore.accounts.set(acc.id, acc);
+    this.memoryStore.accounts.set(acc.student_id, acc);
+    return acc;
+  }
+
+  async updateRate(id: string, updates: Partial<RateRecord>): Promise<RateRecord> {
+    if (!this.useMemoryStore && this.pool) {
+      const res = await this.pool.query(
+        'UPDATE rates SET exchange_rate = COALESCE($1, exchange_rate), is_active = COALESCE($2, is_active) WHERE id = $3 RETURNING *',
+        [updates.exchange_rate ?? null, updates.is_active ?? null, id],
+      );
+      return this.formatRate(res.rows[0]);
+    }
+    const r = await this.getRateById(id);
+    if (!r) throw new Error(`Rate ${id} not found`);
+    Object.assign(r, updates);
+    this.memoryStore.rates.set(id, r);
+    return r;
+  }
+
+  async deleteRate(id: string): Promise<boolean> {
+    if (!this.useMemoryStore && this.pool) {
+      await this.pool.query('UPDATE rates SET is_active = FALSE WHERE id = $1', [id]);
+      return true;
+    }
+    const r = await this.getRateById(id);
+    if (!r) return false;
+    r.is_active = false;
+    this.memoryStore.rates.set(id, r);
+    return true;
+  }
+
+  async getAuditLogById(id: string): Promise<AuditRecord | null> {
+    const logs = await this.getAuditLogs(500);
+    return logs.find((l) => l.id === id) || null;
+  }
+
+  async deleteAuditLog(id: string): Promise<boolean> {
+    const initialLen = this.memoryStore.audit_log.length;
+    this.memoryStore.audit_log = this.memoryStore.audit_log.filter((l) => l.id !== id);
+    return this.memoryStore.audit_log.length < initialLen;
+  }
+
+  async getTransfersByStudentId(studentId: string, status?: string): Promise<TransferRecord[]> {
     if (!this.useMemoryStore && this.pool) {
       const res = await this.pool.query('SELECT * FROM transfers WHERE student_id = $1 ORDER BY created_at DESC', [studentId]);
-      return res.rows.map(this.formatTransfer);
+      const list = res.rows.map(this.formatTransfer);
+      return status ? list.filter((t) => t.status === status) : list;
     }
-    return Array.from(this.memoryStore.transfers.values())
+    let list = Array.from(this.memoryStore.transfers.values())
       .filter((t) => t.student_id === studentId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+    if (status) {
+      list = list.filter((t) => t.status === status);
+    }
+    return list;
   }
 
   async insertAuditLog(record: AuditRecord): Promise<AuditRecord> {
@@ -442,12 +537,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return this.insertAuditLog(fullRecord);
   }
 
-  async getAuditLogs(limit = 100): Promise<AuditRecord[]> {
+  async getAuditLogs(limit = 100, tier?: string, status?: string): Promise<AuditRecord[]> {
     if (!this.useMemoryStore && this.pool) {
       const res = await this.pool.query('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT $1', [limit]);
-      return res.rows.map(this.formatAudit);
+      let list = res.rows.map(this.formatAudit);
+      if (tier) list = list.filter((l) => l.permission_tier === tier);
+      if (status) list = list.filter((l) => l.status === status);
+      return list;
     }
-    return this.memoryStore.audit_log.slice(0, limit);
+    let list = this.memoryStore.audit_log;
+    if (tier) list = list.filter((l) => l.permission_tier === tier);
+    if (status) list = list.filter((l) => l.status === status);
+    return list.slice(0, limit);
   }
 
   async resetSandboxData() {
