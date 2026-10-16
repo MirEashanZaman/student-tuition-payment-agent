@@ -5,6 +5,9 @@ import { PromptInjectionFilter } from './guardrails/prompt-injection.filter';
 import { DatabaseService } from '../database/database.service';
 import { v4 as uuidv4 } from 'uuid';
 
+import { Optional, Inject } from '@nestjs/common';
+import { LLM_CLIENT_TOKEN, ILlmClient } from './gateways/llm-client.interface';
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -37,6 +40,7 @@ export class AgentService {
   constructor(
     private readonly toolsService: AgentToolsService,
     private readonly db: DatabaseService,
+    @Optional() @Inject(LLM_CLIENT_TOKEN) private readonly llmClient?: ILlmClient,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && apiKey !== 'mock_key_offline_agent' && !apiKey.startsWith('mock_')) {
@@ -314,10 +318,15 @@ Your duties:
       if (lower.includes('tsinghua')) university = 'Tsinghua University (International Office)';
       if (lower.includes('oxford')) university = 'University of Oxford (Fees & Funding)';
 
-      const comparison = await this.toolsService.compareRoutes(studentId, amountUsd, tuitionDeadline);
+      let preference = 'balanced';
+      if (lower.includes('speed') || lower.includes('fast') || lower.includes('urgent')) preference = 'fastest';
+      if (lower.includes('cheap') || lower.includes('cost') || lower.includes('fee')) preference = 'cheapest';
+      if (lower.includes('relia') || lower.includes('trust') || lower.includes('safe')) preference = 'reliable';
+
+      const comparison = await this.toolsService.compareRoutes(studentId, amountUsd, tuitionDeadline, preference);
       executedCalls.push({
         toolName: 'compareRoutes',
-        params: { studentId, amountUsd, tuitionDeadline },
+        params: { studentId, amountUsd, tuitionDeadline, preference },
         result: comparison,
       });
 
