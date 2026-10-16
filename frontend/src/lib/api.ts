@@ -1,3 +1,4 @@
+import axios, { AxiosError } from 'axios';
 import {
   Account,
   RouteComparisonResult,
@@ -5,127 +6,141 @@ import {
   TransferRecord,
   AuditLog,
   AuthSession,
+  LoginCredentials,
 } from '../types';
+import {
+  ChatMessageInputSchema,
+  CompareRoutesInputSchema,
+  DraftTransferInputSchema,
+  ConfirmTransferInputSchema,
+  UpdateDailyLimitInputSchema,
+  DepositFundsInputSchema,
+  LoginInputSchema,
+} from './schemas';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-let memoryToken: string | null = null;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
+
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('fintech_auth_token');
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+function handleApiError(error: unknown, fallbackMessage: string): never {
+  if (axios.isAxiosError(error)) {
+    const serverMessage = error.response?.data?.message;
+    if (typeof serverMessage === 'string' && serverMessage.length > 0) {
+      throw new Error(serverMessage);
+    }
+    if (Array.isArray(serverMessage) && serverMessage.length > 0) {
+      throw new Error(serverMessage.join(', '));
+    }
+  }
+  if (error instanceof Error) {
+    throw error;
+  }
+  throw new Error(fallbackMessage);
+}
 
 export const authStorage = {
   getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('fintech_access_token') || memoryToken;
-      } catch {
-        return memoryToken;
-      }
-    }
-    return memoryToken;
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('fintech_auth_token');
   },
-  setToken(token: string | null): void {
-    memoryToken = token;
-    if (typeof window !== 'undefined') {
-      try {
-        if (token) {
-          localStorage.setItem('fintech_access_token', token);
-        } else {
-          localStorage.removeItem('fintech_access_token');
-        }
-      } catch {
-        return;
-      }
-    }
+  setToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('fintech_auth_token', token);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   },
   clearToken(): void {
-    this.setToken(null);
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('fintech_auth_token');
+    delete apiClient.defaults.headers.common['Authorization'];
   },
 };
 
-function getHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...customHeaders,
-  };
-  const token = authStorage.getToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-}
-
 export const api = {
-  async login(studentIdOrEmail: string, password: string): Promise<AuthSession> {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentIdOrEmail, password }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Login failed: check your credentials.');
-    }
-
-    const session: AuthSession = await res.json();
-    authStorage.setToken(session.accessToken);
-    return session;
+  getAuthToken(): string | null {
+    return authStorage.getToken();
   },
 
-  async getSession(): Promise<any> {
-    const token = authStorage.getToken();
-    if (!token) return null;
-
-    const res = await fetch(`${API_BASE}/auth/session`, {
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) {
-      authStorage.setToken(null);
-      return null;
-    }
-
-    return res.json();
+  setAuthToken(token: string): void {
+    authStorage.setToken(token);
   },
 
-  async logout(): Promise<void> {
+  clearAuthToken(): void {
+    authStorage.clearToken();
+  },
+
+  async login(credentialsOrStudentId: LoginCredentials | string, maybePassword?: string): Promise<AuthSession> {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: 'POST',
-        headers: getHeaders(),
-      });
-    } catch {
-      return;
-    } finally {
-      authStorage.setToken(null);
+      const credentials = typeof credentialsOrStudentId === 'string'
+        ? { studentIdOrEmail: credentialsOrStudentId, password: maybePassword || '' }
+        : credentialsOrStudentId;
+      const validated = LoginInputSchema.parse(credentials);
+      const response = await apiClient.post<AuthSession>('/auth/login', validated);
+      if (response.data?.accessToken) {
+        authStorage.setToken(response.data.accessToken);
+      }
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Login failed');
+    }
+  },
+  async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
+    try {
+      const response = await apiClient.get<Account>(`/accounts/${studentId}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch account balance');
     }
   },
 
-  async getDemoCredentials(): Promise<any> {
-    const res = await fetch(`${API_BASE}/auth/demo-credentials`);
-    if (!res.ok) return null;
-    return res.json();
+  async updateDailyLimit(studentId: string, dailyLimitBdt: number): Promise<Account> {
+    try {
+      const validated = UpdateDailyLimitInputSchema.parse({ studentId, dailyLimitBdt });
+      const response = await apiClient.put<Account>(`/accounts/${validated.studentId}/limits`, {
+        dailyLimitBdt: validated.dailyLimitBdt,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to update daily limit');
+    }
   },
 
-  async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
-    const res = await fetch(`${API_BASE}/accounts/${studentId}`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to fetch account balance');
-    return res.json();
+  async depositFunds(studentId: string, amountBdt: number): Promise<Account> {
+    try {
+      const validated = DepositFundsInputSchema.parse({ studentId, amountBdt });
+      const response = await apiClient.post<Account>(`/accounts/${validated.studentId}/deposit`, {
+        amountBdt: validated.amountBdt,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to deposit funds');
+    }
   },
 
   async sendChatMessage(message: string, studentId = 'STU-2026-BDT01'): Promise<any> {
-    const res = await fetch(`${API_BASE}/chat`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ message, studentId }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Chat request failed');
+    try {
+      const validated = ChatMessageInputSchema.parse({ message, studentId });
+      const response = await apiClient.post('/chat', validated);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Chat request failed');
     }
-
-    return res.json();
   },
 
   async compareRoutes(
@@ -133,18 +148,52 @@ export const api = {
     tuitionDeadline?: string,
     studentId = 'STU-2026-BDT01',
   ): Promise<RouteComparisonResult> {
-    const res = await fetch(`${API_BASE}/routes/compare`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ studentId, amountUsd, tuitionDeadline }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to compare routes');
+    try {
+      const validated = CompareRoutesInputSchema.parse({ amountUsd, tuitionDeadline, studentId });
+      const response = await apiClient.post<RouteComparisonResult>('/routes/compare', validated);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to compare routes');
     }
+  },
 
-    return res.json();
+  async getRates(activeOnly = true, targetCurrency?: string): Promise<any[]> {
+    try {
+      const params: Record<string, string> = {};
+      if (activeOnly) params.activeOnly = 'true';
+      if (targetCurrency) params.targetCurrency = targetCurrency;
+      const response = await apiClient.get<any[]>('/rates', { params });
+      return response.data;
+    } catch (error) {
+      return [];
+    }
+  },
+
+  async getRateById(id: string): Promise<any> {
+    try {
+      const response = await apiClient.get(`/rates/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to fetch rate ${id}`);
+    }
+  },
+
+  async updateRate(id: string, updates: { exchangeRate?: number; isActive?: boolean }): Promise<any> {
+    try {
+      const response = await apiClient.put(`/rates/${id}`, updates);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to update rate ${id}`);
+    }
+  },
+
+  async deleteRate(id: string): Promise<any> {
+    try {
+      const response = await apiClient.delete(`/rates/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to delete rate ${id}`);
+    }
   },
 
   async createDraft(params: {
@@ -154,83 +203,164 @@ export const api = {
     recipientUniversity: string;
     tuitionDeadline?: string;
   }): Promise<TransferDraft> {
-    const res = await fetch(`${API_BASE}/transfers/draft`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(params),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to create transfer draft');
+    try {
+      const validated = DraftTransferInputSchema.parse(params);
+      const response = await apiClient.post<TransferDraft>('/transfers/draft', validated);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to create transfer draft');
     }
-
-    return res.json();
   },
 
-  async confirmTransfer(
+  async updateDraft(
     transferId: string,
-    confirmationToken: string,
-    userConsent = true,
-  ): Promise<any> {
-    const res = await fetch(`${API_BASE}/transfers/${transferId}/confirm`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ confirmationToken, userConsent }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to confirm transfer');
+    updates: { recipientUniversity?: string; studentRegNumber?: string },
+  ): Promise<TransferRecord> {
+    try {
+      const response = await apiClient.put<TransferRecord>(`/transfers/${transferId}`, updates);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to update transfer draft');
     }
+  },
 
-    return res.json();
+  async deleteDraft(transferId: string): Promise<any> {
+    try {
+      const response = await apiClient.delete(`/transfers/${transferId}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to delete transfer draft');
+    }
+  },
+
+  async confirmTransfer(transferId: string, confirmationToken: string, userConsent = true): Promise<any> {
+    try {
+      const validated = ConfirmTransferInputSchema.parse({ transferId, confirmationToken, userConsent });
+      const response = await apiClient.post(`/transfers/${validated.transferId}/confirm`, {
+        confirmationToken: validated.confirmationToken,
+        userConsent: validated.userConsent,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to confirm transfer');
+    }
   },
 
   async cancelTransfer(transferId: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/transfers/${transferId}/cancel`, {
-      method: 'POST',
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) throw new Error('Failed to cancel draft');
-    return res.json();
+    try {
+      const response = await apiClient.post(`/transfers/${transferId}/cancel`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to cancel draft');
+    }
   },
 
-  async getTransfers(studentId = 'STU-2026-BDT01'): Promise<TransferRecord[]> {
-    const res = await fetch(`${API_BASE}/transfers?studentId=${studentId}`, {
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) return [];
-    return res.json();
+  async getTransfers(studentId = 'STU-2026-BDT01', status?: string): Promise<TransferRecord[]> {
+    try {
+      const params: Record<string, string> = { studentId };
+      if (status) params.status = status;
+      const response = await apiClient.get<TransferRecord[]>('/transfers', { params });
+      return response.data;
+    } catch (error) {
+      return [];
+    }
   },
 
-  async getAuditLogs(limit = 50): Promise<AuditLog[]> {
-    const res = await fetch(`${API_BASE}/audit?limit=${limit}`, {
-      headers: getHeaders(),
-    });
+  async getTransferById(id: string): Promise<TransferRecord> {
+    try {
+      const response = await apiClient.get<TransferRecord>(`/transfers/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Transfer ${id} not found`);
+    }
+  },
 
-    if (!res.ok) return [];
-    return res.json();
+  async getAuditLogs(limit = 50, tier?: string, status?: string): Promise<AuditLog[]> {
+    try {
+      const params: Record<string, string> = { limit: limit.toString() };
+      if (tier) params.tier = tier;
+      if (status) params.status = status;
+      const response = await apiClient.get<AuditLog[]>('/audit', { params });
+      return response.data;
+    } catch (error) {
+      return [];
+    }
+  },
+
+  async getAuditLogById(id: string): Promise<AuditLog> {
+    try {
+      const response = await apiClient.get<AuditLog>(`/audit/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Audit log ${id} not found`);
+    }
+  },
+
+  async deleteAuditLog(id: string): Promise<any> {
+    try {
+      const response = await apiClient.delete(`/audit/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to delete audit log ${id}`);
+    }
   },
 
   async resetSandbox(): Promise<any> {
-    const res = await fetch(`${API_BASE}/sandbox/reset`, {
-      method: 'POST',
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) throw new Error('Failed to reset sandbox');
-    return res.json();
+    try {
+      const response = await apiClient.post('/sandbox/reset');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to reset sandbox');
+    }
   },
 
   async exportLogs(): Promise<any> {
-    const res = await fetch(`${API_BASE}/sandbox/export-logs`, {
-      headers: getHeaders(),
-    });
+    try {
+      const response = await apiClient.get('/sandbox/export-logs');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to export logs');
+    }
+  },
 
-    if (!res.ok) throw new Error('Failed to export logs');
-    return res.json();
+
+
+  async getSession(): Promise<any> {
+    try {
+      const token = this.getAuthToken();
+      if (!token) return null;
+      const response = await apiClient.get('/auth/session', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      this.clearAuthToken();
+      return null;
+    }
+  },
+
+  async logout(studentId?: string): Promise<any> {
+    try {
+      const token = this.getAuthToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.post('/auth/logout', { studentId }, { headers });
+      this.clearAuthToken();
+      return response.data;
+    } catch (error) {
+      this.clearAuthToken();
+      return { success: true };
+    }
+  },
+
+  async getDemoCredentials(): Promise<any> {
+    try {
+      const response = await apiClient.get('/auth/demo-credentials');
+      return response.data;
+    } catch (error) {
+      return {
+        studentId: 'STU-2026-BDT01',
+        password: 'student123',
+      };
+    }
   },
 };
