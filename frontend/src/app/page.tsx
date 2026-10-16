@@ -1044,6 +1044,16 @@ export default function Home() {
                 <div className="font-mono">Password: <span className="text-[#1E3A8A] font-bold">student123</span></div>
               </div>
 
+              <div className="text-center text-xs text-slate-500 pt-1">
+                Need a new account?{' '}
+                <a
+                  href="/registration"
+                  className="font-semibold text-[#1E3A8A] hover:underline"
+                >
+                  Go to Student Registration
+                </a>
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-2">
                 {authSession && (
                   <button
