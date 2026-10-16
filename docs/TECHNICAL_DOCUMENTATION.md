@@ -265,4 +265,27 @@ The repository incorporates an enterprise-grade automated CI/CD pipeline impleme
 | **Security & Cleanliness Scan** | Push & PR | Node.js automated repository audit | Enforces code cleanliness, verifies zero exposed secrets, and prevents unauthorized syntax patterns. |
 | **Deployment Verification** | Push to `main` / `Eashan` | Manifest verification (`docker-compose.yml`, Dockerfiles, `.env.example`) | Confirms all deployment orchestration artifacts are synchronized and ready for production execution. |
 
+---
+
+## 10. Authentication and Student Registration Architecture
+
+The application provides a complete authentication, session management, and student registration subsystem designed for both production security and seamless hackathon evaluation:
+
+### Cryptographic Security & Sessions
+- **Password Hashing:** Passwords are salted and hashed using Node.js `scrypt` with a 64-byte derived key and unique 16-byte cryptographically secure random salts.
+- **Stateless JWT Tokens:** Authentication returns HS256 signed JWT tokens containing student identity, email, role, and granted permission tier (`EXECUTE`).
+- **Session Verification:** `JwtAuthGuard` validates the `Authorization: Bearer <token>` header on protected routes and attaches the verified student context to incoming requests.
+
+### Student Registration Flow
+- **API Endpoint:** `POST /api/auth/registration` (with `POST /api/auth/register` alias).
+- **Validation:** Enforces non-empty student ID, student name, RFC-compliant email, and minimum 6-character password via `class-validator` and `zod` schemas.
+- **Account Auto-Provisioning:** Newly registered accounts receive an initial sandbox allocation of 850,000.00 BDT balance and 1,000,000.00 BDT daily limit.
+- **Audit Trail:** Registration operations record an immutable `AUTH_REGISTRATION_SUCCESS` event in the audit log.
+- **Frontend Route:** Accessible at `/registration` with dark theme styling, demo persona auto-fill, and immediate redirection into the student dashboard upon completion.
+
+### Evaluation Demo Account Showcase
+- **Demo Persona:** `STU-2026-BDT01` (Tanvir Ahmed), password: `student123`.
+- **Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.
+
+
 
