@@ -53,16 +53,24 @@ export default function Home() {
     },
   ]);
 
+  const isLoggingInRef = useRef(false);
+
   const ensureAuth = async (): Promise<boolean> => {
+    if (authStorage.getToken()) {
+      return true;
+    }
+    if (isLoggingInRef.current) {
+      return false;
+    }
+    isLoggingInRef.current = true;
     try {
-      if (!authStorage.getToken()) {
-        const session = await api.login('STU-2026-BDT01', 'student123');
-        setAuthSession(session);
-        return true;
-      }
+      const session = await api.login('STU-2026-BDT01', 'student123');
+      setAuthSession(session);
       return true;
     } catch {
       return false;
+    } finally {
+      isLoggingInRef.current = false;
     }
   };
 
@@ -70,10 +78,7 @@ export default function Home() {
     try {
       await ensureAuth();
       const [accData, txData, auditData] = await Promise.all([
-        api.getAccount().catch(async () => {
-          await api.login('STU-2026-BDT01', 'student123').catch(() => null);
-          return api.getAccount().catch(() => null);
-        }),
+        api.getAccount().catch(() => null),
         api.getTransfers().catch(() => []),
         api.getAuditLogs(30).catch(() => []),
       ]);
