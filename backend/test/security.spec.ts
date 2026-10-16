@@ -239,6 +239,57 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(successAudit).toBeDefined();
       expect(successAudit?.status).toBe('SUCCESS');
     });
+
+    it('should roll back a confirmed transfer once and restore its account balance', async () => {
+      const accountBefore = await db.getAccountByStudentId('STU-2026-BDT01');
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        2000,
+        'University of Toronto',
+      );
+      await toolsService.confirmTransfer(
+        draft.transferId,
+        draft.confirmationToken,
+        true,
+        true,
+      );
+
+      expect((await db.getAccountByStudentId('STU-2026-BDT01'))?.balance).toBeLessThan(
+        accountBefore!.balance,
+      );
+
+      await toolsService.compensateTransfer(draft.transferId, 'Test rollback');
+
+      const accountAfterRollback = await db.getAccountByStudentId('STU-2026-BDT01');
+      const rolledBackTransfer = await db.getTransferById(draft.transferId);
+      expect(accountAfterRollback?.balance).toBe(accountBefore?.balance);
+      expect(accountAfterRollback?.daily_spent).toBe(accountBefore?.daily_spent);
+      expect(rolledBackTransfer?.status).toBe('ROLLED_BACK');
+
+      await expect(
+        toolsService.compensateTransfer(draft.transferId, 'Duplicate rollback'),
+      ).rejects.toThrow(BadRequestException);
+      expect((await db.getAccountByStudentId('STU-2026-BDT01'))?.balance).toBe(accountBefore?.balance);
+    });
+
+    it('should reject rollback of a pending transfer and transfers owned by another student', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        2000,
+        'University of Toronto',
+      );
+
+      await expect(
+        toolsService.compensateTransfer(draft.transferId, 'Unauthorized rollback', 'STU-OTHER'),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        toolsService.compensateTransfer(draft.transferId, 'Pending rollback', 'STU-2026-BDT01'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect((await db.getTransferById(draft.transferId))?.status).toBe('PENDING_CONFIRMATION');
+    });
   });
 
   describe('3. Route Ranking Algorithm & Scoring Formula', () => {
