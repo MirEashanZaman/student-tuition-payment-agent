@@ -50,6 +50,23 @@ function getHeaders(customHeaders: Record<string, string> = {}): Record<string, 
   return headers;
 }
 
+export const authStorage = {
+  getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('fintech_auth_token');
+  },
+  setToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('fintech_auth_token', token);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  },
+  clearToken(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('fintech_auth_token');
+    delete apiClient.defaults.headers.common['Authorization'];
+  },
+};
+
 export const api = {
   async login(studentIdOrEmail: string, password: string): Promise<AuthSession> {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -212,5 +229,46 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to export logs');
     return res.json();
+  },
+
+
+
+  async getSession(): Promise<any> {
+    try {
+      const token = this.getAuthToken();
+      if (!token) return null;
+      const response = await apiClient.get('/auth/session', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      this.clearAuthToken();
+      return null;
+    }
+  },
+
+  async logout(studentId?: string): Promise<any> {
+    try {
+      const token = this.getAuthToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.post('/auth/logout', { studentId }, { headers });
+      this.clearAuthToken();
+      return response.data;
+    } catch (error) {
+      this.clearAuthToken();
+      return { success: true };
+    }
+  },
+
+  async getDemoCredentials(): Promise<any> {
+    try {
+      const response = await apiClient.get('/auth/demo-credentials');
+      return response.data;
+    } catch (error) {
+      return {
+        studentId: 'STU-2026-BDT01',
+        password: 'student123',
+      };
+    }
   },
 };

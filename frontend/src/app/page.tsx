@@ -46,6 +46,13 @@ export default function Home() {
   const [inputMessage, setInputMessage] = useState('');
   const [activeDraft, setActiveDraft] = useState<TransferDraft | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginInput, setLoginInput] = useState({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [showTokenInspector, setShowTokenInspector] = useState(false);
 
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -102,6 +109,39 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeDraft]);
+
+  const handleLoginSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const session = await api.login(loginInput.studentIdOrEmail, loginInput.password);
+      setAuthSession(session);
+      setShowLoginModal(false);
+      showNotification(`Welcome, ${session.user.studentName}! JWT session authenticated.`, 'success');
+      await loadData();
+    } catch (err: any) {
+      setLoginError(err.message || 'Login failed. Please check credentials.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+      setAuthSession(null);
+      showNotification('Logged out of session.', 'info');
+      await loadData();
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    }
+  };
+
+  const handleDemoFill = () => {
+    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
+    setLoginError(null);
+  };
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setNotification({ message, type });

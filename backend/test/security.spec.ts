@@ -383,4 +383,75 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(settlement.settlementHash).toContain('AXIOS-SETTLE');
     });
   });
+
+  describe('10. Authentication & JWT Sessions (Login, Scrypt Hashing & Tamper Proof)', () => {
+    it('should hash password and verify with scrypt correctly', () => {
+      const plain = 'student123';
+      const hash = PasswordHasher.hashPassword(plain);
+
+      expect(hash).toContain(':');
+      expect(PasswordHasher.verifyPassword(plain, hash)).toBe(true);
+      expect(PasswordHasher.verifyPassword('wrongPassword!', hash)).toBe(false);
+      expect(PasswordHasher.verifyPassword('', hash)).toBe(false);
+      expect(PasswordHasher.verifyPassword(plain, 'invalid:hash')).toBe(false);
+    });
+
+    it('should reject login with wrong password and write an audit log entry', async () => {
+      await expect(
+        authService.login('STU-2026-BDT01', 'wrongPassword'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      const logs = await db.getAuditLogs(10);
+      const failedAuthLog = logs.find((l) => l.event_type === 'AUTH_LOGIN_FAILED');
+      expect(failedAuthLog).toBeDefined();
+      expect(failedAuthLog?.status).toBe('BLOCKED');
+      expect(failedAuthLog?.action_summary).toContain('invalid password');
+    });
+
+    it('should successfully login with valid credentials and return JWT session', async () => {
+      const session = await authService.login('STU-2026-BDT01', 'student123');
+
+      expect(session).toBeDefined();
+      expect(session.accessToken).toBeDefined();
+      expect(session.tokenType).toBe('Bearer');
+      expect(session.user.studentId).toBe('STU-2026-BDT01');
+      expect(session.user.studentName).toBe('Tanvir Ahmed');
+
+      const logs = await db.getAuditLogs(10);
+      const successAuthLog = logs.find((l) => l.event_type === 'AUTH_LOGIN_SUCCESS');
+      expect(successAuthLog).toBeDefined();
+      expect(successAuthLog?.status).toBe('SUCCESS');
+    });
+
+    it('should decode and verify valid JWT session token', async () => {
+      const session = await authService.login('STU-2026-BDT01', 'student123');
+      const payload = jwtService.verify(session.accessToken);
+
+      expect(payload.studentId).toBe('STU-2026-BDT01');
+      expect(payload.role).toBe('STUDENT');
+      expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
+
+      const decoded = jwtService.decode(session.accessToken);
+      expect(decoded?.header.alg).toBe('HS256');
+      expect(decoded?.payload.studentId).toBe('STU-2026-BDT01');
+    });
+
+    it('should reject expired or tampered JWT token', () => {
+      const payload = {
+        sub: 'acc-stu-2026-bdt',
+        studentId: 'STU-2026-BDT01',
+        studentName: 'Tanvir Ahmed',
+        email: 'tanvir.student@fintechathon.org',
+        role: 'STUDENT',
+      };
+
+      const expiredToken = jwtService.sign(payload, -100);
+      expect(() => jwtService.verify(expiredToken)).toThrow(UnauthorizedException);
+
+      const validToken = jwtService.sign(payload, 3600);
+      const parts = validToken.split('.');
+      const tamperedToken = parts[0] + '.' + parts[1] + '.tamperedSignatureHere';
+      expect(() => jwtService.verify(tamperedToken)).toThrow(UnauthorizedException);
+    });
+  });
 });

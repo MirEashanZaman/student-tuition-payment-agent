@@ -50,6 +50,7 @@
 │   │   │   ├── guardrails/    # Permission tiers, financial limits, prompt injection filter
 │   │   │   ├── tools/         # getBalance, compareRoutes, createDraft, confirmTransfer, getAuditLog
 │   │   │   └── agent.service.ts
+│   │   ├── auth/              # Scrypt password hashing, JWT service, guards & controller
 │   │   ├── database/          # PostgreSQL driver, migrations schema.sql, and seed scripts
 │   │   ├── app.module.ts
 │   │   └── main.ts
@@ -157,6 +158,11 @@ npm test
 10. `should handle invalid inputs and unexpected data formats gracefully` (PASSED)
 11. `should validate inputs using Zod schemas and reject malformed payloads` (PASSED)
 12. `should verify accounts and settle transfers using Axios HTTP bank gateway` (PASSED)
+13. `should hash password and verify with scrypt correctly` (PASSED)
+14. `should reject login with wrong password and write an audit log entry` (PASSED)
+15. `should successfully login with valid credentials and return JWT session` (PASSED)
+16. `should decode and verify valid JWT session token` (PASSED)
+17. `should reject expired or tampered JWT token` (PASSED)
 
 ---
 
