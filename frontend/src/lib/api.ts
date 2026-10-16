@@ -1,6 +1,6 @@
 import { Account, RouteComparisonResult, TransferDraft, TransferRecord, AuditLog } from '../types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
 
 export const api = {
   async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
