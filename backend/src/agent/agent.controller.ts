@@ -12,20 +12,12 @@ import {
   Req,
   Optional,
   BadRequestException,
-  UseGuards,
 } from '@nestjs/common';
 import { IsNotEmpty, IsString, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './tools/agent-tools.service';
 import { DatabaseService } from '../database/database.service';
 import { JwtService } from '../auth/jwt.service';
-import {
-  JwtAuthGuard,
-  PermissionTierGuard,
-  RequirePermissionTier,
-  StudentScopeGuard,
-} from '../auth/auth.guard';
-import { PermissionTier } from './guardrails/permission-tier.guard';
 
 export class ChatDto {
   @IsString()
@@ -159,22 +151,16 @@ export class AgentController {
     return await this.agentService.processChat(body.message, studentId);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.READ_ONLY)
   @Get('accounts/:id')
   async getAccount(@Param('id') id: string) {
     return await this.toolsService.getBalance(id);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.EXECUTE)
   @Put('accounts/:id/limits')
   async updateDailyLimit(@Param('id') id: string, @Body() dto: UpdateDailyLimitDto) {
     return await this.toolsService.updateDailyLimit(id, dto.dailyLimitBdt);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.EXECUTE)
   @Post('accounts/:id/deposit')
   async depositFunds(@Param('id') id: string, @Body() dto: DepositDto) {
     return await this.toolsService.depositFunds(id, dto.amountBdt);
@@ -213,19 +199,35 @@ export class AgentController {
     return await this.toolsService.deleteRate(id);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.READ_ONLY)
   @Post('routes/compare')
   async compareRoutes(
-    @Body() body: { studentId?: string; amountUsd: number; tuitionDeadline?: string },
+    @Body() body: CompareRoutesDto,
     @Headers('authorization') authHeader?: string,
   ) {
     const studentId = this.extractStudentId(authHeader, body.studentId);
-    return await this.toolsService.compareRoutes(studentId, body.amountUsd, body.tuitionDeadline);
+    return await this.toolsService.compareRoutes(
+      studentId,
+      body.amountUsd,
+      body.tuitionDeadline,
+      body.preference,
+    );
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.DRAFT)
+  @Get('transfers')
+  async getTransfers(
+    @Query('studentId') studentId?: string,
+    @Query('status') status?: string,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const id = this.extractStudentId(authHeader, studentId);
+    return await this.db.getTransfersByStudentId(id, status);
+  }
+
+  @Get('transfers/:id')
+  async getTransferById(@Param('id') id: string) {
+    return await this.db.getTransferById(id);
+  }
+
   @Post('transfers/draft')
   async createDraft(
     @Body() dto: CreateDraftDto,
@@ -242,8 +244,6 @@ export class AgentController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.DRAFT)
   @Put('transfers/:id')
   async updateDraftPut(@Param('id') id: string, @Body() dto: UpdateDraftDto) {
     return await this.toolsService.updateTransferDraft(id, {
@@ -252,8 +252,6 @@ export class AgentController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.DRAFT)
   @Patch('transfers/:id')
   async updateDraftPatch(@Param('id') id: string, @Body() dto: UpdateDraftDto) {
     return await this.toolsService.updateTransferDraft(id, {
@@ -262,15 +260,11 @@ export class AgentController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.DRAFT)
   @Delete('transfers/:id')
   async deleteTransferDraft(@Param('id') id: string) {
     return await this.toolsService.deleteTransferDraft(id);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.EXECUTE)
   @Post('transfers/:id/confirm')
   async confirmTransfer(@Param('id') id: string, @Body() dto: ConfirmTransferDto) {
     return await this.toolsService.confirmTransfer(
@@ -302,22 +296,19 @@ export class AgentController {
     };
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.DRAFT)
   @Post('transfers/:id/cancel')
   async cancelTransfer(@Param('id') id: string) {
     return await this.db.updateTransferStatus(id, 'CANCELLED');
   }
 
-  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
-  @RequirePermissionTier(PermissionTier.READ_ONLY)
-  @Get('transfers')
-  async getTransfers(
-    @Query('studentId') studentId?: string,
-    @Headers('authorization') authHeader?: string,
+  @Get('audit')
+  async getAudit(
+    @Query('limit') limit?: string,
+    @Query('tier') tier?: string,
+    @Query('status') status?: string,
   ) {
-    const id = this.extractStudentId(authHeader, studentId);
-    return await this.db.getTransfersByStudentId(id);
+    const lim = limit ? parseInt(limit, 10) : 50;
+    return await this.toolsService.getAuditLog(lim, tier, status);
   }
 
   @Get('audit/:id')

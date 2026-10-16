@@ -242,6 +242,7 @@ Your duties:
           args.studentId || studentId,
           args.amountUsd,
           args.tuitionDeadline,
+          args.preference,
         );
         await this.logAgentAction(
           'AGENT_ROUTE_COMPARE',

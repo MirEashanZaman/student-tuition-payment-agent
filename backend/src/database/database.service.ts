@@ -302,10 +302,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return this.memoryStore.accounts.get(studentId) || null;
   }
 
-  async findByStudentId(studentId: string): Promise<AccountRecord | null> {
-    return this.getAccountByStudentId(studentId);
-  }
-
   async getAccountByStudentIdOrEmail(identifier: string): Promise<AccountRecord | null> {
     if (!identifier) return null;
     const clean = identifier.trim().toLowerCase();
@@ -359,10 +355,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       return res.rows.map(this.formatRate);
     }
     return Array.from(this.memoryStore.rates.values()).filter((r) => r.is_active);
-  }
-
-  async findAllActive(): Promise<RateRecord[]> {
-    return this.getAllRates();
   }
 
   async getRateById(id: string): Promise<RateRecord | null> {
