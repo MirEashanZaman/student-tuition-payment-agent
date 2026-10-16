@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PasswordHasher } from '../auth/password.util';
 
 export interface AccountRecord {
   id: string;
@@ -13,6 +14,8 @@ export interface AccountRecord {
   balance: number;
   daily_limit: number;
   daily_spent: number;
+  password_hash?: string;
+  role?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -155,6 +158,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: 850000.00,
       daily_limit: 1000000.00,
       daily_spent: 0.00,
+      password_hash: PasswordHasher.hashPassword('student123'),
+      role: 'STUDENT',
       created_at: new Date(),
       updated_at: new Date(),
     };
@@ -229,9 +234,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (!this.useMemoryStore && this.pool) {
       try {
         await this.pool.query(
-          `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (student_id) DO UPDATE SET balance = $6, daily_spent = $8;`,
+          `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (student_id) DO UPDATE SET balance = $6, daily_spent = $8, password_hash = $9, role = $10;`,
           [
             defaultAccount.id,
             defaultAccount.student_id,
@@ -241,6 +246,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             defaultAccount.balance,
             defaultAccount.daily_limit,
             defaultAccount.daily_spent,
+            defaultAccount.password_hash,
+            defaultAccount.role,
           ],
         );
 
@@ -286,6 +293,27 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       return res.rows[0] ? this.formatAccount(res.rows[0]) : null;
     }
     return this.memoryStore.accounts.get(studentId) || null;
+  }
+
+  async getAccountByStudentIdOrEmail(identifier: string): Promise<AccountRecord | null> {
+    if (!identifier) return null;
+    const clean = identifier.trim().toLowerCase();
+    if (!this.useMemoryStore && this.pool) {
+      const res = await this.pool.query(
+        'SELECT * FROM accounts WHERE LOWER(student_id) = $1 OR LOWER(email) = $1 LIMIT 1',
+        [clean],
+      );
+      return res.rows[0] ? this.formatAccount(res.rows[0]) : null;
+    }
+    for (const acc of this.memoryStore.accounts.values()) {
+      if (
+        acc.student_id.toLowerCase() === clean ||
+        acc.email.toLowerCase() === clean
+      ) {
+        return acc;
+      }
+    }
+    return null;
   }
 
   async getAccountById(id: string): Promise<AccountRecord | null> {
@@ -569,6 +597,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: parseFloat(row.balance),
       daily_limit: parseFloat(row.daily_limit),
       daily_spent: parseFloat(row.daily_spent),
+      password_hash: row.password_hash,
+      role: row.role || 'STUDENT',
     };
   }
 
