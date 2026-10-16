@@ -46,6 +46,11 @@ import {
   TransferCompensatedEvent,
   RouteComparedEvent,
 } from '../events/domain.events';
+import {
+  RouteComparisonZodSchema,
+  TransferDraftZodSchema,
+  ConfirmTransferZodSchema,
+} from '../guardrails/schemas/tuition.zod';
 
 @Injectable()
 export class AgentToolsService {
@@ -128,8 +133,14 @@ export class AgentToolsService {
     tuitionDeadline?: string,
     preference?: string,
   ): Promise<RouteComparisonResult> {
-    if (isNaN(amountUsd) || amountUsd <= 0) {
-      throw new BadRequestException('Amount in USD must be greater than 0');
+    const schemaValidation = RouteComparisonZodSchema.safeParse({
+      studentId,
+      amountUsd,
+      tuitionDeadline,
+      preference,
+    });
+    if (!schemaValidation.success) {
+      throw new BadRequestException(schemaValidation.error.issues[0]?.message || 'Amount in USD must be greater than 0');
     }
 
     const rates = await this.rateStore.findAllActive();
@@ -295,6 +306,18 @@ export class AgentToolsService {
     studentRegNumber = 'REG-FALL-2026',
     tuitionDeadline?: string,
   ): Promise<DraftTransferResult> {
+    const schemaValidation = TransferDraftZodSchema.safeParse({
+      studentId,
+      routeId,
+      amountUsd,
+      recipientUniversity,
+      studentRegNumber,
+      tuitionDeadline,
+    });
+    if (!schemaValidation.success) {
+      throw new BadRequestException(schemaValidation.error.issues[0]?.message || 'Invalid transfer draft parameters');
+    }
+
     const account = await this.db.getAccountByStudentId(studentId);
     if (!account) {
       throw new NotFoundException(`Student ${studentId} not found`);
@@ -447,6 +470,15 @@ export class AgentToolsService {
         created_at: new Date(),
       });
       throw new BadRequestException('Transfer execution cancelled: User consent was not granted.');
+    }
+
+    const schemaValidation = ConfirmTransferZodSchema.safeParse({
+      transferId,
+      confirmationToken,
+      userConsent,
+    });
+    if (!schemaValidation.success) {
+      throw new BadRequestException(schemaValidation.error.issues[0]?.message || 'Invalid confirmation parameters');
     }
 
     const transfer = this.transferRepo
