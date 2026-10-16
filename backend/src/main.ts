@@ -19,7 +19,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 4568;
   await app.listen(port);
   logger.log(`================================================================`);
   logger.log(` FinTechathon 2026: Student Tuition Payment Agent Backend       `);
