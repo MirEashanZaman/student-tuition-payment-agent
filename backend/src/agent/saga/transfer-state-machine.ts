@@ -23,8 +23,8 @@ export class TransferStateMachine {
   private readonly validTransitions: Record<TransferState, TransferState[]> = {
     DRAFT: ['PENDING_CONFIRMATION', 'CANCELLED', 'BLOCKED'],
     PENDING_CONFIRMATION: ['CONFIRMED', 'CANCELLED', 'BLOCKED'],
-    CONFIRMED: ['EXECUTED', 'SETTLED', 'FAILED'],
-    EXECUTED: ['SETTLED', 'FAILED'],
+    CONFIRMED: ['EXECUTED', 'SETTLED', 'FAILED', 'ROLLED_BACK'],
+    EXECUTED: ['SETTLED', 'FAILED', 'ROLLED_BACK'],
     SETTLED: [],
     FAILED: ['ROLLED_BACK'],
     ROLLED_BACK: [],
