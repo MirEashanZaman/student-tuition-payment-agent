@@ -1,7 +1,7 @@
 import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PromptInjectionFilter } from './prompt-injection.filter';
 import { FinancialLimitsGuard } from './financial-limits.guard';
-import { PermissionTierValidator, PermissionTier } from './permission-tier.guard';
+import { PermissionTierValidator } from './permission-tier.guard';
 
 export interface SafetyCheckContext {
   toolName?: string;
