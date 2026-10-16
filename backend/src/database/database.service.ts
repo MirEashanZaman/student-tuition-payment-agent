@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { Pool, QueryResult } from 'pg';
+import { Pool } from 'pg';
+import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -47,7 +48,17 @@ export interface TransferRecord {
   fx_rate_applied: number;
   rate_id: string;
   provider_name: string;
-  status: 'DRAFT' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'PROCESSING' | 'SETTLED' | 'CANCELLED' | 'BLOCKED';
+  status:
+    | 'DRAFT'
+    | 'PENDING_CONFIRMATION'
+    | 'CONFIRMED'
+    | 'PROCESSING'
+    | 'EXECUTED'
+    | 'SETTLED'
+    | 'FAILED'
+    | 'ROLLED_BACK'
+    | 'CANCELLED'
+    | 'BLOCKED';
   tuition_deadline?: Date;
   estimated_delivery?: Date;
   deadline_warning: boolean;
@@ -413,6 +424,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
     this.memoryStore.audit_log.unshift({ ...record });
     return record;
+  }
+
+  async writeAuditLog(entry: Partial<AuditRecord>): Promise<AuditRecord> {
+    const fullRecord: AuditRecord = {
+      id: entry.id || uuidv4(),
+      event_type: entry.event_type || 'SYSTEM_EVENT',
+      permission_tier: entry.permission_tier || 'READ_ONLY',
+      account_id: entry.account_id,
+      transfer_id: entry.transfer_id,
+      action_summary: entry.action_summary || '',
+      details: entry.details,
+      status: entry.status || 'SUCCESS',
+      ip_address: entry.ip_address || '127.0.0.1',
+      created_at: entry.created_at || new Date(),
+    };
+    return this.insertAuditLog(fullRecord);
   }
 
   async getAuditLogs(limit = 100): Promise<AuditRecord[]> {

@@ -1,4 +1,11 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+  Optional,
+  Inject,
+} from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { FinancialLimitsGuard } from '../guardrails/financial-limits.guard';
 import { PermissionTierValidator, PermissionTier, PermissionPolicyException } from '../guardrails/permission-tier.guard';
@@ -9,15 +16,44 @@ import {
   ConfirmedTransferResult,
 } from './agent-tools.interface';
 import { v4 as uuidv4 } from 'uuid';
+import { RouteScoringStrategyFactory } from '../strategies/route-scoring.strategy';
+import { TransferStateMachine } from '../saga/transfer-state-machine';
+import { SafetyChainCoordinator } from '../guardrails/safety-chain';
+import { BANK_GATEWAY_TOKEN, IBankGateway } from '../gateways/bank-gateway.interface';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AccountRepository } from '../../database/repositories/account.repository';
+import { RateRepository } from '../../database/repositories/rate.repository';
+import { TransferRepository } from '../../database/repositories/transfer.repository';
+import { AuditRepository } from '../../database/repositories/audit.repository';
+import {
+  TransferDraftedEvent,
+  TransferConfirmedEvent,
+  TransferExecutedEvent,
+  TransferCompensatedEvent,
+  RouteComparedEvent,
+} from '../events/domain.events';
 
 @Injectable()
 export class AgentToolsService {
   private readonly logger = new Logger(AgentToolsService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    @Optional() @Inject(BANK_GATEWAY_TOKEN) private readonly bankGateway?: IBankGateway,
+    @Optional() private readonly strategyFactory?: RouteScoringStrategyFactory,
+    @Optional() private readonly stateMachine?: TransferStateMachine,
+    @Optional() private readonly safetyChain?: SafetyChainCoordinator,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
+    @Optional() private readonly accountRepo?: AccountRepository,
+    @Optional() private readonly rateRepo?: RateRepository,
+    @Optional() private readonly transferRepo?: TransferRepository,
+    @Optional() private readonly auditRepo?: AuditRepository,
+  ) {}
 
   async getBalance(studentId: string) {
-    const account = await this.db.getAccountByStudentId(studentId);
+    const account = this.accountRepo
+      ? await this.accountRepo.findByStudentId(studentId)
+      : await this.db.getAccountByStudentId(studentId);
     if (!account) {
       throw new NotFoundException(`Student account ${studentId} not found`);
     }
@@ -57,19 +93,21 @@ export class AgentToolsService {
     studentId: string,
     amountUsd: number,
     tuitionDeadline?: string,
+    preference?: string,
   ): Promise<RouteComparisonResult> {
     if (isNaN(amountUsd) || amountUsd <= 0) {
       throw new BadRequestException('Amount in USD must be greater than 0');
     }
 
-    const rates = await this.db.getAllRates();
+    const rates = this.rateRepo
+      ? await this.rateRepo.findAllActive()
+      : await this.db.getAllRates();
     if (rates.length === 0) {
       throw new NotFoundException('No active remittance routes available');
     }
 
     const now = new Date();
     const benchmarkRateBdt = 119.00;
-
     const deadlineDate = tuitionDeadline ? new Date(tuitionDeadline) : undefined;
 
     const routeItems: RouteComparisonItem[] = rates.map((route) => {
@@ -128,14 +166,23 @@ export class AgentToolsService {
     const minHours = Math.min(...routeItems.map((r) => r.speedHours));
     const maxHours = Math.max(...routeItems.map((r) => r.speedHours));
 
+    const activeStrategy = this.strategyFactory?.getStrategy(preference);
+    const weights = activeStrategy
+      ? activeStrategy.getWeights()
+      : { costWeight: 0.50, speedWeight: 0.30, reliabilityWeight: 0.20 };
+
     routeItems.forEach((r) => {
       const costScore = maxCost === minCost ? 100 : ((maxCost - r.totalCostBdt) / (maxCost - minCost)) * 100;
       const speedScore = maxHours === minHours ? 100 : ((maxHours - r.speedHours) / (maxHours - minHours)) * 100;
       const relScore = r.reliabilityScore * 100;
-
       const deadlinePenalty = r.deadlineWarning ? 40 : 0;
 
-      const rawComposite = 0.50 * costScore + 0.30 * speedScore + 0.20 * relScore - deadlinePenalty;
+      const rawComposite =
+        weights.costWeight * costScore +
+        weights.speedWeight * speedScore +
+        weights.reliabilityWeight * relScore -
+        deadlinePenalty;
+
       r.compositeScore = +Math.max(0, rawComposite).toFixed(1);
     });
 
@@ -145,6 +192,8 @@ export class AgentToolsService {
       if (idx === 0) {
         r.recommendationReason = r.deadlineWarning
           ? 'Highest ranked available, but please note arrival date warning.'
+          : activeStrategy
+          ? activeStrategy.getRecommendationReason()
           : 'Best Overall: Optimal balance of lowest fees, fast clearance, and 99% reliability.';
       } else if (r.speedHours === minHours) {
         r.recommendationReason = 'Fastest Rail: Clears in 4 hours; ideal for urgent immediate tuition deadlines.';
@@ -169,6 +218,7 @@ export class AgentToolsService {
       details: JSON.stringify({
         amountUsd,
         tuitionDeadline,
+        strategy: activeStrategy?.name || 'balanced',
         bestRoute: routeItems[0].providerName,
         bestCompositeScore: routeItems[0].compositeScore,
         deadlineWarningTriggered: routeItems.some((r) => r.deadlineWarning),
@@ -178,6 +228,13 @@ export class AgentToolsService {
       created_at: new Date(),
     });
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(
+        'route.compared',
+        new RouteComparedEvent(studentId, amountUsd, activeStrategy?.name || 'balanced'),
+      );
+    }
+
     return {
       studentId,
       targetAmountUsd: amountUsd,
@@ -186,11 +243,7 @@ export class AgentToolsService {
       cheapestRoute,
       fastestRoute,
       allRoutes: routeItems,
-      scoringWeights: {
-        costWeight: 0.50,
-        speedWeight: 0.30,
-        reliabilityWeight: 0.20,
-      },
+      scoringWeights: weights,
     };
   }
 
@@ -215,6 +268,10 @@ export class AgentToolsService {
     const sourceAmountBdt = +(amountUsd * route.inverse_rate).toFixed(2);
     const feeBdt = +(route.transfer_fee_flat_bdt + sourceAmountBdt * route.transfer_fee_percent).toFixed(2);
     const totalRequiredBdt = +(sourceAmountBdt + feeBdt).toFixed(2);
+
+    if (this.safetyChain) {
+      this.logger.log(`SafetyChain active for ${studentId} draft.`);
+    }
 
     const limitCheck = FinancialLimitsGuard.validateTransfer(
       totalRequiredBdt,
@@ -294,6 +351,19 @@ export class AgentToolsService {
       created_at: new Date(),
     });
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(
+        'transfer.drafted',
+        new TransferDraftedEvent(
+          transfer.id,
+          account.student_id,
+          amountUsd,
+          totalRequiredBdt,
+          route.provider_name,
+        ),
+      );
+    }
+
     return {
       transferId: transfer.id,
       status: 'PENDING_CONFIRMATION',
@@ -339,12 +409,16 @@ export class AgentToolsService {
       throw new BadRequestException('Transfer execution cancelled: User consent was not granted.');
     }
 
-    const transfer = await this.db.getTransferById(transferId);
+    const transfer = this.transferRepo
+      ? await this.transferRepo.findById(transferId)
+      : await this.db.getTransferById(transferId);
     if (!transfer) {
       throw new NotFoundException(`Transfer ${transferId} not found`);
     }
 
-    if (transfer.status !== 'PENDING_CONFIRMATION') {
+    if (this.stateMachine) {
+      this.stateMachine.assertTransition(transfer.status as any, 'CONFIRMED');
+    } else if (transfer.status !== 'PENDING_CONFIRMATION') {
       throw new BadRequestException(`Cannot confirm transfer with status "${transfer.status}". Must be PENDING_CONFIRMATION.`);
     }
 
@@ -390,6 +464,10 @@ export class AgentToolsService {
       throw new BadRequestException(`Execution Blocked: ${limitCheck.reason}`);
     }
 
+    if (this.bankGateway) {
+      await this.bankGateway.reserveFunds(account.student_id, transfer.source_amount_bdt);
+    }
+
     const newBalance = +(account.balance - transfer.source_amount_bdt).toFixed(2);
     const newDailySpent = +(account.daily_spent + transfer.source_amount_bdt).toFixed(2);
 
@@ -418,6 +496,28 @@ export class AgentToolsService {
       created_at: confirmedTime,
     });
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(
+        'transfer.confirmed',
+        new TransferConfirmedEvent(
+          transfer.id,
+          account.student_id,
+          transfer.source_amount_bdt,
+          transfer.target_amount_usd,
+          transfer.provider_name,
+        ),
+      );
+      this.eventEmitter.emit(
+        'transfer.executed',
+        new TransferExecutedEvent(
+          transfer.id,
+          account.student_id,
+          transfer.source_amount_bdt,
+          transfer.provider_name,
+        ),
+      );
+    }
+
     this.logger.log(`Transfer ${transfer.id} confirmed and funds settled for ${account.student_name}.`);
 
     return {
@@ -435,7 +535,51 @@ export class AgentToolsService {
     };
   }
 
+  async compensateTransfer(transferId: string, reason = 'Bank execution failure'): Promise<void> {
+    const transfer = await this.db.getTransferById(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+
+    const account = await this.db.getAccountById(transfer.account_id);
+    if (!account) {
+      throw new NotFoundException('Account not found for transfer');
+    }
+
+    const restoredBalance = +(account.balance + transfer.source_amount_bdt).toFixed(2);
+    const restoredDailySpent = +Math.max(0, account.daily_spent - transfer.source_amount_bdt).toFixed(2);
+
+    await this.db.updateAccountBalance(account.id, restoredBalance, restoredDailySpent);
+    await this.db.updateTransferStatus(transfer.id, 'ROLLED_BACK');
+
+    if (this.bankGateway) {
+      await this.bankGateway.releaseFunds(account.student_id, transfer.source_amount_bdt);
+    }
+
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'TRANSFER_COMPENSATED',
+      permission_tier: PermissionTier.EXECUTE,
+      account_id: account.id,
+      transfer_id: transfer.id,
+      action_summary: `Saga compensating transaction executed: ${transfer.source_amount_bdt.toLocaleString()} BDT restored to student account. Reason: ${reason}`,
+      status: 'WARNING',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(
+        'transfer.compensated',
+        new TransferCompensatedEvent(transfer.id, account.student_id, transfer.source_amount_bdt, reason),
+      );
+    }
+  }
+
   async getAuditLog(limit = 50) {
+    if (this.auditRepo) {
+      return this.auditRepo.findRecent(limit);
+    }
     const logs = await this.db.getAuditLogs(limit);
     return logs;
   }

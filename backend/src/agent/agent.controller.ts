@@ -14,6 +14,23 @@ export class ChatDto {
   studentId?: string;
 }
 
+export class CompareRoutesDto {
+  @IsString()
+  @IsOptional()
+  studentId?: string;
+
+  @IsNumber()
+  amountUsd: number;
+
+  @IsString()
+  @IsOptional()
+  tuitionDeadline?: string;
+
+  @IsString()
+  @IsOptional()
+  preference?: string;
+}
+
 export class CreateDraftDto {
   @IsString()
   @IsOptional()
@@ -48,6 +65,12 @@ export class ConfirmTransferDto {
   userConsent: boolean;
 }
 
+export class CompensateTransferDto {
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
 @Controller('api')
 export class AgentController {
   constructor(
@@ -75,11 +98,14 @@ export class AgentController {
   }
 
   @Post('routes/compare')
-  async compareRoutes(
-    @Body() body: { studentId?: string; amountUsd: number; tuitionDeadline?: string },
-  ) {
+  async compareRoutes(@Body() body: CompareRoutesDto) {
     const studentId = body.studentId || 'STU-2026-BDT01';
-    return await this.toolsService.compareRoutes(studentId, body.amountUsd, body.tuitionDeadline);
+    return await this.toolsService.compareRoutes(
+      studentId,
+      body.amountUsd,
+      body.tuitionDeadline,
+      body.preference,
+    );
   }
 
   @Post('transfers/draft')
@@ -102,6 +128,17 @@ export class AgentController {
       dto.userConsent,
       true,
     );
+  }
+
+  @Post('transfers/:id/compensate')
+  async compensateTransfer(@Param('id') id: string, @Body() dto: CompensateTransferDto) {
+    await this.toolsService.compensateTransfer(id, dto.reason || 'Simulated settlement failure rollback');
+    return {
+      success: true,
+      transferId: id,
+      status: 'ROLLED_BACK',
+      message: 'Compensating transaction executed. Reserved funds have been restored to student balance.',
+    };
   }
 
   @Post('transfers/:id/cancel')
