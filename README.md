@@ -28,6 +28,18 @@
 
 ---
 
+## SOLID Principles Architecture
+
+| Principle | Implementation in Project | Benefits |
+|---|---|---|
+| **S - Single Responsibility** | `TuitionCalculationService` isolates pure financial and deadline math; `AgentToolsService` acts solely as orchestrator; `PromptInjectionFilter` handles prompt threat analysis. | High testability, zero side-effects during financial calculations. |
+| **O - Open / Closed** | `RouteScoringStrategy` permits adding strategies without changing existing code; `SafetyRuleEngine` allows registering arbitrary compliance rules dynamically. | New payment corridors, discount tiers, or sanctions checks plug in without refactoring. |
+| **L - Liskov Substitution** | `IBankGateway` (mock and live clearing rails), `ILlmClient` (Gemini and offline sandbox), and repository implementations are completely interchangeable. | Full offline sandbox execution with zero network requirements for testing and evaluation. |
+| **I - Interface Segregation** | Fine-grained interfaces: `IAccountReader` vs `IAccountWriter`, `IRateReader` vs `IRateWriter`, `ITransferReader` vs `ITransferWriter`, `IAuditReader` vs `IAuditWriter`. | Read-only consumers cannot accidentally mutate financial state. |
+| **D - Dependency Inversion** | High-level modules depend on interface injection tokens (`ACCOUNT_REPOSITORY_TOKEN`, `RATE_REPOSITORY_TOKEN`, `TUITION_CALCULATOR_TOKEN`, etc.). | Complete decoupling of core business logic from database drivers and external AI APIs. |
+
+---
+
 ## Monorepo Project Structure
 
 ```
