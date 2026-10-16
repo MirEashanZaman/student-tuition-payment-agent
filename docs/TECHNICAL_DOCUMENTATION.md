@@ -173,3 +173,35 @@ The backend is engineered with production-grade software design patterns that is
 | Database access | Repository | Dedicated repositories (`AccountRepository`, `RateRepository`, `TransferRepository`, `AuditRepository`) decouple domain logic from PostgreSQL queries and in-memory test stores. |
 | Services in general | SOLID, Singleton | NestJS providers operate as singletons by default, adhering to Single Responsibility and avoiding shared mutable state. |
 
+---
+
+## 7. RESTful API Specification
+
+The backend controller exposes full RESTful lifecycle operations incorporating `@Param()`, `@Body()`, `@Query()`, `@Get()`, `@Post()`, `@Put()`, `@Patch()`, and `@Delete()` decorators:
+
+| Method | Endpoint | Decorators Used | Parameters / Request Body | Description |
+|---|---|---|---|---|
+| POST | `/api/chat` | `@Body()` | `ChatDto { message, studentId }` | Autonomous conversational reasoning with tool calling |
+| GET | `/api/accounts/:id` | `@Param('id')` | `id: string` | Retrieve student account balance and daily limits |
+| PUT | `/api/accounts/:id/limits` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDailyLimitDto { dailyLimitBdt }` | Update daily financial limit threshold |
+| POST | `/api/accounts/:id/deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto { amountBdt }` | Deposit BDT funds to student account |
+| GET | `/api/rates` | `@Query('activeOnly')`, `@Query('targetCurrency')` | Query filters | List active remittance corridors |
+| GET | `/api/rates/:id` | `@Param('id')` | `id: string` | Retrieve remittance route details |
+| PUT | `/api/rates/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateRateDto` | Update route rate or active status |
+| DELETE | `/api/rates/:id` | `@Param('id')` | `id: string` | Deactivate remittance route |
+| POST | `/api/routes/compare` | `@Body()` | `CompareRoutesDto` | Multi-objective corridor comparison and ranking |
+| GET | `/api/transfers` | `@Query('studentId')`, `@Query('status')` | Query filters | Retrieve transfers with optional status filter |
+| GET | `/api/transfers/:id` | `@Param('id')` | `id: string` | Fetch single transfer record by ID |
+| POST | `/api/transfers/draft` | `@Body()` | `CreateDraftDto` | Create transfer draft (DRAFT tier) |
+| PUT | `/api/transfers/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDraftDto` | Update draft details prior to confirmation |
+| PATCH | `/api/transfers/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDraftDto` | Partial update of unconfirmed transfer draft |
+| DELETE | `/api/transfers/:id` | `@Param('id')` | `id: string` | Discard transfer draft |
+| POST | `/api/transfers/:id/confirm` | `@Param('id')`, `@Body()` | `id: string`, `ConfirmTransferDto` | Human-in-the-loop transfer execution (EXECUTE tier) |
+| POST | `/api/transfers/:id/compensate` | `@Param('id')`, `@Body()` | `id: string`, `CompensateTransferDto` | Saga compensating rollback transaction |
+| POST | `/api/transfers/:id/cancel` | `@Param('id')` | `id: string` | Cancel transfer draft |
+| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch immutable audit logs with multi-field filtering |
+| GET | `/api/audit/:id` | `@Param('id')` | `id: string` | Fetch specific audit log by ID |
+| DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Delete specific audit log entry |
+| POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state |
+| GET | `/api/sandbox/export-logs` | None | None | Export audit log archive |
+
