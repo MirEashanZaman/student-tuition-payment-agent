@@ -28,6 +28,18 @@
 
 ---
 
+## SOLID Principles Architecture
+
+| Principle | Implementation in Project | Benefits |
+|---|---|---|
+| **S - Single Responsibility** | `TuitionCalculationService` isolates pure financial and deadline math; `AgentToolsService` acts solely as orchestrator; `PromptInjectionFilter` handles prompt threat analysis. | High testability, zero side-effects during financial calculations. |
+| **O - Open / Closed** | `RouteScoringStrategy` permits adding strategies without changing existing code; `SafetyRuleEngine` allows registering arbitrary compliance rules dynamically. | New payment corridors, discount tiers, or sanctions checks plug in without refactoring. |
+| **L - Liskov Substitution** | `IBankGateway` (mock and live clearing rails), `ILlmClient` (Gemini and offline sandbox), and repository implementations are completely interchangeable. | Full offline sandbox execution with zero network requirements for testing and evaluation. |
+| **I - Interface Segregation** | Fine-grained interfaces: `IAccountReader` vs `IAccountWriter`, `IRateReader` vs `IRateWriter`, `ITransferReader` vs `ITransferWriter`, `IAuditReader` vs `IAuditWriter`. | Read-only consumers cannot accidentally mutate financial state. |
+| **D - Dependency Inversion** | High-level modules depend on interface injection tokens (`ACCOUNT_REPOSITORY_TOKEN`, `RATE_REPOSITORY_TOKEN`, `TUITION_CALCULATOR_TOKEN`, etc.). | Complete decoupling of core business logic from database drivers and external AI APIs. |
+
+---
+
 ## Monorepo Project Structure
 
 ```
@@ -163,6 +175,36 @@ The database automatically seeds an initial student persona and 4 mock remittanc
 
 ---
 
+## RESTful API Endpoints
+
+The system implements complete RESTful HTTP operations using `@Param()`, `@Body()`, `@Query()`, `@Get()`, `@Post()`, `@Put()`, `@Patch()`, and `@Delete()`:
+
+- `POST /api/chat` - Natural language query processing (`@Body()`)
+- `GET /api/accounts/:id` - Fetch student account balance & limits (`@Param('id')`)
+- `PUT /api/accounts/:id/limits` - Update student daily limit (`@Param('id')`, `@Body()`)
+- `POST /api/accounts/:id/deposit` - Deposit funds to student account (`@Param('id')`, `@Body()`)
+- `GET /api/rates` - Remittance corridor rates with query filtering (`@Query('activeOnly')`, `@Query('targetCurrency')`)
+- `GET /api/rates/:id` - Remittance corridor rate by ID (`@Param('id')`)
+- `PUT /api/rates/:id` - Update remittance corridor rate or status (`@Param('id')`, `@Body()`)
+- `DELETE /api/rates/:id` - Deactivate corridor rate (`@Param('id')`)
+- `POST /api/routes/compare` - Compare remittance corridors with multi-objective scoring (`@Body()`)
+- `GET /api/transfers` - List student transfers with status filtering (`@Query('studentId')`, `@Query('status')`)
+- `GET /api/transfers/:id` - Transfer details by ID (`@Param('id')`)
+- `POST /api/transfers/draft` - Create pending transfer draft (`@Body()`)
+- `PUT /api/transfers/:id` - Update draft recipient before confirmation (`@Param('id')`, `@Body()`)
+- `PATCH /api/transfers/:id` - Partial update of unconfirmed transfer draft (`@Param('id')`, `@Body()`)
+- `DELETE /api/transfers/:id` - Discard transfer draft (`@Param('id')`)
+- `POST /api/transfers/:id/confirm` - User-consented transfer execution (`@Param('id')`, `@Body()`)
+- `POST /api/transfers/:id/compensate` - Saga compensating transaction rollback (`@Param('id')`, `@Body()`)
+- `POST /api/transfers/:id/cancel` - Cancel transfer draft (`@Param('id')`)
+- `GET /api/audit` - Immutable audit logs with tier and status filtering (`@Query('limit')`, `@Query('tier')`, `@Query('status')`)
+- `GET /api/audit/:id` - Fetch specific audit log by ID (`@Param('id')`)
+- `DELETE /api/audit/:id` - Remove audit log record (`@Param('id')`)
+- `POST /api/sandbox/reset` - Reset sandbox database
+- `GET /api/sandbox/export-logs` - Export full audit records archive
+
+---
+
 ## Environment Variables
 
 See `.env.example` for details:
@@ -183,6 +225,18 @@ MAX_TRANSFER_LIMIT_BDT=400000
 DAILY_TRANSFER_LIMIT_BDT=1000000
 ```
 *(No real API keys or passwords are committed to the codebase).*
+
+---
+
+## Automated CI/CD Pipeline
+
+The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main` and `Eashan`:
+
+1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (22/22 tests passing), and NestJS production build.
+2. **Frontend CI**: Dependency installation and Next.js static and server optimization build.
+3. **Docker Verification**: Builds multi-stage Docker images for both services to ensure container reproducibility.
+4. **Security & Cleanliness**: Automated Node.js audit ensuring zero exposed secrets and code policy compliance.
+5. **Deployment Verification**: Verifies Docker Compose and environment manifests for deployment.
 
 ---
 

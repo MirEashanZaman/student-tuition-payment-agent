@@ -9,6 +9,26 @@ export const api = {
     return res.json();
   },
 
+  async updateDailyLimit(studentId: string, dailyLimitBdt: number): Promise<Account> {
+    const res = await fetch(`${API_BASE}/accounts/${studentId}/limits`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dailyLimitBdt }),
+    });
+    if (!res.ok) throw new Error('Failed to update daily limit');
+    return res.json();
+  },
+
+  async depositFunds(studentId: string, amountBdt: number): Promise<Account> {
+    const res = await fetch(`${API_BASE}/accounts/${studentId}/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amountBdt }),
+    });
+    if (!res.ok) throw new Error('Failed to deposit funds');
+    return res.json();
+  },
+
   async sendChatMessage(message: string, studentId = 'STU-2026-BDT01'): Promise<any> {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
@@ -35,6 +55,39 @@ export const api = {
     return res.json();
   },
 
+  async getRates(activeOnly = true, targetCurrency?: string): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (activeOnly) query.append('activeOnly', 'true');
+    if (targetCurrency) query.append('targetCurrency', targetCurrency);
+    const res = await fetch(`${API_BASE}/rates?${query.toString()}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async getRateById(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/rates/${id}`);
+    if (!res.ok) throw new Error(`Failed to fetch rate ${id}`);
+    return res.json();
+  },
+
+  async updateRate(id: string, updates: { exchangeRate?: number; isActive?: boolean }): Promise<any> {
+    const res = await fetch(`${API_BASE}/rates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error(`Failed to update rate ${id}`);
+    return res.json();
+  },
+
+  async deleteRate(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/rates/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete rate ${id}`);
+    return res.json();
+  },
+
   async createDraft(params: {
     studentId?: string;
     routeId: string;
@@ -51,6 +104,27 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to create transfer draft');
     }
+    return res.json();
+  },
+
+  async updateDraft(
+    transferId: string,
+    updates: { recipientUniversity?: string; studentRegNumber?: string },
+  ): Promise<TransferRecord> {
+    const res = await fetch(`${API_BASE}/transfers/${transferId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Failed to update transfer draft');
+    return res.json();
+  },
+
+  async deleteDraft(transferId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/transfers/${transferId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete transfer draft');
     return res.json();
   },
 
@@ -76,15 +150,40 @@ export const api = {
     return res.json();
   },
 
-  async getTransfers(studentId = 'STU-2026-BDT01'): Promise<TransferRecord[]> {
-    const res = await fetch(`${API_BASE}/transfers?studentId=${studentId}`);
+  async getTransfers(studentId = 'STU-2026-BDT01', status?: string): Promise<TransferRecord[]> {
+    const query = new URLSearchParams({ studentId });
+    if (status) query.append('status', status);
+    const res = await fetch(`${API_BASE}/transfers?${query.toString()}`);
     if (!res.ok) return [];
     return res.json();
   },
 
-  async getAuditLogs(limit = 50): Promise<AuditLog[]> {
-    const res = await fetch(`${API_BASE}/audit?limit=${limit}`);
+  async getTransferById(id: string): Promise<TransferRecord> {
+    const res = await fetch(`${API_BASE}/transfers/${id}`);
+    if (!res.ok) throw new Error(`Transfer ${id} not found`);
+    return res.json();
+  },
+
+  async getAuditLogs(limit = 50, tier?: string, status?: string): Promise<AuditLog[]> {
+    const query = new URLSearchParams({ limit: limit.toString() });
+    if (tier) query.append('tier', tier);
+    if (status) query.append('status', status);
+    const res = await fetch(`${API_BASE}/audit?${query.toString()}`);
     if (!res.ok) return [];
+    return res.json();
+  },
+
+  async getAuditLogById(id: string): Promise<AuditLog> {
+    const res = await fetch(`${API_BASE}/audit/${id}`);
+    if (!res.ok) throw new Error(`Audit log ${id} not found`);
+    return res.json();
+  },
+
+  async deleteAuditLog(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/audit/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete audit log ${id}`);
     return res.json();
   },
 

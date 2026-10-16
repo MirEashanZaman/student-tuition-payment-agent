@@ -173,3 +173,97 @@ The backend is engineered with production-grade software design patterns that is
 | Database access | Repository | Dedicated repositories (`AccountRepository`, `RateRepository`, `TransferRepository`, `AuditRepository`) decouple domain logic from PostgreSQL queries and in-memory test stores. |
 | Services in general | SOLID, Singleton | NestJS providers operate as singletons by default, adhering to Single Responsibility and avoiding shared mutable state. |
 
+---
+
+## 7. RESTful API Specification
+
+The backend controller exposes full RESTful lifecycle operations incorporating `@Param()`, `@Body()`, `@Query()`, `@Get()`, `@Post()`, `@Put()`, `@Patch()`, and `@Delete()` decorators:
+
+| Method | Endpoint | Decorators Used | Parameters / Request Body | Description |
+|---|---|---|---|---|
+| POST | `/api/chat` | `@Body()` | `ChatDto { message, studentId }` | Autonomous conversational reasoning with tool calling |
+| GET | `/api/accounts/:id` | `@Param('id')` | `id: string` | Retrieve student account balance and daily limits |
+| PUT | `/api/accounts/:id/limits` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDailyLimitDto { dailyLimitBdt }` | Update daily financial limit threshold |
+| POST | `/api/accounts/:id/deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto { amountBdt }` | Deposit BDT funds to student account |
+| GET | `/api/rates` | `@Query('activeOnly')`, `@Query('targetCurrency')` | Query filters | List active remittance corridors |
+| GET | `/api/rates/:id` | `@Param('id')` | `id: string` | Retrieve remittance route details |
+| PUT | `/api/rates/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateRateDto` | Update route rate or active status |
+| DELETE | `/api/rates/:id` | `@Param('id')` | `id: string` | Deactivate remittance route |
+| POST | `/api/routes/compare` | `@Body()` | `CompareRoutesDto` | Multi-objective corridor comparison and ranking |
+| GET | `/api/transfers` | `@Query('studentId')`, `@Query('status')` | Query filters | Retrieve transfers with optional status filter |
+| GET | `/api/transfers/:id` | `@Param('id')` | `id: string` | Fetch single transfer record by ID |
+| POST | `/api/transfers/draft` | `@Body()` | `CreateDraftDto` | Create transfer draft (DRAFT tier) |
+| PUT | `/api/transfers/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDraftDto` | Update draft details prior to confirmation |
+| PATCH | `/api/transfers/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDraftDto` | Partial update of unconfirmed transfer draft |
+| DELETE | `/api/transfers/:id` | `@Param('id')` | `id: string` | Discard transfer draft |
+| POST | `/api/transfers/:id/confirm` | `@Param('id')`, `@Body()` | `id: string`, `ConfirmTransferDto` | Human-in-the-loop transfer execution (EXECUTE tier) |
+| POST | `/api/transfers/:id/compensate` | `@Param('id')`, `@Body()` | `id: string`, `CompensateTransferDto` | Saga compensating rollback transaction |
+| POST | `/api/transfers/:id/cancel` | `@Param('id')` | `id: string` | Cancel transfer draft |
+| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch immutable audit logs with multi-field filtering |
+| GET | `/api/audit/:id` | `@Param('id')` | `id: string` | Fetch specific audit log by ID |
+| DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Delete specific audit log entry |
+| POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state |
+| GET | `/api/sandbox/export-logs` | None | None | Export audit log archive |
+
+---
+
+## 8. SOLID Architectural Principles Implementation
+
+The codebase adheres strictly to all five Object-Oriented SOLID design principles:
+
+### 1. Single Responsibility Principle (SRP)
+- Each service and component owns one single reason to change.
+- `TuitionCalculationService`: Exclusively calculates exchange conversions, fee structures, benchmark FX markup losses, delivery estimates, and composite ranking scores without performing database I/O or network requests.
+- `AgentToolsService`: Operates purely as an orchestration Facade coordinating services.
+- `PromptInjectionFilter`: Focuses solely on detecting and neutralizing adversarial prompt injections.
+
+### 2. Open / Closed Principle (OCP)
+- Modules are open for extension but closed for modification.
+- `RouteScoringStrategy`: Adding a new corridor ranking strategy (e.g. `DiscountScoringStrategy`) requires creating a new strategy class inheriting `RouteScoringStrategy` without altering existing strategies.
+- `SafetyRuleEngine`: Safety policies implement `ISafetyRule` (`PerTransferLimitRule`, `DailyLimitRule`, `AccountBalanceRule`). New regulatory checks (e.g. `SanctionedCountryRule`) can be registered into the engine dynamically without modifying the engine.
+
+### 3. Liskov Substitution Principle (LSP)
+- Subtypes can substitute their base abstractions without altering program correctness.
+- `IBankGateway`: `MockBankGateway` and live banking integrations fulfill the identical behavioral contract, allowing seamless test substitution.
+- `ILlmClient`: `OfflineLlmClient` and `GeminiLlmClient` can substitute each other transparently.
+- `IAccountRepository` / `ITransferRepository`: Repository implementations conform strictly to interface contracts.
+
+### 4. Interface Segregation Principle (ISP)
+- Clients are not forced to depend on methods they do not need.
+- Repository operations are segregated into read-only and write interfaces:
+  - `IAccountReader` & `IAccountWriter`
+  - `IRateReader` & `IRateWriter`
+  - `ITransferReader` & `ITransferWriter`
+  - `IAuditReader` & `IAuditWriter`
+- Read-only consumers (such as rate inspection endpoints) depend solely on reader interfaces (`IRateReader`).
+
+### 5. Dependency Inversion Principle (DIP)
+- High-level business logic depends on abstract interfaces, never on concrete implementations.
+- Dependencies are bound via injection tokens:
+  - `ACCOUNT_REPOSITORY_TOKEN`
+  - `RATE_REPOSITORY_TOKEN`
+  - `TRANSFER_REPOSITORY_TOKEN`
+  - `AUDIT_REPOSITORY_TOKEN`
+  - `TUITION_CALCULATOR_TOKEN`
+  - `BANK_GATEWAY_TOKEN`
+  - `LLM_CLIENT_TOKEN`
+- Modules resolve abstractions using `@Inject(TOKEN)`, decoupling core logic from underlying storage or API providers.
+
+---
+
+## 9. CI/CD Pipeline Architecture
+
+The repository incorporates an enterprise-grade automated CI/CD pipeline implemented via GitHub Actions (`.github/workflows/ci.yml`):
+
+### Pipeline Stages
+
+| Stage | Trigger | Actions Executed | Purpose |
+|---|---|---|---|
+| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 22 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
+| **Frontend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm run build` | Validates Next.js SSR and client bundle compilation with static page optimization. |
+| **Docker Build Verification** | On CI success | `docker build` backend and frontend images | Ensures multi-stage container builds succeed reproducibly for production deployments. |
+| **Security & Cleanliness Scan** | Push & PR | Node.js automated repository audit | Enforces code cleanliness, verifies zero exposed secrets, and prevents unauthorized syntax patterns. |
+| **Deployment Verification** | Push to `main` / `Eashan` | Manifest verification (`docker-compose.yml`, Dockerfiles, `.env.example`) | Confirms all deployment orchestration artifacts are synchronized and ready for production execution. |
+
+
+

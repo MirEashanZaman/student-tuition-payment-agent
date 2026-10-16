@@ -1,5 +1,16 @@
-import { Controller, Post, Get, Body, Param, Query, BadRequestException } from '@nestjs/common';
-import { IsNotEmpty, IsString, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './tools/agent-tools.service';
 import { DatabaseService } from '../database/database.service';
@@ -56,6 +67,16 @@ export class CreateDraftDto {
   tuitionDeadline?: string;
 }
 
+export class UpdateDraftDto {
+  @IsString()
+  @IsOptional()
+  recipientUniversity?: string;
+
+  @IsString()
+  @IsOptional()
+  studentRegNumber?: string;
+}
+
 export class ConfirmTransferDto {
   @IsString()
   @IsNotEmpty()
@@ -69,6 +90,28 @@ export class CompensateTransferDto {
   @IsString()
   @IsOptional()
   reason?: string;
+}
+
+export class DepositDto {
+  @IsNumber()
+  @Min(1)
+  amountBdt: number;
+}
+
+export class UpdateDailyLimitDto {
+  @IsNumber()
+  @Min(1)
+  dailyLimitBdt: number;
+}
+
+export class UpdateRateDto {
+  @IsNumber()
+  @IsOptional()
+  exchangeRate?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
 
 @Controller('api')
@@ -92,9 +135,47 @@ export class AgentController {
     return await this.toolsService.getBalance(id);
   }
 
+  @Put('accounts/:id/limits')
+  async updateDailyLimit(@Param('id') id: string, @Body() dto: UpdateDailyLimitDto) {
+    return await this.toolsService.updateDailyLimit(id, dto.dailyLimitBdt);
+  }
+
+  @Post('accounts/:id/deposit')
+  async depositFunds(@Param('id') id: string, @Body() dto: DepositDto) {
+    return await this.toolsService.depositFunds(id, dto.amountBdt);
+  }
+
   @Get('rates')
-  async getRates() {
-    return await this.db.getAllRates();
+  async getRates(
+    @Query('activeOnly') activeOnly?: string,
+    @Query('targetCurrency') targetCurrency?: string,
+  ) {
+    let rates = await this.db.getAllRates();
+    if (activeOnly === 'true') {
+      rates = rates.filter((r) => r.is_active);
+    }
+    if (targetCurrency) {
+      rates = rates.filter((r) => r.target_currency.toUpperCase() === targetCurrency.toUpperCase());
+    }
+    return rates;
+  }
+
+  @Get('rates/:id')
+  async getRateById(@Param('id') id: string) {
+    return await this.toolsService.getRateById(id);
+  }
+
+  @Put('rates/:id')
+  async updateRate(@Param('id') id: string, @Body() dto: UpdateRateDto) {
+    return await this.toolsService.updateRate(id, {
+      ...(dto.exchangeRate !== undefined ? { exchange_rate: dto.exchangeRate } : {}),
+      ...(dto.isActive !== undefined ? { is_active: dto.isActive } : {}),
+    });
+  }
+
+  @Delete('rates/:id')
+  async deleteRate(@Param('id') id: string) {
+    return await this.toolsService.deleteRate(id);
   }
 
   @Post('routes/compare')
@@ -108,6 +189,20 @@ export class AgentController {
     );
   }
 
+  @Get('transfers')
+  async getTransfers(
+    @Query('studentId') studentId?: string,
+    @Query('status') status?: string,
+  ) {
+    const id = studentId || 'STU-2026-BDT01';
+    return await this.db.getTransfersByStudentId(id, status);
+  }
+
+  @Get('transfers/:id')
+  async getTransferById(@Param('id') id: string) {
+    return await this.db.getTransferById(id);
+  }
+
   @Post('transfers/draft')
   async createDraft(@Body() dto: CreateDraftDto) {
     return await this.toolsService.createTransferDraft(
@@ -118,6 +213,27 @@ export class AgentController {
       dto.studentRegNumber,
       dto.tuitionDeadline,
     );
+  }
+
+  @Put('transfers/:id')
+  async updateDraftPut(@Param('id') id: string, @Body() dto: UpdateDraftDto) {
+    return await this.toolsService.updateTransferDraft(id, {
+      recipient_university: dto.recipientUniversity,
+      student_reg_number: dto.studentRegNumber,
+    });
+  }
+
+  @Patch('transfers/:id')
+  async updateDraftPatch(@Param('id') id: string, @Body() dto: UpdateDraftDto) {
+    return await this.toolsService.updateTransferDraft(id, {
+      recipient_university: dto.recipientUniversity,
+      student_reg_number: dto.studentRegNumber,
+    });
+  }
+
+  @Delete('transfers/:id')
+  async deleteTransferDraft(@Param('id') id: string) {
+    return await this.toolsService.deleteTransferDraft(id);
   }
 
   @Post('transfers/:id/confirm')
@@ -146,21 +262,24 @@ export class AgentController {
     return await this.db.updateTransferStatus(id, 'CANCELLED');
   }
 
-  @Get('transfers')
-  async getTransfers(@Query('studentId') studentId?: string) {
-    const id = studentId || 'STU-2026-BDT01';
-    return await this.db.getTransfersByStudentId(id);
-  }
-
-  @Get('transfers/:id')
-  async getTransferById(@Param('id') id: string) {
-    return await this.db.getTransferById(id);
-  }
-
   @Get('audit')
-  async getAudit(@Query('limit') limit?: string) {
+  async getAudit(
+    @Query('limit') limit?: string,
+    @Query('tier') tier?: string,
+    @Query('status') status?: string,
+  ) {
     const lim = limit ? parseInt(limit, 10) : 50;
-    return await this.toolsService.getAuditLog(lim);
+    return await this.toolsService.getAuditLog(lim, tier, status);
+  }
+
+  @Get('audit/:id')
+  async getAuditLogById(@Param('id') id: string) {
+    return await this.toolsService.getAuditLogById(id);
+  }
+
+  @Delete('audit/:id')
+  async deleteAuditLog(@Param('id') id: string) {
+    return await this.toolsService.deleteAuditLog(id);
   }
 
   @Post('sandbox/reset')
