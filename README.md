@@ -5,7 +5,7 @@
 
 ---
 
-## 🚀 Key Highlights & Scoring Alignment
+## Key Highlights & Scoring Alignment
 
 - **Task Completion (40%):** Complete end-to-end tuition settlement flow from natural language query (`"Pay my $3,000 tuition from BDT"`), corridor comparison, draft creation, to settlement confirmation and receipt generation.
 - **Security & Compliance (30%):** Strict Tri-Tier Permission Model (`READ_ONLY`, `DRAFT`, `EXECUTE`). The autonomous LLM is strictly blocked from moving money unilaterally. Enforces 400,000 BDT per-transfer limit and 1,000,000 BDT daily limit in compiled backend code with tamper-evident audit logging.
@@ -13,7 +13,7 @@
 
 ---
 
-## 📁 Monorepo Project Structure
+## Monorepo Project Structure
 
 ```
 ├── backend/                   # NestJS Enterprise Backend API
@@ -55,7 +55,7 @@
 
 ---
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 - **Node.js**: v18.0.0 or higher (Tested on Node v20 & v24)
 - **npm**: v9.0.0 or higher
@@ -63,7 +63,7 @@
 
 ---
 
-## ⚡ Quick Start: One-Command Run
+## Quick Start: One-Command Run
 
 ### Option 1: Using Docker Compose (Recommended for Production)
 
@@ -107,7 +107,7 @@ The backend features an intelligent automatic fallback: if PostgreSQL is not run
 
 ---
 
-## 🧪 Running Security & Evaluation Tests
+## Running Security & Evaluation Tests
 
 Run the full automated security test suite covering all FinTechathon requirements:
 
@@ -130,7 +130,7 @@ npm test
 
 ---
 
-## 💳 Seed Data & Demonstration Persona
+## Seed Data & Demonstration Persona
 
 The database automatically seeds an initial student persona and 4 mock remittance corridors:
 
@@ -148,7 +148,7 @@ The database automatically seeds an initial student persona and 4 mock remittanc
 
 ---
 
-## 🔒 Environment Variables
+## Environment Variables
 
 See `.env.example` for details:
 ```env
@@ -171,7 +171,7 @@ DAILY_TRANSFER_LIMIT_BDT=1000000
 
 ---
 
-## 📑 Submission Deliverables Index
+## Submission Deliverables Index
 
 All 6 official FinTechathon submission documents are prepared in the repository:
 1. **Technical Documentation:** [`docs/TECHNICAL_DOCUMENTATION.md`](file:///docs/TECHNICAL_DOCUMENTATION.md)
