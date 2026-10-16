@@ -54,7 +54,6 @@ export class PromptInjectionFilter {
       }
     }
 
-    // User text is treated as data, never as executable instructions.
     const sanitizedText = flagged.length > 0
       ? '[User content was blocked and treated as untrusted data only. No system rules, limits, or permission tiers were changed.]'
       : normalizedInput;
