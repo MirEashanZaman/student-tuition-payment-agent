@@ -19,6 +19,12 @@ import {
 import { TransferStateMachine } from '../src/agent/saga/transfer-state-machine';
 import { BANK_GATEWAY_TOKEN } from '../src/agent/gateways/bank-gateway.interface';
 import { MockBankGateway } from '../src/agent/gateways/mock-bank.gateway';
+import { HttpBankGateway } from '../src/agent/gateways/http-bank.gateway';
+import {
+  RouteComparisonZodSchema,
+  TransferDraftZodSchema,
+  ConfirmTransferZodSchema,
+} from '../src/agent/guardrails/schemas/tuition.zod';
 import { LLM_CLIENT_TOKEN } from '../src/agent/gateways/llm-client.interface';
 import { OfflineLlmClient } from '../src/agent/gateways/offline-llm.client';
 import { AccountRepository } from '../src/database/repositories/account.repository';
@@ -324,6 +330,58 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       const parts = validToken.split('.');
       const tamperedToken = `${parts[0]}.${parts[1]}.tamperedSignatureHere`;
       expect(() => jwtService.verify(tamperedToken)).toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('9. Schema Validation with Zod & Axios HTTP Clearing Gateway', () => {
+    it('should validate inputs using Zod schemas and reject malformed payloads', () => {
+      const validComparison = RouteComparisonZodSchema.safeParse({
+        studentId: 'STU-2026-BDT01',
+        amountUsd: 1500,
+        preference: 'cheapest',
+      });
+      expect(validComparison.success).toBe(true);
+
+      const invalidComparison = RouteComparisonZodSchema.safeParse({
+        studentId: '',
+        amountUsd: -100,
+      });
+      expect(invalidComparison.success).toBe(false);
+
+      const invalidDraft = TransferDraftZodSchema.safeParse({
+        studentId: 'STU-2026-BDT01',
+        routeId: 'route-edupay-prime',
+        amountUsd: -50,
+        recipientUniversity: 'U',
+      });
+      expect(invalidDraft.success).toBe(false);
+
+      const invalidConfirm = ConfirmTransferZodSchema.safeParse({
+        transferId: '',
+        confirmationToken: 'short',
+        userConsent: false,
+      });
+      expect(invalidConfirm.success).toBe(false);
+    });
+
+    it('should verify accounts and settle transfers using Axios HTTP bank gateway', async () => {
+      const httpBank = new HttpBankGateway(db);
+      const verification = await httpBank.verifyAccount('STU-2026-BDT01');
+      expect(verification.isValid).toBe(true);
+      expect(verification.studentId).toBe('STU-2026-BDT01');
+
+      const reservation = await httpBank.reserveFunds('STU-2026-BDT01', 30000);
+      expect(reservation.success).toBe(true);
+      expect(reservation.amountReservedBdt).toBe(30000);
+
+      const settlement = await httpBank.settleTransfer(
+        'TRX-AXIOS-01',
+        'STU-2026-BDT01',
+        30000,
+        'EduPay Prime',
+      );
+      expect(settlement.settled).toBe(true);
+      expect(settlement.settlementHash).toContain('AXIOS-SETTLE');
     });
   });
 });

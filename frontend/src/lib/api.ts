@@ -107,23 +107,27 @@ export const api = {
   },
 
   async updateDailyLimit(studentId: string, dailyLimitBdt: number): Promise<Account> {
-    const res = await fetch(`${API_BASE}/accounts/${studentId}/limits`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dailyLimitBdt }),
-    });
-    if (!res.ok) throw new Error('Failed to update daily limit');
-    return res.json();
+    try {
+      const validated = UpdateDailyLimitInputSchema.parse({ studentId, dailyLimitBdt });
+      const response = await apiClient.put<Account>(`/accounts/${validated.studentId}/limits`, {
+        dailyLimitBdt: validated.dailyLimitBdt,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to update daily limit');
+    }
   },
 
   async depositFunds(studentId: string, amountBdt: number): Promise<Account> {
-    const res = await fetch(`${API_BASE}/accounts/${studentId}/deposit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amountBdt }),
-    });
-    if (!res.ok) throw new Error('Failed to deposit funds');
-    return res.json();
+    try {
+      const validated = DepositFundsInputSchema.parse({ studentId, amountBdt });
+      const response = await apiClient.post<Account>(`/accounts/${validated.studentId}/deposit`, {
+        amountBdt: validated.amountBdt,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to deposit funds');
+    }
   },
 
   async sendChatMessage(message: string, studentId = 'STU-2026-BDT01'): Promise<any> {
@@ -136,7 +140,6 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Chat request failed');
     }
-    return res.json();
   },
 
   async compareRoutes(
@@ -153,40 +156,45 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to compare routes');
     }
-    return res.json();
   },
 
   async getRates(activeOnly = true, targetCurrency?: string): Promise<any[]> {
-    const query = new URLSearchParams();
-    if (activeOnly) query.append('activeOnly', 'true');
-    if (targetCurrency) query.append('targetCurrency', targetCurrency);
-    const res = await fetch(`${API_BASE}/rates?${query.toString()}`);
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const params: Record<string, string> = {};
+      if (activeOnly) params.activeOnly = 'true';
+      if (targetCurrency) params.targetCurrency = targetCurrency;
+      const response = await apiClient.get<any[]>('/rates', { params });
+      return response.data;
+    } catch (error) {
+      return [];
+    }
   },
 
   async getRateById(id: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/rates/${id}`);
-    if (!res.ok) throw new Error(`Failed to fetch rate ${id}`);
-    return res.json();
+    try {
+      const response = await apiClient.get(`/rates/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to fetch rate ${id}`);
+    }
   },
 
   async updateRate(id: string, updates: { exchangeRate?: number; isActive?: boolean }): Promise<any> {
-    const res = await fetch(`${API_BASE}/rates/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    if (!res.ok) throw new Error(`Failed to update rate ${id}`);
-    return res.json();
+    try {
+      const response = await apiClient.put(`/rates/${id}`, updates);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to update rate ${id}`);
+    }
   },
 
   async deleteRate(id: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/rates/${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error(`Failed to delete rate ${id}`);
-    return res.json();
+    try {
+      const response = await apiClient.delete(`/rates/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to delete rate ${id}`);
+    }
   },
 
   async createDraft(params: {
@@ -205,7 +213,6 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to create transfer draft');
     }
-    return res.json();
   },
 
   async confirmTransfer(
@@ -222,7 +229,6 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to confirm transfer');
     }
-    return res.json();
   },
 
   async cancelTransfer(transferId: string): Promise<any> {
@@ -251,17 +257,21 @@ export const api = {
   },
 
   async getAuditLogById(id: string): Promise<AuditLog> {
-    const res = await fetch(`${API_BASE}/audit/${id}`);
-    if (!res.ok) throw new Error(`Audit log ${id} not found`);
-    return res.json();
+    try {
+      const response = await apiClient.get<AuditLog>(`/audit/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Audit log ${id} not found`);
+    }
   },
 
   async deleteAuditLog(id: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/audit/${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error(`Failed to delete audit log ${id}`);
-    return res.json();
+    try {
+      const response = await apiClient.delete(`/audit/${id}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, `Failed to delete audit log ${id}`);
+    }
   },
 
   async resetSandbox(): Promise<any> {

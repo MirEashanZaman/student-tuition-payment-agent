@@ -1,0 +1,36 @@
+import { z } from 'zod';
+
+export const ChatMessageInputSchema = z.object({
+  message: z.string().trim().min(1, 'Message cannot be empty').max(4000, 'Message cannot exceed 4000 characters'),
+  studentId: z.string().min(1).default('STU-2026-BDT01'),
+});
+
+export const CompareRoutesInputSchema = z.object({
+  amountUsd: z.number().positive('Tuition amount must be greater than zero'),
+  tuitionDeadline: z.string().optional(),
+  studentId: z.string().min(1).default('STU-2026-BDT01'),
+});
+
+export const DraftTransferInputSchema = z.object({
+  studentId: z.string().min(1).default('STU-2026-BDT01'),
+  routeId: z.string().min(1, 'Route identifier is required'),
+  amountUsd: z.number().positive('Amount must be greater than zero'),
+  recipientUniversity: z.string().min(2, 'University name must be at least 2 characters'),
+  tuitionDeadline: z.string().optional(),
+});
+
+export const ConfirmTransferInputSchema = z.object({
+  transferId: z.string().min(1, 'Transfer ID is required'),
+  confirmationToken: z.string().min(8, 'Confirmation token is required'),
+  userConsent: z.boolean().default(true),
+});
+
+export const UpdateDailyLimitInputSchema = z.object({
+  studentId: z.string().min(1, 'Student ID is required'),
+  dailyLimitBdt: z.number().positive('Daily limit must be greater than zero'),
+});
+
+export const DepositFundsInputSchema = z.object({
+  studentId: z.string().min(1, 'Student ID is required'),
+  amountBdt: z.number().positive('Deposit amount must be greater than zero'),
+});

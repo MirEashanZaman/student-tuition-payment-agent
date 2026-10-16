@@ -24,6 +24,7 @@
 | LLM and mock bank | Dependency Inversion (the D in SOLID) | Code to interfaces like `ILlmClient` and `IBankGateway`. In tests fakes are swapped in without external dependencies. |
 | Audit logging | Observer (NestJS events) | Services emit events like `transfer.confirmed`, and an audit listener writes the log. Safety and domain code stays free of logging code. |
 | Database access | Repository | Repositories (`AccountRepository`, `RateRepository`, `TransferRepository`, `AuditRepository`) keep SQL and storage logic out of services. |
+| Schema validation & HTTP transport | Contract & Transport | Zod enforces runtime schema contracts on tool inputs and API payloads; Axios provides type-safe HTTP communication with error handling and interceptors. |
 | Services in general | SOLID, Singleton | NestJS providers are singletons by default with single responsibility isolation. |
 
 ---
@@ -154,6 +155,8 @@ npm test
 8. `should write an audit log entry for every single agent action` (PASSED)
 9. `should safely flag and neutralize prompt injection attempts without crashing` (PASSED)
 10. `should handle invalid inputs and unexpected data formats gracefully` (PASSED)
+11. `should validate inputs using Zod schemas and reject malformed payloads` (PASSED)
+12. `should verify accounts and settle transfers using Axios HTTP bank gateway` (PASSED)
 
 ---
 
