@@ -7,6 +7,7 @@ export interface JwtPayload {
   studentName: string;
   email: string;
   role: string;
+  permissionTier?: string;
   iat?: number;
   exp?: number;
   [key: string]: any;
@@ -22,15 +23,23 @@ export interface DecodedToken {
 export class JwtService {
   private readonly defaultSecret =
     process.env.JWT_SECRET || 'fintechathon-2026-sandbox-secret-jwt-key-bdt';
-  private readonly defaultExpiresInSeconds = 86400;
+  private readonly defaultExpiresInSeconds = 86400; // 24 hours
 
   private base64UrlEncode(input: string | Buffer): string {
-    const buf = Buffer.isBuffer(input) ? input : Buffer.from(input, 'utf8');
-    return buf.toString('base64url');
+    const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
+    return buf
+      .toString('base64')
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
   }
 
   private base64UrlDecode(input: string): string {
-    return Buffer.from(input, 'base64url').toString('utf8');
+    let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+    return Buffer.from(base64, 'base64').toString('utf8');
   }
 
   sign(payload: JwtPayload, expiresInSeconds = this.defaultExpiresInSeconds): string {

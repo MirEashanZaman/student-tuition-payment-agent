@@ -173,16 +173,16 @@ The database automatically seeds an initial student persona, authentication cred
 - **Student ID:** `STU-2026-BDT01`
 - **Student Name:** Tanvir Ahmed
 - **Email:** `tanvir.student@fintechathon.org`
-- **Default Password:** `student123` (Hashed with Node.js scrypt)
+- **Default Password:** `student123` *(Hashed with Node.js scrypt)*
 - **Role:** `STUDENT`
 - **Initial Balance:** `850,000.00 BDT` (~$7,112 USD)
 - **Daily Spending Limit:** `1,000,000.00 BDT`
 
 ### Authentication Endpoints:
-- `POST /api/auth/login` - Authenticate credentials (`studentIdOrEmail`, `password`) and receive signed JWT
-- `GET /api/auth/session` - Verify active JWT bearer token and retrieve student profile
-- `POST /api/auth/logout` - Terminate session and record audit event
-- `GET /api/auth/demo-credentials` - Quick sandbox demo credentials
+- `POST /api/auth/login` — Authenticate credentials (`studentIdOrEmail`, `password`) and receive signed JWT
+- `GET /api/auth/session` — Verify active JWT bearer token and retrieve student profile
+- `POST /api/auth/logout` — Terminate session and record audit event
+- `GET /api/auth/demo-credentials` — Quick sandbox demo credentials
 
 ### Mock Corridors:
 | Provider | Inverse Rate | Fees | Speed | Reliability | Rating |
