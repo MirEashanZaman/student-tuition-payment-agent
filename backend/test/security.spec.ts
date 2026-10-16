@@ -6,6 +6,19 @@ import { FinancialLimitsGuard } from '../src/agent/guardrails/financial-limits.g
 import { PermissionPolicyException } from '../src/agent/guardrails/permission-tier.guard';
 import { BadRequestException } from '@nestjs/common';
 
+import {
+  BalancedScoringStrategy,
+  CheapestScoringStrategy,
+  FastestScoringStrategy,
+  ReliableScoringStrategy,
+  RouteScoringStrategyFactory,
+} from '../src/agent/strategies/route-scoring.strategy';
+import { TransferStateMachine } from '../src/agent/saga/transfer-state-machine';
+import { BANK_GATEWAY_TOKEN } from '../src/agent/gateways/bank-gateway.interface';
+import { MockBankGateway } from '../src/agent/gateways/mock-bank.gateway';
+import { LLM_CLIENT_TOKEN } from '../src/agent/gateways/llm-client.interface';
+import { OfflineLlmClient } from '../src/agent/gateways/offline-llm.client';
+
 describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
   let db: DatabaseService;
   let toolsService: AgentToolsService;
@@ -14,7 +27,21 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
   beforeAll(async () => {
     process.env.FORCE_MEMORY_DB = 'true';
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DatabaseService, AgentToolsService, AgentService],
+      providers: [
+        DatabaseService,
+        AgentToolsService,
+        AgentService,
+        BalancedScoringStrategy,
+        CheapestScoringStrategy,
+        FastestScoringStrategy,
+        ReliableScoringStrategy,
+        RouteScoringStrategyFactory,
+        TransferStateMachine,
+        MockBankGateway,
+        { provide: BANK_GATEWAY_TOKEN, useClass: MockBankGateway },
+        OfflineLlmClient,
+        { provide: LLM_CLIENT_TOKEN, useClass: OfflineLlmClient },
+      ],
     }).compile();
 
     db = module.get<DatabaseService>(DatabaseService);
@@ -205,6 +232,48 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       await expect(
         toolsService.createTransferDraft('NON_EXISTENT_STUDENT', 'route-edupay-prime', 1000, 'MIT'),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('6. Architectural Patterns: Strategy & Saga Compensation', () => {
+    it('should swap scoring strategy dynamically based on user preference', async () => {
+      const balanced = await toolsService.compareRoutes('STU-2026-BDT01', 2000, undefined, 'balanced');
+      const fastest = await toolsService.compareRoutes('STU-2026-BDT01', 2000, undefined, 'fastest');
+
+      expect(balanced.scoringWeights.costWeight).toBe(0.45);
+      expect(fastest.scoringWeights.speedWeight).toBe(0.8);
+      expect(fastest.bestOverallRoute.providerName).toContain('SwiftWire');
+    });
+
+    it('should execute compensating transaction and roll back funds in Saga pattern', async () => {
+      const studentBefore = await db.getAccountByStudentId('STU-2026-BDT01');
+      const initialBalance = studentBefore!.balance;
+
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        1000,
+        'Harvard University',
+      );
+
+      const confirmed = await toolsService.confirmTransfer(
+        draft.transferId,
+        draft.confirmationToken,
+        true,
+        true,
+      );
+
+      expect(confirmed.status).toBe('CONFIRMED');
+      const studentAfterConfirm = await db.getAccountByStudentId('STU-2026-BDT01');
+      expect(studentAfterConfirm!.balance).toBeLessThan(initialBalance);
+
+      await toolsService.compensateTransfer(draft.transferId, 'Simulated downstream clearing timeout');
+
+      const studentAfterRollback = await db.getAccountByStudentId('STU-2026-BDT01');
+      expect(studentAfterRollback!.balance).toBe(initialBalance);
+
+      const transferRecord = await db.getTransferById(draft.transferId);
+      expect(transferRecord?.status).toBe('ROLLED_BACK');
     });
   });
 });
