@@ -96,18 +96,12 @@
 
 ### Option 1: Using Docker Compose (Hardened Sandbox)
 
+Generate distinct random values with `openssl rand -hex 32` and set them as `POSTGRES_PASSWORD` and `JWT_SECRET` in `.env`.
+
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd "Student Tuition Payment Agent"
-
-# Copy environment variables
 cp .env.example .env
-
-# Generate distinct random values with `openssl rand -hex 32` and set them as
-# POSTGRES_PASSWORD and JWT_SECRET in .env. Do not commit .env.
-
-# Spin up PostgreSQL, Backend, and Frontend with one command
 docker compose up --build
 ```
 Once started:
@@ -148,7 +142,7 @@ cd backend
 npm test
 ```
 
-### Verified Test Cases (35 Passed):
+### Verified Test Cases (46 Passed):
 1. `should block a single transfer draft exceeding the per-transfer limit (400,000 BDT)` (PASSED)
 2. `should block transfers that would breach the daily limit (1,000,000 BDT)` (PASSED)
 3. `should forbid the automated LLM/agent from unilaterally executing confirmTransfer` (PASSED)
@@ -184,6 +178,17 @@ npm test
 33. `should successfully login with valid credentials and return JWT session` (PASSED)
 34. `should decode and verify valid JWT session token` (PASSED)
 35. `should reject expired or tampered JWT token` (PASSED)
+36. `applies a strict login rate limit per client IP` (PASSED)
+37. `requires a valid JWT to read account data` (PASSED)
+38. `allows a student to read their own account` (PASSED)
+39. `prevents a student from reading another student account` (PASSED)
+40. `does not let student tokens mutate account limits` (PASSED)
+41. `prevents access to another student transfer records by transfer ID` (PASSED)
+42. `returns only the authenticated student account audit records` (PASSED)
+43. `blocks sandbox administration and demo credentials in production` (PASSED)
+44. `rejects production startup without a JWT secret or database URL` (PASSED)
+45. `applies an independent higher rate limit to chat requests` (PASSED)
+46. `does not throttle non-API routes` (PASSED)
 
 ---
 
@@ -272,7 +277,7 @@ DAILY_TRANSFER_LIMIT_BDT=1000000
 
 The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main` and `Eashan`:
 
-1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (35/35 tests passing), and NestJS production build.
+1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (46/46 tests passing), and NestJS production build.
 2. **Frontend CI**: Dependency installation and Next.js static and server optimization build.
 3. **Docker Verification**: Builds multi-stage Docker images for both services to ensure container reproducibility.
 4. **Security & Cleanliness**: Automated Node.js audit ensuring zero exposed secrets and code policy compliance.
