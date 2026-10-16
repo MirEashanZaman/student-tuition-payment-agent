@@ -79,10 +79,12 @@ export class AgentService {
     studentId: string = this.defaultStudentId,
     conversationHistory: ChatMessage[] = [],
   ): Promise<ChatResponse> {
+    const cleanedInput = PromptInjectionFilter.sanitizeUserText(userMessage);
+
     await this.logAgentAction(
       'AGENT_CHAT_REQUEST',
       `User prompt received for student ${studentId}`,
-      { studentId, messageLength: userMessage.length, hasConversationHistory: conversationHistory.length > 0 },
+      { studentId, messageLength: cleanedInput.length, hasConversationHistory: conversationHistory.length > 0 },
       studentId,
       'READ_ONLY',
     );
@@ -96,6 +98,7 @@ export class AgentService {
         action_summary: 'Security Alert: Prompt injection pattern detected in user prompt',
         details: JSON.stringify({
           patterns: injectionCheck.flaggedPatterns,
+          sanitizedPrompt: injectionCheck.sanitizedText,
           rawPrompt: userMessage,
         }),
         status: 'FLAGGED',
@@ -103,11 +106,22 @@ export class AgentService {
         created_at: new Date(),
       });
       this.logger.warn(`Prompt injection pattern detected: ${injectionCheck.flaggedPatterns.join(', ')}`);
+      return {
+        message:
+          'Security Alert: Your message was treated as untrusted data and ignored. ' +
+          'User text never changes system limits, safety rules, permission tiers, or confirmation requirements.',
+        securityFlags: {
+          isSuspicious: true,
+          flaggedPatterns: injectionCheck.flaggedPatterns,
+        },
+      };
     }
+
+    const safeUserMessage = cleanedInput || userMessage;
 
     if (this.genAI) {
       try {
-        return await this.processWithGemini(userMessage, studentId, injectionCheck);
+        return await this.processWithGemini(safeUserMessage, studentId, injectionCheck);
       } catch (err) {
         this.logger.warn(`Gemini API call failed (${err.message}). Falling back to Sandbox Agent Engine.`);
       }
@@ -117,7 +131,7 @@ export class AgentService {
       this.logger.log('Engaging injected LLM client gateway.');
     }
 
-    return await this.processOfflineAgent(userMessage, studentId, injectionCheck);
+    return await this.processOfflineAgent(safeUserMessage, studentId, injectionCheck);
   }
 
   private async processWithGemini(
@@ -317,6 +331,7 @@ Your duties:
       return {
         message:
           'Security Alert: Your request contains patterns that violate the Financial Safety Guardrails. ' +
+          'User text is treated as untrusted data and never as instructions. It cannot modify limits, safety rules, permission tiers, or confirmation requirements. ' +
           'All limits (per-transfer limit: 400,000 BDT, daily limit: 1,000,000 BDT) are enforced at the NestJS core architecture level and cannot be overridden through chat prompts. ' +
           'This security incident has been permanently recorded in the immutable audit log.',
         securityFlags: {
