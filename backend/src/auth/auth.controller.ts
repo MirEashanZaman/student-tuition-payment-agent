@@ -7,17 +7,22 @@ import {
   Req,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './auth.guard';
 
 export class LoginDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(254)
   studentIdOrEmail: string;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(128)
   password: string;
 }
 
@@ -34,6 +39,7 @@ export class AuthController {
     return await this.authService.login(body.studentIdOrEmail, body.password, ip);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('session')
   async getSession(@Headers('authorization') authHeader?: string) {
     if (!authHeader) {
@@ -46,34 +52,31 @@ export class AuthController {
     return await this.authService.validateSession(token);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Headers('authorization') authHeader?: string) {
     return this.getSession(authHeader);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(
     @Headers('authorization') authHeader?: string,
-    @Body() body?: { studentId?: string },
-    @Req() req?: any,
+    @Req() req?: { ip?: string; user: { studentId: string } },
   ) {
-    let studentId = body?.studentId;
-    if (!studentId && authHeader) {
-      const [type, token] = authHeader.split(' ');
-      if (type === 'Bearer' && token) {
-        try {
-          const session = await this.authService.validateSession(token);
-          studentId = session.user.studentId;
-        } catch {
-        }
-      }
+    const [type, token] = (authHeader || '').split(' ');
+    if (type !== 'Bearer' || !token || !req?.user?.studentId) {
+      throw new UnauthorizedException('Authenticated student session required.');
     }
     const ip = req?.ip || '127.0.0.1';
-    return await this.authService.logout(studentId, ip);
+    return await this.authService.logout(req.user.studentId, ip);
   }
 
   @Get('demo-credentials')
   getDemoCredentials() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotFoundException();
+    }
     return this.authService.getDemoCredentials();
   }
 }

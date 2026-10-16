@@ -120,10 +120,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         await this.seedInitialData();
         return;
       } catch (err) {
+        if (process.env.NODE_ENV === 'production') {
+          await this.pool?.end();
+          this.pool = null;
+          throw new Error(`PostgreSQL is required in production but could not be initialized: ${err.message}`);
+        }
         this.logger.warn(`PostgreSQL connection failed (${err.message}). Falling back to Sandbox In-Memory Store.`);
         this.useMemoryStore = true;
       }
     } else {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('DATABASE_URL is required in production.');
+      }
       this.logger.log('Using Sandbox In-Memory Store.');
       this.useMemoryStore = true;
     }
@@ -152,6 +160,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error(`Migration error: ${err.message}`);
+      if (process.env.NODE_ENV === 'production') {
+        throw err;
+      }
     }
   }
 
@@ -240,23 +251,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (!this.useMemoryStore && this.pool) {
       try {
-        await this.pool.query(
-          `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-           ON CONFLICT (student_id) DO UPDATE SET balance = $6, daily_spent = $8, password_hash = $9, role = $10;`,
-          [
-            defaultAccount.id,
-            defaultAccount.student_id,
-            defaultAccount.student_name,
-            defaultAccount.email,
-            defaultAccount.currency,
-            defaultAccount.balance,
-            defaultAccount.daily_limit,
-            defaultAccount.daily_spent,
-            defaultAccount.password_hash,
-            defaultAccount.role,
-          ],
-        );
+        if (process.env.NODE_ENV !== 'production') {
+          await this.pool.query(
+            `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (student_id) DO UPDATE SET balance = $6, daily_spent = $8, password_hash = $9, role = $10;`,
+            [
+              defaultAccount.id,
+              defaultAccount.student_id,
+              defaultAccount.student_name,
+              defaultAccount.email,
+              defaultAccount.currency,
+              defaultAccount.balance,
+              defaultAccount.daily_limit,
+              defaultAccount.daily_spent,
+              defaultAccount.password_hash,
+              defaultAccount.role,
+            ],
+          );
+        }
 
         for (const r of defaultRates) {
           await this.pool.query(
@@ -283,15 +296,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         this.logger.log('PostgreSQL seed completed.');
         return;
       } catch (err) {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error(`Production database seeding failed: ${err.message}`);
+        }
         this.logger.warn(`PostgreSQL seed error (${err.message}), falling back to memory store.`);
         this.useMemoryStore = true;
       }
     }
 
-    this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
-    this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+    if (process.env.NODE_ENV !== 'production') {
+      this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
+      this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+    }
     defaultRates.forEach((r) => this.memoryStore.rates.set(r.id, { ...r }));
-    this.logger.log(`In-memory database initialized with student ${defaultAccount.student_id} and ${defaultRates.length} remittance routes.`);
+    this.logger.log(`In-memory database initialized with ${defaultRates.length} remittance routes.`);
   }
 
   async getAccountByStudentId(studentId: string): Promise<AccountRecord | null> {
@@ -597,6 +615,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   async deleteAuditLog(id: string): Promise<boolean> {
+    if (!this.useMemoryStore && this.pool) {
+      const result = await this.pool.query('DELETE FROM audit_log WHERE id = $1 RETURNING id', [id]);
+      return result.rowCount > 0;
+    }
     const initialLen = this.memoryStore.audit_log.length;
     this.memoryStore.audit_log = this.memoryStore.audit_log.filter((l) => l.id !== id);
     return this.memoryStore.audit_log.length < initialLen;
@@ -672,6 +694,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (tier) list = list.filter((l) => l.permission_tier === tier);
     if (status) list = list.filter((l) => l.status === status);
     return list.slice(0, limit);
+  }
+
+  async getAuditLogsByAccountId(
+    accountId: string,
+    limit = 50,
+    tier?: string,
+    status?: string,
+  ): Promise<AuditRecord[]> {
+    if (!this.useMemoryStore && this.pool) {
+      const result = await this.pool.query(
+        `SELECT * FROM audit_log
+         WHERE account_id = $1
+           AND ($2::text IS NULL OR permission_tier::text = $2)
+           AND ($3::text IS NULL OR audit_log.status::text = $3)
+         ORDER BY created_at DESC
+         LIMIT $4`,
+        [accountId, tier ?? null, status ?? null, limit],
+      );
+      return result.rows.map(this.formatAudit);
+    }
+
+    let logs = this.memoryStore.audit_log.filter((log) => log.account_id === accountId);
+    if (tier) {
+      logs = logs.filter((log) => log.permission_tier === tier);
+    }
+    if (status) {
+      logs = logs.filter((log) => log.status === status);
+    }
+    return logs.slice(0, limit);
   }
 
   async resetSandboxData() {
