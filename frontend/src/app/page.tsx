@@ -2,16 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { api, authStorage } from '../lib/api';
-import {
-  Account,
-  ChatMessage,
-  RouteItem,
-  RouteComparisonResult,
-  TransferDraft,
-  TransferRecord,
-  AuditLog,
-  AuthSession,
-} from '../types';
+import { Account, ChatMessage, RouteItem, RouteComparisonResult, TransferDraft, TransferRecord, AuditLog, AuthSession } from '../types';
 import confetti from 'canvas-confetti';
 import {
   Send,
@@ -29,12 +20,6 @@ import {
   Info,
   Layers,
   Lock,
-  User,
-  Key,
-  LogOut,
-  LogIn,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 
 export default function Home() {
@@ -46,7 +31,6 @@ export default function Home() {
   const [inputMessage, setInputMessage] = useState('');
   const [activeDraft, setActiveDraft] = useState<TransferDraft | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginInput, setLoginInput] = useState({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
@@ -71,23 +55,14 @@ export default function Home() {
 
   const loadData = async () => {
     try {
-      const [accData, txData, auditData, sessionData] = await Promise.all([
+      const [accData, txData, auditData] = await Promise.all([
         api.getAccount().catch(() => null),
         api.getTransfers().catch(() => []),
         api.getAuditLogs(30).catch(() => []),
-        api.getSession().catch(() => null),
       ]);
       if (accData) setAccount(accData);
       setTransfers(txData);
       setAuditLogs(auditData);
-      if (sessionData && sessionData.active && sessionData.user) {
-        setAuthSession({
-          accessToken: authStorage.getToken() || '',
-          tokenType: 'Bearer',
-          expiresIn: 86400,
-          user: sessionData.user,
-        });
-      }
     } catch (err) {
       console.error('Error fetching data:', err);
     }
@@ -102,11 +77,6 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeDraft]);
-
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
-  };
 
   const handleLoginSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -139,6 +109,11 @@ export default function Home() {
   const handleDemoFill = () => {
     setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
     setLoginError(null);
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -393,8 +368,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="navbar-end flex items-center gap-2.5">
-          <div className="badge bg-white text-[#1E3A8A] border-none font-bold text-xs py-3.5 px-3.5 shadow-sm hidden sm:flex">
+        <div className="navbar-end flex items-center gap-3">
+          <div className="badge bg-teal-600/30 text-teal-200 border-teal-500 font-semibold text-xs py-3 px-3 gap-2">
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+            Sandbox Active
+          </div>
+
+          <div className="badge bg-white text-[#1E3A8A] border-none font-bold text-xs py-3.5 px-4 shadow-sm">
             {account ? (
               <span>
                 {account.studentName.split(' ')[0]}:{' '}
@@ -404,63 +384,6 @@ export default function Home() {
               <span>Connecting...</span>
             )}
           </div>
-
-          {authSession ? (
-            <div className="flex items-center gap-2">
-              <button
-                className="badge bg-teal-500/20 text-teal-200 border-teal-400 font-semibold text-xs py-3 px-2.5 gap-1.5 cursor-pointer hover:bg-teal-500/30 transition-all"
-                onClick={() => setShowTokenInspector(!showTokenInspector)}
-                title="Click to inspect JWT claims & payload"
-              >
-                <Key className="w-3.5 h-3.5 text-teal-300 animate-pulse" />
-                <span className="hidden md:inline font-mono text-[11px]">JWT Active</span>
-              </button>
-
-              <div className="dropdown dropdown-end">
-                <div
-                  tabIndex={0}
-                  role="button"
-                  className="btn btn-sm btn-ghost bg-blue-900/60 hover:bg-blue-900 text-white gap-1.5 border border-blue-700/60 rounded-lg px-2.5"
-                >
-                  <User className="w-3.5 h-3.5 text-teal-300" />
-                  <span className="font-semibold text-xs">{authSession.user.studentName.split(' ')[0]}</span>
-                </div>
-                <ul
-                  tabIndex={0}
-                  className="dropdown-content z-[50] menu p-2 shadow-xl bg-white rounded-xl w-64 text-slate-900 border border-slate-200 text-xs mt-2"
-                >
-                  <li className="menu-title text-slate-400 font-medium">Authenticated Session</li>
-                  <li className="px-3 py-1 font-bold text-slate-800">{authSession.user.studentName}</li>
-                  <li className="px-3 py-0.5 text-slate-500 font-mono text-[11px]">{authSession.user.studentId}</li>
-                  <li className="px-3 py-0.5 text-slate-500 text-[11px] truncate">{authSession.user.email}</li>
-                  <div className="divider my-1"></div>
-                  <li>
-                    <button
-                      onClick={() => setShowTokenInspector(true)}
-                      className="flex items-center gap-2 text-teal-700 font-medium py-1.5"
-                    >
-                      <Key className="w-3.5 h-3.5" /> Inspect JWT Claims
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 text-red-600 font-medium py-1.5"
-                    >
-                      <LogOut className="w-3.5 h-3.5" /> Sign Out Session
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          ) : (
-            <button
-              className="btn btn-sm bg-[#0D9488] hover:bg-teal-700 text-white font-bold gap-1.5 border-none shadow-sm text-xs"
-              onClick={() => setShowLoginModal(true)}
-            >
-              <LogIn className="w-3.5 h-3.5" /> Sign In
-            </button>
-          )}
         </div>
       </header>
 
@@ -1011,216 +934,6 @@ export default function Home() {
           </div>
         )}
       </main>
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0D9488]">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-[#1E3A8A]">Student Authentication</h3>
-                  <p className="text-xs text-slate-500">JWT Session &amp; Password Hashing</p>
-                </div>
-              </div>
-              <button
-                className="btn btn-sm btn-ghost btn-circle text-slate-400 hover:text-slate-600"
-                onClick={() => setShowLoginModal(false)}
-              >
-                X
-              </button>
-            </div>
-
-            <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-3 my-3">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 text-teal-600" /> Evaluation Quick Fill
-                </span>
-                <span className="badge badge-xs bg-teal-600 text-white font-bold">1-Click</span>
-              </div>
-              <p className="text-xs text-teal-900/80 mb-2">
-                Pre-seeded student persona: <code className="font-mono text-xs font-bold text-teal-800">STU-2026-BDT01</code> (Tanvir Ahmed)
-              </p>
-              <button
-                type="button"
-                className="btn btn-xs w-full bg-teal-600 hover:bg-teal-700 text-white border-none font-semibold flex items-center justify-center gap-1"
-                onClick={handleDemoFill}
-              >
-                Auto-Fill Demo Credentials (student123)
-              </button>
-            </div>
-
-            {loginError && (
-              <div className="alert bg-red-50 border border-red-200 text-red-700 text-xs p-2.5 rounded-xl my-2 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
-                <span>{loginError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLoginSubmit} className="space-y-3.5 mt-3">
-              <div>
-                <label className="label py-1 text-xs font-semibold text-slate-700">
-                  Student ID or Email
-                </label>
-                <input
-                  type="text"
-                  className="input input-sm input-bordered w-full text-xs font-mono"
-                  placeholder="e.g. STU-2026-BDT01 or tanvir.student@fintechathon.org"
-                  value={loginInput.studentIdOrEmail}
-                  onChange={(e) =>
-                    setLoginInput((prev) => ({ ...prev, studentIdOrEmail: e.target.value }))
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label py-1 text-xs font-semibold text-slate-700">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="input input-sm input-bordered w-full text-xs font-mono pr-9"
-                    placeholder="Enter password"
-                    value={loginInput.password}
-                    onChange={(e) =>
-                      setLoginInput((prev) => ({ ...prev, password: e.target.value }))
-                    }
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[11px] text-slate-500 space-y-1">
-                <div className="flex items-center gap-1.5 text-slate-700 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#16A34A]" /> Security Specifications
-                </div>
-                <div>• Passwords verified against salted memory-hard <strong>scrypt</strong> hashes.</div>
-                <div>• Session tokens issued as signed <strong>HMAC-SHA256 JWT</strong> (RFC 7519).</div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost flex-1 text-slate-600"
-                  onClick={() => setShowLoginModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="btn btn-sm bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold flex-1 border-none shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  {loginLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
-                  Sign In &amp; Create JWT
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showTokenInspector && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0D9488]">
-                  <Key className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-[#1E3A8A]">JWT Session Inspector</h3>
-                  <p className="text-xs text-slate-500">RFC 7519 Decoded Token Claims</p>
-                </div>
-              </div>
-              <button
-                className="btn btn-sm btn-ghost btn-circle text-slate-400 hover:text-slate-600"
-                onClick={() => setShowTokenInspector(false)}
-              >
-                X
-              </button>
-            </div>
-
-            {authSession ? (
-              <div className="space-y-3">
-                <div>
-                  <span className="text-xs font-semibold text-slate-700">Token Header</span>
-                  <pre className="bg-slate-900 text-teal-300 p-2.5 rounded-lg text-[11px] font-mono mt-1 overflow-x-auto">
-{JSON.stringify({ alg: 'HS256', typ: 'JWT' }, null, 2)}
-                  </pre>
-                </div>
-
-                <div>
-                  <span className="text-xs font-semibold text-slate-700">Decoded Payload Claims</span>
-                  <pre className="bg-slate-900 text-teal-300 p-2.5 rounded-lg text-[11px] font-mono mt-1 overflow-x-auto">
-{JSON.stringify(
-  {
-    sub: authSession.user.studentId,
-    studentId: authSession.user.studentId,
-    studentName: authSession.user.studentName,
-    email: authSession.user.email,
-    role: authSession.user.role,
-    tokenType: authSession.tokenType,
-    expiresIn: authSession.expiresIn,
-  },
-  null,
-  2,
-)}
-                  </pre>
-                </div>
-
-                <div>
-                  <span className="text-xs font-semibold text-slate-700">Raw Bearer Token</span>
-                  <div className="bg-slate-100 border border-slate-200 p-2.5 rounded-lg text-[10px] font-mono text-slate-600 break-all max-h-24 overflow-y-auto">
-                    {authSession.accessToken || 'Session active (Authorization: Bearer <JWT>)'}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-2">
-                  <button
-                    className="btn btn-sm btn-ghost text-red-600 gap-1.5"
-                    onClick={async () => {
-                      await handleLogout();
-                      setShowTokenInspector(false);
-                    }}
-                  >
-                    <LogOut className="w-3.5 h-3.5" /> Sign Out
-                  </button>
-                  <button
-                    className="btn btn-sm bg-[#1E3A8A] hover:bg-blue-900 text-white font-semibold border-none"
-                    onClick={() => setShowTokenInspector(false)}
-                  >
-                    Close Inspector
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-6 text-slate-500 text-xs">
-                <p>No active JWT session. Please log in first.</p>
-                <button
-                  className="btn btn-sm bg-[#0D9488] text-white mt-3 font-semibold border-none"
-                  onClick={() => {
-                    setShowTokenInspector(false);
-                    setShowLoginModal(true);
-                  }}
-                >
-                  Go to Sign In
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -34,3 +34,8 @@ export const DepositFundsInputSchema = z.object({
   studentId: z.string().min(1, 'Student ID is required'),
   amountBdt: z.number().positive('Deposit amount must be greater than zero'),
 });
+
+export const LoginInputSchema = z.object({
+  studentIdOrEmail: z.string().trim().min(1, 'Student ID or Email is required'),
+  password: z.string().min(1, 'Password is required'),
+});

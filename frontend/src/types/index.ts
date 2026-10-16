@@ -14,7 +14,6 @@ export interface AuthUser {
   studentName: string;
   email: string;
   role: string;
-  permissionTier?: string;
   balance: number;
   currency: string;
   dailyLimit?: number;
