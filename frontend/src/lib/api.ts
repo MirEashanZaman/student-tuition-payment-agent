@@ -8,7 +8,6 @@ import {
 } from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-
 let memoryToken: string | null = null;
 
 export const authStorage = {
@@ -22,7 +21,7 @@ export const authStorage = {
     }
     return memoryToken;
   },
-  setToken(token: string | null) {
+  setToken(token: string | null): void {
     memoryToken = token;
     if (typeof window !== 'undefined') {
       try {
@@ -35,6 +34,9 @@ export const authStorage = {
         return;
       }
     }
+  },
+  clearToken(): void {
+    this.setToken(null);
   },
 };
 
@@ -50,23 +52,6 @@ function getHeaders(customHeaders: Record<string, string> = {}): Record<string, 
   return headers;
 }
 
-export const authStorage = {
-  getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('fintech_auth_token');
-  },
-  setToken(token: string): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('fintech_auth_token', token);
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  },
-  clearToken(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem('fintech_auth_token');
-    delete apiClient.defaults.headers.common['Authorization'];
-  },
-};
-
 export const api = {
   async login(studentIdOrEmail: string, password: string): Promise<AuthSession> {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -74,10 +59,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ studentIdOrEmail, password }),
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Login failed: check your credentials.');
     }
+
     const session: AuthSession = await res.json();
     authStorage.setToken(session.accessToken);
     return session;
@@ -86,13 +73,16 @@ export const api = {
   async getSession(): Promise<any> {
     const token = authStorage.getToken();
     if (!token) return null;
+
     const res = await fetch(`${API_BASE}/auth/session`, {
       headers: getHeaders(),
     });
+
     if (!res.ok) {
       authStorage.setToken(null);
       return null;
     }
+
     return res.json();
   },
 
@@ -129,10 +119,12 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ message, studentId }),
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Chat request failed');
     }
+
     return res.json();
   },
 
@@ -146,10 +138,12 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ studentId, amountUsd, tuitionDeadline }),
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to compare routes');
     }
+
     return res.json();
   },
 
@@ -165,10 +159,12 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(params),
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to create transfer draft');
     }
+
     return res.json();
   },
 
@@ -182,10 +178,12 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ confirmationToken, userConsent }),
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to confirm transfer');
     }
+
     return res.json();
   },
 
@@ -194,6 +192,7 @@ export const api = {
       method: 'POST',
       headers: getHeaders(),
     });
+
     if (!res.ok) throw new Error('Failed to cancel draft');
     return res.json();
   },
@@ -202,6 +201,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/transfers?studentId=${studentId}`, {
       headers: getHeaders(),
     });
+
     if (!res.ok) return [];
     return res.json();
   },
@@ -210,6 +210,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/audit?limit=${limit}`, {
       headers: getHeaders(),
     });
+
     if (!res.ok) return [];
     return res.json();
   },
@@ -219,6 +220,7 @@ export const api = {
       method: 'POST',
       headers: getHeaders(),
     });
+
     if (!res.ok) throw new Error('Failed to reset sandbox');
     return res.json();
   },
@@ -227,48 +229,8 @@ export const api = {
     const res = await fetch(`${API_BASE}/sandbox/export-logs`, {
       headers: getHeaders(),
     });
+
     if (!res.ok) throw new Error('Failed to export logs');
     return res.json();
-  },
-
-
-
-  async getSession(): Promise<any> {
-    try {
-      const token = this.getAuthToken();
-      if (!token) return null;
-      const response = await apiClient.get('/auth/session', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
-    } catch (error) {
-      this.clearAuthToken();
-      return null;
-    }
-  },
-
-  async logout(studentId?: string): Promise<any> {
-    try {
-      const token = this.getAuthToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await apiClient.post('/auth/logout', { studentId }, { headers });
-      this.clearAuthToken();
-      return response.data;
-    } catch (error) {
-      this.clearAuthToken();
-      return { success: true };
-    }
-  },
-
-  async getDemoCredentials(): Promise<any> {
-    try {
-      const response = await apiClient.get('/auth/demo-credentials');
-      return response.data;
-    } catch (error) {
-      return {
-        studentId: 'STU-2026-BDT01',
-        password: 'student123',
-      };
-    }
   },
 };
