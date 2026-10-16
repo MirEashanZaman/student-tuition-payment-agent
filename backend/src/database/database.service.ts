@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { Pool, QueryResult } from 'pg';
+import { Pool } from 'pg';
+import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -427,7 +428,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   async writeAuditLog(entry: Partial<AuditRecord>): Promise<AuditRecord> {
     const fullRecord: AuditRecord = {
-      id: entry.id || (await import('uuid')).v4(),
+      id: entry.id || uuidv4(),
       event_type: entry.event_type || 'SYSTEM_EVENT',
       permission_tier: entry.permission_tier || 'READ_ONLY',
       account_id: entry.account_id,
