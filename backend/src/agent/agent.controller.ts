@@ -12,12 +12,19 @@ import {
   Req,
   Optional,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { IsNotEmpty, IsString, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './tools/agent-tools.service';
 import { DatabaseService } from '../database/database.service';
 import { JwtService } from '../auth/jwt.service';
+import {
+  JwtAuthGuard,
+  PermissionTierGuard,
+  RequirePermissionTier,
+} from '../auth/auth.guard';
+import { PermissionTier } from './guardrails/permission-tier.guard';
 
 export class ChatDto {
   @IsString()
