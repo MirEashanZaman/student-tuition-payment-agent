@@ -165,7 +165,7 @@ The backend is engineered with production-grade software design patterns that is
 | Feature | Pattern | Implementation Details |
 |---|---|---|
 | Route comparison and ranking | Strategy | Distinct scoring classes for Balanced, Cheapest, Fastest, and Reliable (`RouteScoringStrategy`). When a student indicates urgency (e.g., "prioritize speed"), the engine swaps strategy dynamically at runtime. |
-| Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Validated transitions: `PENDING_CONFIRMATION` -> `CONFIRMED` -> `EXECUTED` -> `SETTLED`. If downstream clearance encounters a failure, a compensating transaction automatically executes, releasing reserved funds back to the student account and transitioning state to `ROLLED_BACK`. |
+| Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Validated transitions include `PENDING_CONFIRMATION` -> `CONFIRMED` -> `EXECUTED` -> `SETTLED`. The authenticated owner can request compensation for `CONFIRMED`, `EXECUTED`, or `FAILED` transfers. Account restoration and the `ROLLED_BACK` status change occur atomically; pending, settled, cancelled, blocked, or already rolled-back transfers cannot be compensated. |
 | Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small, decoupled handlers run sequentially: `PromptInjectionCheckHandler`, `PermissionTierCheckHandler`, `AnomalyCheckHandler`, `FinancialLimitCheckHandler`, `ConfirmationCheckHandler`. Any check can short-circuit, reject execution, and emit an immutable security audit event. |
 | The 5 agent tools exposed to the LLM | Facade | `AgentToolsService` acts as a unified Facade that coordinates the bank gateway, rates engine, safety guardrails, state machine, and event emitter behind a clean tool interface for the AI assistant. |
 | LLM and mock bank | Dependency Inversion (the D in SOLID) | Business logic depends strictly on abstract interfaces (`ILlmClient`, `IBankGateway`). Production utilizes Gemini AI and direct banking rails, while automated test suites inject mock implementations without external network dependencies. |
@@ -259,7 +259,7 @@ The repository incorporates an enterprise-grade automated CI/CD pipeline impleme
 
 | Stage | Trigger | Actions Executed | Purpose |
 |---|---|---|---|
-| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 22 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
+| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 35 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
 | **Frontend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm run build` | Validates Next.js SSR and client bundle compilation with static page optimization. |
 | **Docker Build Verification** | On CI success | `docker build` backend and frontend images | Ensures multi-stage container builds succeed reproducibly for production deployments. |
 | **Security & Cleanliness Scan** | Push & PR | Node.js automated repository audit | Enforces code cleanliness, verifies zero exposed secrets, and prevents unauthorized syntax patterns. |
