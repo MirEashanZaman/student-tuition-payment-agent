@@ -7,7 +7,7 @@
 ---
 
 ### Segment 1: Introduction & Problem Setup (0:00 – 0:45)
-- **Visual:** Open browser on `http://localhost:3000`. Show the sleek dark fintech interface, glowing brand logo, and student profile (`Tanvir Ahmed | 850,000 BDT`).
+- **Visual:** Open browser on `http://localhost:4567`. Show the sleek dark fintech interface, glowing brand logo, and student profile (`Tanvir Ahmed | 850,000 BDT`).
 - **Narration:**
   > *"Hello judges! Welcome to our FinTechathon 2026 project: The Student Tuition Payment Agent. When international students from Bangladesh need to pay foreign university tuition, they face confusing exchange rate spreads, hidden wire fees, and the constant fear of delayed payments missing university deadlines.*
   > *Today, we demonstrate our autonomous AI agent built with NestJS, Next.js, and PostgreSQL, governed by strict permission tiers and financial safety guardrails."*
