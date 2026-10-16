@@ -104,21 +104,53 @@ export default function LoginPage() {
           </div>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-slate-700/60">
-          <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Demo Persona</p>
-          <button
-            type="button"
-            onClick={() => handleQuickDemoFill('STU-2026-BDT01', 'student123')}
-            className="w-full text-left p-3 rounded-xl bg-slate-950/40 border border-slate-700/60 hover:border-slate-600 transition-colors flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white font-mono">Tanvir Ahmed (STU-2026-BDT01)</div>
-              <div className="text-[11px] text-slate-400 font-mono">student123 | 850,000 BDT</div>
-            </div>
-            <span className="text-[11px] font-semibold text-teal-400 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded-md">
-              Load Demo
+        <div className="mt-6 pt-5 border-t border-slate-700/60">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Demo Account Credentials</span>
+            <span className="text-[10px] font-bold text-teal-400 bg-teal-950/80 border border-teal-800/80 px-2 py-0.5 rounded-full">
+              Sandbox Ready
             </span>
-          </button>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-700/80 space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Student ID:</span>
+              <span className="font-mono font-bold text-teal-300">STU-2026-BDT01</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Password:</span>
+              <span className="font-mono font-bold text-teal-300">student123</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Student Name:</span>
+              <span className="font-medium text-slate-200">Tanvir Ahmed</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Demo Balance:</span>
+              <span className="font-mono font-bold text-emerald-400">850,000.00 BDT</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleQuickDemoFill('STU-2026-BDT01', 'student123')}
+              className="w-full mt-2 py-2 px-3 rounded-lg bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>Auto-fill Demo Credentials</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 text-center">
+          <p className="text-xs text-slate-400">
+            Need a new account?{' '}
+            <button
+              type="button"
+              onClick={() => router.push('/registration')}
+              className="font-semibold text-teal-400 hover:text-teal-300 underline underline-offset-4 transition-colors"
+            >
+              Go to Student Registration
+            </button>
+          </p>
         </div>
 
         <div className="mt-6 flex items-center justify-center gap-2 text-slate-500 text-xs">
