@@ -228,6 +228,18 @@ DAILY_TRANSFER_LIMIT_BDT=1000000
 
 ---
 
+## Automated CI/CD Pipeline
+
+The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main` and `Eashan`:
+
+1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (22/22 tests passing), and NestJS production build.
+2. **Frontend CI**: Dependency installation and Next.js static and server optimization build.
+3. **Docker Verification**: Builds multi-stage Docker images for both services to ensure container reproducibility.
+4. **Security & Cleanliness**: Automated Node.js audit ensuring zero exposed secrets and code policy compliance.
+5. **Deployment Verification**: Verifies Docker Compose and environment manifests for deployment.
+
+---
+
 ## Submission Deliverables Index
 
 All 6 official FinTechathon submission documents are prepared in the repository:
