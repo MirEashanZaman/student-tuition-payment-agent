@@ -22,6 +22,7 @@ interface SystemHealth {
   activeRailsCount: number;
   perTransferLimitBdt: number;
   dailyTransferLimitBdt: number;
+  currency: string;
   nodeVersion: string;
   environment: string;
 }
@@ -40,25 +41,39 @@ async function getSystemHealth(): Promise<SystemHealth> {
 
     const rates = await res.json();
 
+    const perTransferLimitBdt =
+      parseFloat(process.env.NEXT_PUBLIC_MAX_TRANSFER_LIMIT || '') || 400000.0;
+    const dailyTransferLimitBdt =
+      parseFloat(process.env.NEXT_PUBLIC_DAILY_TRANSFER_LIMIT || '') || 1000000.0;
+    const currency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'BDT';
+
     return {
       backendOnline: true,
       latencyMs,
       timestamp: new Date().toISOString(),
       activeRailsCount: Array.isArray(rates) ? rates.length : 4,
-      perTransferLimitBdt: 400000.0,
-      dailyTransferLimitBdt: 1000000.0,
+      perTransferLimitBdt,
+      dailyTransferLimitBdt,
+      currency,
       nodeVersion: process.version || 'v20.x',
       environment: process.env.NODE_ENV || 'production',
     };
   } catch {
     const latencyMs = Date.now() - start;
+    const perTransferLimitBdt =
+      parseFloat(process.env.NEXT_PUBLIC_MAX_TRANSFER_LIMIT || '') || 400000.0;
+    const dailyTransferLimitBdt =
+      parseFloat(process.env.NEXT_PUBLIC_DAILY_TRANSFER_LIMIT || '') || 1000000.0;
+    const currency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'BDT';
+
     return {
       backendOnline: false,
       latencyMs,
       timestamp: new Date().toISOString(),
       activeRailsCount: 0,
-      perTransferLimitBdt: 400000.0,
-      dailyTransferLimitBdt: 1000000.0,
+      perTransferLimitBdt,
+      dailyTransferLimitBdt,
+      currency,
       nodeVersion: process.version || 'v20.x',
       environment: process.env.NODE_ENV || 'production',
     };
@@ -250,13 +265,13 @@ export default async function StatusPage() {
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">Per-Transfer Hard Cap:</span>
                 <span className="font-mono font-bold text-[#16A34A]">
-                  {health.perTransferLimitBdt.toLocaleString()} BDT
+                  {health.perTransferLimitBdt.toLocaleString()} {health.currency}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">Daily Remittance Cap:</span>
                 <span className="font-mono font-bold text-[#16A34A]">
-                  {health.dailyTransferLimitBdt.toLocaleString()} BDT
+                  {health.dailyTransferLimitBdt.toLocaleString()} {health.currency}
                 </span>
               </div>
             </div>
