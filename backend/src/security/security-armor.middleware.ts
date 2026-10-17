@@ -31,7 +31,7 @@ export class SecurityArmorMiddleware implements NestMiddleware {
   ];
 
   private readonly pathTraversalPatterns: RegExp[] = [
-    /(?:\.\.[\/\\]|%2e%2e[\/\\]|%2e%2e%2f|%252e%252e)/i,
+    /(?:\.\.[\/\\]|\.\.%2f|\.\.%252f|%2e%2e[\/\\]|%2e%2e%2f|%252e%252e|%252e%2f)/i,
     /(?:\/etc\/(?:passwd|shadow|hosts)|\/proc\/self\/environ|c:\\windows\\system32)/i,
   ];
 
@@ -44,10 +44,11 @@ export class SecurityArmorMiddleware implements NestMiddleware {
   ];
 
   use(request: Request, response: Response, next: NextFunction): void {
-    if (request.method === 'OPTIONS') {
+    if (request.method === 'OPTIONS' || (request as any).__securityArmorChecked) {
       next();
       return;
     }
+    (request as any).__securityArmorChecked = true;
     const threat = this.scanRequest(request);
     if (threat.detected) {
       this.recordThreat(request, threat);
@@ -69,16 +70,21 @@ export class SecurityArmorMiddleware implements NestMiddleware {
       const rawCheck = this.inspectString(rawUrl);
       if (rawCheck.detected) return rawCheck;
 
-      try {
-        const decoded = decodeURIComponent(rawUrl);
-        const decodedCheck = this.inspectString(decoded);
-        if (decodedCheck.detected) return decodedCheck;
-      } catch {
-        return {
-          detected: true,
-          threatType: 'MALFORMED_URI_ATTACK',
-          matchedPattern: 'URIError on decodeURIComponent',
-        };
+      let current = rawUrl;
+      for (let i = 0; i < 3; i += 1) {
+        try {
+          const decoded = decodeURIComponent(current);
+          if (decoded === current) break;
+          current = decoded;
+          const decodedCheck = this.inspectString(current);
+          if (decodedCheck.detected) return decodedCheck;
+        } catch {
+          return {
+            detected: true,
+            threatType: 'MALFORMED_URI_ATTACK',
+            matchedPattern: 'URIError on decodeURIComponent',
+          };
+        }
       }
     }
 
@@ -186,43 +192,65 @@ export class SecurityArmorMiddleware implements NestMiddleware {
       };
     }
 
-    for (const pattern of this.shellBombPatterns) {
-      if (pattern.test(text)) {
-        return {
-          detected: true,
-          threatType: 'SHELL_BOMB',
-          matchedPattern: pattern.source,
-        };
+    const checkPatterns = (str: string): ThreatDetectionResult => {
+      for (const pattern of this.shellBombPatterns) {
+        if (pattern.test(str)) {
+          return {
+            detected: true,
+            threatType: 'SHELL_BOMB',
+            matchedPattern: pattern.source,
+          };
+        }
       }
-    }
 
-    for (const pattern of this.commandInjectionPatterns) {
-      if (pattern.test(text)) {
-        return {
-          detected: true,
-          threatType: 'COMMAND_INJECTION',
-          matchedPattern: pattern.source,
-        };
+      for (const pattern of this.commandInjectionPatterns) {
+        if (pattern.test(str)) {
+          return {
+            detected: true,
+            threatType: 'COMMAND_INJECTION',
+            matchedPattern: pattern.source,
+          };
+        }
       }
-    }
 
-    for (const pattern of this.pathTraversalPatterns) {
-      if (pattern.test(text)) {
-        return {
-          detected: true,
-          threatType: 'PATH_TRAVERSAL',
-          matchedPattern: pattern.source,
-        };
+      for (const pattern of this.pathTraversalPatterns) {
+        if (pattern.test(str)) {
+          return {
+            detected: true,
+            threatType: 'PATH_TRAVERSAL',
+            matchedPattern: pattern.source,
+          };
+        }
       }
-    }
 
-    for (const pattern of this.sqlInjectionPatterns) {
-      if (pattern.test(text)) {
-        return {
-          detected: true,
-          threatType: 'SQL_INJECTION',
-          matchedPattern: pattern.source,
-        };
+      for (const pattern of this.sqlInjectionPatterns) {
+        if (pattern.test(str)) {
+          return {
+            detected: true,
+            threatType: 'SQL_INJECTION',
+            matchedPattern: pattern.source,
+          };
+        }
+      }
+
+      return { detected: false };
+    };
+
+    const direct = checkPatterns(text);
+    if (direct.detected) return direct;
+
+    if (text.includes('%')) {
+      let cur = text;
+      for (let i = 0; i < 3; i += 1) {
+        try {
+          const dec = decodeURIComponent(cur);
+          if (dec === cur) break;
+          cur = dec;
+          const res = checkPatterns(cur);
+          if (res.detected) return res;
+        } catch {
+          break;
+        }
       }
     }
 
