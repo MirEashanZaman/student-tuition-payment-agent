@@ -20,3 +20,4 @@ Log entry 19: feat(frontend): integrate Start Payment Assistant CTA navigation
 Log entry 20: feat(frontend): embed Student Sign In modal trigger in hero section
 Log entry 21: feat(frontend): build interactive Financial Dashboard entry panel
 Log entry 22: feat(frontend): add tri-tier permission highlight card
+Log entry 23: feat(frontend): add corridor scoring breakdown section
