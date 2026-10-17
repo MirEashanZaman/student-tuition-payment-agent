@@ -1,240 +1,286 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  Activity,
-  Server,
-  ShieldCheck,
   Zap,
-  ArrowRight,
-  Home as HomeIcon,
-  CheckCircle2,
+  Server,
+  Activity,
+  ShieldCheck,
   Clock,
   Database,
   Lock,
+  ArrowRight,
+  Home as HomeIcon,
+  Layers,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
-interface SystemHealthReport {
-  timestamp: string;
+interface SystemHealth {
   backendOnline: boolean;
   latencyMs: number;
+  timestamp: string;
   activeRailsCount: number;
-  environment: string;
   perTransferLimitBdt: number;
   dailyTransferLimitBdt: number;
-  rateLimiterActive: boolean;
-  jwtSecurityActive: boolean;
+  nodeVersion: string;
+  environment: string;
 }
 
-async function getSystemHealth(): Promise<SystemHealthReport> {
+async function getSystemHealth(): Promise<SystemHealth> {
   const start = Date.now();
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
-  let backendOnline = false;
-  let activeRailsCount = 0;
 
   try {
     const res = await fetch(`${apiBase}/rates`, { cache: 'no-store' });
-    if (res.ok) {
-      backendOnline = true;
-      const data = await res.json();
-      activeRailsCount = Array.isArray(data) ? data.length : 0;
+    const latencyMs = Date.now() - start;
+
+    if (!res.ok) {
+      throw new Error(`Backend returned status ${res.status}`);
     }
+
+    const rates = await res.json();
+
+    return {
+      backendOnline: true,
+      latencyMs,
+      timestamp: new Date().toISOString(),
+      activeRailsCount: Array.isArray(rates) ? rates.length : 4,
+      perTransferLimitBdt: 400000.0,
+      dailyTransferLimitBdt: 1000000.0,
+      nodeVersion: process.version || 'v20.x',
+      environment: process.env.NODE_ENV || 'production',
+    };
   } catch {
-    backendOnline = false;
+    const latencyMs = Date.now() - start;
+    return {
+      backendOnline: false,
+      latencyMs,
+      timestamp: new Date().toISOString(),
+      activeRailsCount: 0,
+      perTransferLimitBdt: 400000.0,
+      dailyTransferLimitBdt: 1000000.0,
+      nodeVersion: process.version || 'v20.x',
+      environment: process.env.NODE_ENV || 'production',
+    };
   }
-
-  const latencyMs = Date.now() - start;
-
-  return {
-    timestamp: new Date().toISOString(),
-    backendOnline,
-    latencyMs,
-    activeRailsCount,
-    environment: process.env.NODE_ENV || 'development',
-    perTransferLimitBdt: 400000,
-    dailyTransferLimitBdt: 1000000,
-    rateLimiterActive: true,
-    jwtSecurityActive: true,
-  };
 }
 
 export default async function StatusPage() {
   const health = await getSystemHealth();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <header className="navbar bg-[#1E3A8A] text-white px-6 py-3 shadow-md sticky top-0 z-40">
-        <div className="navbar-start flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-xl bg-[#0D9488] flex items-center justify-center text-white font-extrabold shadow-sm">
-              <Zap className="w-6 h-6" />
+    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
+      <header className="sticky top-0 z-40 bg-slate-950/80 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-8 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+              <Zap className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-white leading-tight">FinTechathon 2026</h1>
-              <p className="text-xs text-teal-300 font-medium">Topic C: Cross-Border Student Tuition Payment Agent</p>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                  Topic C
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Cross-Border Student Tuition Agent</p>
             </div>
           </Link>
-        </div>
 
-        <div className="navbar-end flex items-center gap-3">
-          <Link
-            href="/"
-            className="btn btn-sm btn-ghost text-blue-200 hover:text-white flex items-center gap-1.5"
-          >
-            <HomeIcon className="w-4 h-4" />
-            <span>Overview</span>
-          </Link>
-          <Link
-            href="/rates"
-            className="btn btn-sm btn-ghost text-purple-300 hover:text-white"
-          >
-            <span>ISR Corridors</span>
-          </Link>
+          <nav className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span>Overview</span>
+            </Link>
+            <Link
+              href="/chat"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Studio</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              href="/audit"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Audit</span>
+            </Link>
+            <span className="w-px h-4 bg-slate-800 my-auto mx-1"></span>
+            <Link
+              href="/rates"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-300 hover:text-white hover:bg-purple-950/40 transition-colors"
+            >
+              Rates (ISR)
+            </Link>
+            <Link
+              href="/status"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm"
+            >
+              Status (SSR)
+            </Link>
+            <Link
+              href="/faq"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              FAQ (SSG)
+            </Link>
+          </nav>
+
           <Link
             href="/chat"
-            className="btn btn-sm bg-[#0D9488] hover:bg-teal-700 text-white border-none font-bold flex items-center gap-1.5"
+            className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs shadow-md shadow-teal-500/20 flex items-center gap-1.5 transition-all"
           >
-            <span>Agent Chat</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Launch Studio</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-10 space-y-8">
-        <div className="bg-gradient-to-br from-[#1E3A8A] via-[#172554] to-[#0F172A] text-white rounded-3xl p-8 sm:p-10 shadow-xl border border-blue-900/50">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <div className="bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-semibold">
               <Activity className="w-3.5 h-3.5" />
               <span>Institutional Liveness &amp; Compliance Audit</span>
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold font-mono">
-              <Server className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold font-mono">
+              <Server className="w-3.5 h-3.5 text-amber-400" />
               <span>SSR: Server-Side Rendered (Dynamic Per-Request)</span>
             </div>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
             Real-Time System Liveness Verifier
-          </h2>
-          <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl leading-relaxed">
+          </h1>
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
             Fresh server-rendered system audit metrics evaluating backend connection latency, rate limiting policies, and guardrail limits evaluated per request with zero cache stale risk.
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Server className="w-4 h-4 text-amber-700 shrink-0" />
+        <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-800/50 text-amber-200 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Server className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
               <strong>Architectural Note:</strong> This page utilizes <strong>SSR (Server-Side Rendering)</strong> with <code>cache: &apos;no-store&apos;</code>. Every single reload re-executes on the server, guaranteeing down-to-the-millisecond freshness for compliance auditing.
             </span>
           </div>
-          <span className="font-mono text-[11px] font-bold text-amber-700 shrink-0 hidden sm:inline">
+          <span className="font-mono text-[11px] font-bold text-amber-300 shrink-0 hidden sm:inline bg-amber-900/50 border border-amber-700/60 px-2 py-0.5 rounded">
             force-dynamic
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="card bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-              <Server className="w-4 h-4 text-[#1E3A8A]" />
+          <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-xl backdrop-blur-md">
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <Server className="w-4 h-4 text-blue-400" />
               <span>Backend Rails Status</span>
             </div>
-            <div className="text-xl font-bold flex items-center gap-2 mt-1">
+            <div className="text-xl font-bold flex items-center gap-2 mt-2">
               {health.backendOnline ? (
                 <>
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-emerald-700 font-mono">ONLINE</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="text-emerald-400 font-mono">ONLINE</span>
                 </>
               ) : (
                 <>
-                  <span className="w-3 h-3 rounded-full bg-rose-500"></span>
-                  <span className="text-rose-700 font-mono">OFFLINE</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                  <span className="text-rose-400 font-mono">OFFLINE</span>
                 </>
               )}
             </div>
-            <span className="text-[10px] text-slate-400 block mt-1">NestJS port 4568</span>
+            <span className="text-[11px] text-slate-500 block mt-1 font-mono">NestJS port 4568</span>
           </div>
 
-          <div className="card bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-              <Clock className="w-4 h-4 text-[#0D9488]" />
+          <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-xl backdrop-blur-md">
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <Clock className="w-4 h-4 text-teal-400" />
               <span>Round-Trip Latency</span>
             </div>
-            <div className="text-xl font-bold font-mono text-[#0D9488] mt-1">
+            <div className="text-xl font-bold font-mono text-teal-300 mt-2">
               {health.latencyMs} ms
             </div>
-            <span className="text-[10px] text-slate-400 block mt-1">Live ping measurement</span>
+            <span className="text-[11px] text-slate-500 block mt-1">Live ping measurement</span>
           </div>
 
-          <div className="card bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-              <Database className="w-4 h-4 text-purple-600" />
+          <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-xl backdrop-blur-md">
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <Database className="w-4 h-4 text-purple-400" />
               <span>Active Corridors</span>
             </div>
-            <div className="text-xl font-bold font-mono text-purple-700 mt-1">
+            <div className="text-xl font-bold font-mono text-purple-300 mt-2">
               {health.activeRailsCount} Routes
             </div>
-            <span className="text-[10px] text-slate-400 block mt-1">BDT &rarr; USD corridors</span>
+            <span className="text-[11px] text-slate-500 block mt-1">BDT &rarr; USD corridors</span>
           </div>
 
-          <div className="card bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-              <Lock className="w-4 h-4 text-teal-600" />
+          <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-xl backdrop-blur-md">
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <Lock className="w-4 h-4 text-amber-400" />
               <span>Security Guardrails</span>
             </div>
-            <div className="text-xl font-bold font-mono text-teal-700 mt-1">
+            <div className="text-xl font-bold font-mono text-amber-300 mt-2">
               ENFORCED
             </div>
-            <span className="text-[10px] text-slate-400 block mt-1">Tri-tier isolation active</span>
+            <span className="text-[11px] text-slate-500 block mt-1">Tri-tier isolation active</span>
           </div>
         </div>
 
-        <div className="card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-[#0D9488]" />
+        <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4 backdrop-blur-md">
+          <h2 className="font-bold text-base text-white flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-teal-400" />
             <span>SSR Cryptographic &amp; Financial Compliance Verification</span>
-          </h3>
+          </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Server Render Timestamp:</span>
-                <span className="font-mono font-bold text-slate-900">{health.timestamp}</span>
+                <span className="text-slate-400">Server Render Timestamp:</span>
+                <span className="font-mono font-bold text-white">{health.timestamp}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Per-Transfer Hard Cap:</span>
-                <span className="font-mono font-bold text-emerald-700">
+                <span className="text-slate-400">Per-Transfer Hard Cap:</span>
+                <span className="font-mono font-bold text-emerald-400">
                   {health.perTransferLimitBdt.toLocaleString()} BDT
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Daily Remittance Cap:</span>
-                <span className="font-mono font-bold text-emerald-700">
+                <span className="text-slate-400">Daily Remittance Cap:</span>
+                <span className="font-mono font-bold text-emerald-400">
                   {health.dailyTransferLimitBdt.toLocaleString()} BDT
                 </span>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Rate Limiter Defense:</span>
-                <span className="font-bold text-emerald-700">Active (5 auth / 100 api per min)</span>
+                <span className="text-slate-400">Rate Limiter Defense:</span>
+                <span className="font-bold text-emerald-400">Active (5 auth / 100 api per min)</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Password Hashing Algorithm:</span>
-                <span className="font-mono font-bold text-[#1E3A8A]">Node.js Scrypt 64-byte</span>
+                <span className="text-slate-400">Password Hashing Algorithm:</span>
+                <span className="font-mono font-bold text-teal-300">Node.js Scrypt 64-byte</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">JWT Token Signature Rail:</span>
-                <span className="font-mono font-bold text-[#1E3A8A]">HMAC-SHA256 (Stateless)</span>
+                <span className="text-slate-400">JWT Token Signature Rail:</span>
+                <span className="font-mono font-bold text-teal-300">HMAC-SHA256 (Stateless)</span>
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-slate-500 py-6 border-t border-slate-200">
-        FinTechathon 2026 - Server-Side Rendering (SSR) Live Compliance Engine
+      <footer className="text-center text-xs text-slate-500 py-6 border-t border-slate-800/80">
+        FinTechathon 2026 • Server-Side Rendering (SSR) Live Compliance Engine
       </footer>
     </div>
   );
