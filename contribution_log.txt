@@ -32,3 +32,4 @@ Log entry 31: docs(api): document websocket payload format for live FX rates
 Log entry 32: refactor(cleanliness): strip redundant console statements
 Log entry 33: refactor(cleanliness): format JSON schema properties neatly
 Log entry 34: test(agent): verify resilience against nested prompt injection
+Log entry 35: test(security): assert rejection of tampered authorization headers
