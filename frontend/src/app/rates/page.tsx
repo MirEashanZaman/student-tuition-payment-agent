@@ -106,69 +106,69 @@ export default async function RatesPage() {
   const rates = await getRates();
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
-      <header className="sticky top-0 z-40 bg-slate-950/80 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-8 py-3">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#0D9488] selection:text-white">
+      <header className="sticky top-0 z-40 bg-[#1E3A8A] border-b border-[#1E3A8A] text-white px-4 sm:px-8 py-3 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
-              <Zap className="w-5 h-5" />
+          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none">
+            <div className="w-9 h-9 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold">
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
-                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-[#0D9488] text-white">
                   Topic C
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">Cross-Border Student Tuition Agent</p>
+              <p className="text-[11px] text-blue-100 font-medium">Cross-Border Student Tuition Agent</p>
             </div>
           </Link>
 
-          <nav className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+          <nav className="hidden md:flex items-center gap-1.5 bg-[#172E6F] border border-[#2B4C9B] p-1 rounded-lg">
             <Link
               href="/"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
             >
               <HomeIcon className="w-3.5 h-3.5" />
               <span>Overview</span>
             </Link>
             <Link
               href="/chat"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
             >
               <Activity className="w-3.5 h-3.5" />
               <span>Studio</span>
             </Link>
             <Link
               href="/dashboard"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
             >
               <Layers className="w-3.5 h-3.5" />
               <span>Dashboard</span>
             </Link>
             <Link
               href="/audit"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Audit</span>
             </Link>
-            <span className="w-px h-4 bg-slate-800 my-auto mx-1"></span>
+            <span className="w-px h-4 bg-[#2B4C9B] my-auto mx-1"></span>
             <Link
               href="/rates"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-sm"
+              className="px-3 py-1.5 rounded text-xs font-semibold bg-[#0D9488] text-white shadow-sm"
             >
               Rates (ISR)
             </Link>
             <Link
               href="/status"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-300 hover:text-white hover:bg-amber-950/40 transition-colors"
+              className="px-2.5 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors"
             >
               Status (SSR)
             </Link>
             <Link
               href="/faq"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="px-2.5 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors"
             >
               FAQ (SSG)
             </Link>
@@ -176,7 +176,7 @@ export default async function RatesPage() {
 
           <Link
             href="/chat"
-            className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs shadow-md shadow-teal-500/20 flex items-center gap-1.5 transition-all"
+            className="py-2 px-3.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-xs shadow-sm flex items-center gap-1.5 transition-colors"
           >
             <span>Launch Studio</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -185,33 +185,33 @@ export default async function RatesPage() {
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        <div className="bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-semibold">
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 sm:p-8 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-xs font-semibold">
               <TrendingUp className="w-3.5 h-3.5" />
               <span>Remittance Corridors &amp; FX Benchmark</span>
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-bold font-mono">
-              <RefreshCw className="w-3 h-3 text-purple-400" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#EFF6FF] border border-[#DBEAFE] text-[#1E3A8A] text-xs font-bold font-mono">
+              <RefreshCw className="w-3 h-3 text-[#2563EB]" />
               <span>ISR: Incremental Static Regeneration (revalidate: 60s)</span>
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A] mb-2">
             Cross-Border Remittance Corridors
           </h1>
-          <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
-            Public clearing rails and live foreign exchange rates for student tuition transfers from Bangladesh to North American and European universities. Pre-rendered statically with background revalidation every 60 seconds.
+          <p className="text-sm sm:text-base text-[#64748B] max-w-3xl leading-relaxed">
+            Public clearing rails and verified foreign exchange rates for student tuition transfers from Bangladesh to international accredited universities. Pre-rendered statically with background revalidation every 60 seconds.
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-purple-950/30 border border-purple-800/50 text-purple-200 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E3A8A] text-xs flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <RefreshCw className="w-4 h-4 text-purple-400 shrink-0" />
+            <RefreshCw className="w-4 h-4 text-[#2563EB] shrink-0" />
             <span>
-              <strong>Architectural Note:</strong> This page utilizes <strong>ISR (Incremental Static Regeneration)</strong>. Requests are served in under 10ms from the edge cache, and Next.js re-queries the banking API in the background every 60 seconds when new visitors arrive.
+              <strong>Architectural Note:</strong> This page utilizes <strong>ISR (Incremental Static Regeneration)</strong>. Requests are served from edge cache in under 10ms, while Next.js refreshes exchange rate data asynchronously in the background.
             </span>
           </div>
-          <span className="font-mono text-[11px] font-bold text-purple-300 shrink-0 hidden sm:inline bg-purple-900/50 border border-purple-700/60 px-2 py-0.5 rounded">
+          <span className="font-mono text-[11px] font-bold text-[#1E3A8A] shrink-0 hidden sm:inline bg-white border border-[#BFDBFE] px-2 py-0.5 rounded">
             revalidate = 60s
           </span>
         </div>
@@ -220,62 +220,62 @@ export default async function RatesPage() {
           {rates.map((rate) => (
             <div
               key={rate.id}
-              className="bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-6 shadow-xl transition-all flex flex-col justify-between backdrop-blur-md"
+              className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-xl p-6 shadow-sm transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex justify-between items-start gap-3 mb-3">
                   <div>
-                    <h3 className="font-bold text-base text-white">{rate.provider_name}</h3>
+                    <h3 className="font-bold text-base text-[#0F172A]">{rate.provider_name}</h3>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#EFF6FF] text-[#1E3A8A] border border-[#DBEAFE]">
                         {rate.source_currency} &rarr; {rate.target_currency}
                       </span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-800/60">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F0FDFA] text-[#0D9488] border border-[#CCFBF1]">
                         {rate.compliance_rating}
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[11px] text-slate-400 block font-medium">FX Exchange Rate</span>
-                    <span className="text-xl font-bold font-mono text-teal-300">
+                    <span className="text-[11px] text-[#64748B] block font-medium">FX Exchange Rate</span>
+                    <span className="text-xl font-bold font-mono text-[#0D9488]">
                       {rate.inverse_rate.toFixed(2)} BDT
                     </span>
-                    <span className="text-[10px] text-slate-500 block">per 1 USD</span>
+                    <span className="text-[10px] text-[#64748B] block">per 1 USD</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 p-3 bg-slate-950/80 rounded-xl border border-slate-800/80 text-xs my-4">
+                <div className="grid grid-cols-3 gap-2 p-3 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] text-xs my-4">
                   <div>
-                    <span className="text-slate-400 text-[10px] block">Flat Wire Fee</span>
-                    <span className="font-bold font-mono text-white mt-0.5 block">
+                    <span className="text-[#64748B] text-[10px] block">Flat Wire Fee</span>
+                    <span className="font-bold font-mono text-[#0F172A] mt-0.5 block">
                       {rate.transfer_fee_flat_bdt.toLocaleString()} BDT
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] block">Variable Margin</span>
-                    <span className="font-bold font-mono text-white mt-0.5 block">
+                    <span className="text-[#64748B] text-[10px] block">Variable Margin</span>
+                    <span className="font-bold font-mono text-[#0F172A] mt-0.5 block">
                       {(rate.transfer_fee_percent * 100).toFixed(2)}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] block">Campus Reliability</span>
-                    <span className="font-bold font-mono text-emerald-400 mt-0.5 block">
+                    <span className="text-[#64748B] text-[10px] block">Campus Reliability</span>
+                    <span className="font-bold font-mono text-[#16A34A] mt-0.5 block">
                       {Math.round(rate.reliability_score * 100)}%
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-300 mb-4">
-                  <Clock className="w-4 h-4 text-teal-400 shrink-0" />
+                <div className="flex items-center gap-2 text-xs text-[#0F172A] mb-4">
+                  <Clock className="w-4 h-4 text-[#0D9488] shrink-0" />
                   <span>Settlement Speed: <strong>{rate.speed_description}</strong></span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
-                <span className="text-[11px] text-slate-500 font-mono">ID: {rate.id}</span>
+              <div className="pt-3 border-t border-[#E2E8F0] flex justify-between items-center">
+                <span className="text-[11px] text-[#64748B] font-mono">ID: {rate.id}</span>
                 <Link
                   href="/chat"
-                  className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                  className="py-1.5 px-3 rounded-lg bg-[#1E3A8A] hover:bg-[#172E6F] text-white font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
                 >
                   <span>Select Route in Chat</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -286,7 +286,7 @@ export default async function RatesPage() {
         </div>
       </main>
 
-      <footer className="text-center text-xs text-slate-500 py-6 border-t border-slate-800/80">
+      <footer className="text-center text-xs text-[#64748B] py-6 border-t border-[#E2E8F0] bg-white">
         FinTechathon 2026 • Incremental Static Regeneration (ISR) Corridor Architecture
       </footer>
     </div>
