@@ -289,18 +289,20 @@ The application provides a complete authentication, session management, and stud
 
 ---
 
-## 11. Frontend Architecture & Rendering Strategy (SSG vs CSR)
+## 11. Next.js 14 Hybrid Rendering Architecture: SSG, ISR, SSR, and CSR
 
-To optimize load latency for judges, provide instant first-contentful paint (FCP), and maintain real-time reactivity for financial operations, the Next.js 14 frontend implements a hybrid rendering strategy:
+The frontend implements an enterprise-grade hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:
 
-| Page | Route | Best Fit | Architectural Rationale & Why |
+| Route | Strategy | Config / Implementation | Architectural Rationale & Why |
 |---|---|---|---|
-| **Home Page** | `/` | **SSG** | Static content with project headline, one-line pitch, and 3 feature pillars that never change at runtime. Pre-rendered to static HTML at build time for instant first-contentful paint (<10ms). Judges see this first without cold-start latency. |
-| **FAQ / "How it works"** | `/faq`, `/#faq` | **SSG** | Static text and educational compliance explanations answering sandbox real-money rules, defense-in-depth protection, and Saga rollbacks. Pre-rendered as static content for instant searchability and zero client bundle penalty. |
-| **Chat** | `/chat` | **CSR** | Fully interactive natural language agent studio, authenticated per-student session, real-time message mutations, and dynamic route calculations. Operates behind login and data changes constantly; requires zero SEO. |
-| **Dashboard** | `/dashboard`, `/audit` | **CSR** | Private, per-user financial data that must be fresh. Real-time balance calculations, active transfer state machine status, and fresh audit logs polled on an 8-second interval. |
-| **Login** | `/login` | **CSR** | A simple interactive client form with client-side credential validation, demo account auto-fill, and immediate localStorage JWT token acquisition. |
-| **Registration** | `/registration` | **CSR** | Interactive registration form with instant client-side validation, demo persona auto-fill, and immediate post-registration token acquisition. |
+| **FAQ / Compliance** (`/faq`) | **SSG** (Static Site Generation) | `export const dynamic = 'force-static'` | Pure educational content explaining sandbox security, defense-in-depth, and Saga rollbacks. Pre-rendered to HTML at build time for sub-10ms delivery from edge CDN cache with zero server execution penalty. |
+| **Corridors & FX Board** (`/rates`) | **ISR** (Incremental Static Regeneration) | `export const revalidate = 60` | Public remittance corridors and live foreign exchange rates (BDT to USD) are identical for all visiting students. Pre-rendered statically at build time, and revalidated in the background every 60 seconds when new requests arrive, delivering instant cached loads with guaranteed fresh bank rates. |
+| **System Liveness Verifier** (`/status`) | **SSR** (Server-Side Rendering) | `export const dynamic = 'force-dynamic'`, `cache: 'no-store'` | Real-time regulatory audit verifier measuring backend ping latency, database store connectivity, rate limiter health, and cryptographic session verification. Must never be served from stale cache; dynamically evaluated on the server per request at the exact millisecond of access. |
+| **Agent Chat Studio** (`/chat`) | **CSR** (Client-Side Rendering) | `'use client'`, React state & streaming | Stateful AI conversational agent loop managing interactive speech/text input, real-time tool calling execution, and student JWT authorization. |
+| **Financial Dashboard** (`/dashboard`) | **CSR** (Client-Side Rendering) | `'use client'`, 8-second polling interval | Private, authenticated student account ledger displaying dynamic BDT balance, daily limit quotas, pending transfer state machines, and deposit actions. |
+| **Audit & Safety Ledger** (`/audit`) | **CSR** (Client-Side Rendering) | `'use client'`, client-side filtering | Interactive security audit log view enabling multi-field client filtering by permission tier (`READ_ONLY`, `DRAFT`, `EXECUTE`) and status, plus browser JSON file export. |
+| **Student Sign In** (`/login`) | **CSR** (Client-Side Rendering) | `'use client'`, password eye toggle | Interactive authentication form with client-side credential validation, demo account auto-fill, and immediate `localStorage` JWT token acquisition. |
+| **Student Registration** (`/registration`) | **CSR** (Client-Side Rendering) | `'use client'`, form validation | Interactive registration form with real-time field validation, demo persona auto-fill, and post-registration automated session onboarding. |
 
 
 

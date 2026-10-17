@@ -5,11 +5,12 @@ import {
   ShieldCheck,
   Zap,
   ArrowRight,
-  Lock,
-  RefreshCw,
-  Clock,
   Home as HomeIcon,
+  Activity,
+  Layers,
 } from 'lucide-react';
+
+export const dynamic = 'force-static';
 
 export default function FaqPage() {
   const faqItems = [
@@ -56,71 +57,122 @@ export default function FaqPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <header className="navbar bg-[#1E3A8A] text-white px-6 py-3 shadow-md sticky top-0 z-40">
-        <div className="navbar-start flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-xl bg-[#0D9488] flex items-center justify-center text-white font-extrabold shadow-sm">
-              <Zap className="w-6 h-6" />
+    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
+      <header className="sticky top-0 z-40 bg-slate-950/80 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-8 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+              <Zap className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-white leading-tight">FinTechathon 2026</h1>
-              <p className="text-xs text-teal-300 font-medium">Topic C: Cross-Border Student Tuition Payment Agent</p>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                  Topic C
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Cross-Border Student Tuition Agent</p>
             </div>
           </Link>
-        </div>
 
-        <div className="navbar-end flex items-center gap-3">
-          <Link
-            href="/"
-            className="btn btn-sm btn-ghost text-blue-200 hover:text-white flex items-center gap-1.5"
-          >
-            <HomeIcon className="w-4 h-4" />
-            <span>Overview</span>
-          </Link>
+          <nav className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span>Overview</span>
+            </Link>
+            <Link
+              href="/chat"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Studio</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              href="/audit"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Audit</span>
+            </Link>
+            <span className="w-px h-4 bg-slate-800 my-auto mx-1"></span>
+            <Link
+              href="/rates"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-300 hover:text-white hover:bg-purple-950/40 transition-colors"
+            >
+              Rates (ISR)
+            </Link>
+            <Link
+              href="/status"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-300 hover:text-white hover:bg-amber-950/40 transition-colors"
+            >
+              Status (SSR)
+            </Link>
+            <Link
+              href="/faq"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-sm"
+            >
+              FAQ (SSG)
+            </Link>
+          </nav>
+
           <Link
             href="/chat"
-            className="btn btn-sm bg-[#0D9488] hover:bg-teal-700 text-white border-none font-bold flex items-center gap-1.5"
+            className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs shadow-md shadow-teal-500/20 flex items-center gap-1.5 transition-all"
           >
-            <span>Agent Chat</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Launch Studio</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-10 space-y-8">
-        <div className="bg-gradient-to-br from-[#1E3A8A] via-[#172554] to-[#0F172A] text-white rounded-3xl p-8 sm:p-10 shadow-xl border border-blue-900/50">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold mb-4">
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Institutional Compliance &amp; Architectural Answers</span>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <div className="bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-semibold">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Institutional Compliance &amp; Architectural Answers</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold font-mono">
+              <span>SSG: Pre-rendered Build-Time Static Page</span>
+            </div>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
             How It Works &amp; Security FAQ
-          </h2>
-          <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl leading-relaxed">
+          </h1>
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
             Transparent explanations on fund custody, velocity limits, zero-trust human confirmation, and autonomous agent safety for judges and international students.
           </p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {faqItems.map((item, idx) => (
             <div
               key={item.id}
-              className="card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-6 shadow-xl transition-all backdrop-blur-md"
             >
               <div className="flex items-start gap-4">
-                <span className="w-8 h-8 rounded-xl bg-teal-50 text-[#0D9488] text-sm font-bold flex items-center justify-center shrink-0 border border-teal-200">
+                <span className="w-8 h-8 rounded-xl bg-teal-950 border border-teal-800 text-teal-400 text-xs font-bold flex items-center justify-center shrink-0">
                   Q{idx + 1}
                 </span>
                 <div className="flex-1 space-y-3">
-                  <h3 className="font-bold text-base sm:text-lg text-slate-900">
+                  <h2 className="font-bold text-base sm:text-lg text-white">
                     {item.question}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                     {item.answer}
                   </p>
-                  <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs font-medium flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-[#0D9488] shrink-0 mt-0.5" />
+                  <div className="p-3 rounded-xl bg-teal-950/40 border border-teal-800/60 text-teal-300 text-xs font-medium flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
                     <span>{item.highlight}</span>
                   </div>
                 </div>
@@ -129,35 +181,35 @@ export default function FaqPage() {
           ))}
         </div>
 
-        <div className="card bg-slate-100 border border-slate-200 rounded-3xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 backdrop-blur-md">
           <div>
-            <h4 className="font-bold text-base text-slate-900">
+            <h3 className="font-bold text-base text-white">
               Ready to evaluate live tuition payment processing?
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
               Launch the Agent Chat Studio to test quotes, route ranking, and human-in-the-loop confirmation.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="btn btn-outline border-slate-300 text-slate-700 hover:bg-slate-200 text-xs font-bold"
+              className="py-2.5 px-4 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors"
             >
               Back to Overview
             </Link>
             <Link
               href="/chat"
-              className="btn bg-[#0D9488] hover:bg-teal-700 text-white border-none text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-teal-500/20 transition-all"
             >
-              <span>Launch Assistant</span>
+              <span>Launch Studio</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-slate-400 py-6 border-t border-slate-200">
-        FinTechathon 2026 - Cross-Border Student Tuition Payment Agent
+      <footer className="text-center text-xs text-slate-500 py-6 border-t border-slate-800/80">
+        FinTechathon 2026 • Cross-Border Student Tuition Payment Agent
       </footer>
     </div>
   );
