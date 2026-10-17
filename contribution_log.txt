@@ -33,3 +33,4 @@ Log entry 32: feat(frontend): implement password visibility toggle control
 Log entry 33: feat(frontend): build Token Inspector drawer to display decoded claims
 Log entry 34: feat(frontend): add dynamic Navbar student status badge
 Log entry 35: feat(frontend): implement single-click session sign-out handler
+Log entry 36: style(frontend): adjust Tailwind spacing and responsive layout grids
