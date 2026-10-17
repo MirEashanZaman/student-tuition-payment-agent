@@ -35,3 +35,4 @@ Log entry 34: test(agent): verify resilience against nested prompt injection
 Log entry 35: test(security): assert rejection of tampered authorization headers
 Log entry 36: test(security): add integration test for multi-tenant isolation
 Log entry 37: refactor(backend): modularize agent decision controller methods
+Log entry 38: fix(frontend): resolve hydration mismatch in session header badge
