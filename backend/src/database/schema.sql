@@ -70,5 +70,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 CREATE INDEX IF NOT EXISTS idx_transfers_account ON transfers(account_id);
 CREATE INDEX IF NOT EXISTS idx_transfers_status ON transfers(status);
+CREATE INDEX IF NOT EXISTS idx_transfers_student ON transfers(student_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_tier ON audit_log(permission_tier);

@@ -188,18 +188,38 @@ export default function Home({
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let pollTimer: NodeJS.Timeout;
+
+    const runPolling = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        pollTimer = setTimeout(runPolling, 10000);
+        return;
+      }
+      if (authStorage.getToken()) {
+        await loadData();
+      }
+      if (isMounted) {
+        pollTimer = setTimeout(runPolling, 10000);
+      }
+    };
+
     loadData();
     const initAuth = async () => {
       try {
         const session = await api.getSession();
-        if (session) {
+        if (session && isMounted) {
           setAuthSession(session);
         }
       } catch (err) {}
     };
     initAuth();
-    const interval = setInterval(loadData, 8000);
-    return () => clearInterval(interval);
+    pollTimer = setTimeout(runPolling, 10000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(pollTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -540,14 +560,25 @@ export default function Home({
   };
 
   const handleExportLogs = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(auditLogs, null, 2));
+    const payload = {
+      evidencePackage: 'FinTechathon 2026 Sandbox Execution Evidence',
+      studentId: authSession?.user?.studentId || 'STU-2026-BDT01',
+      studentName: authSession?.user?.studentName || 'Mir Eashan Zaman',
+      exportedAt: new Date().toISOString(),
+      activeTier: authSession?.user?.permissionTier || 'EXECUTE',
+      totalAuditEntries: auditLogs.length,
+      auditRecords: auditLogs,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `audit_logs_${Date.now()}.json`);
+    downloadAnchor.setAttribute('href', url);
+    downloadAnchor.setAttribute('download', `evidence_audit_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    showNotification('Audit log evidence exported.', 'success');
+    URL.revokeObjectURL(url);
+    showNotification('Audit log evidence package exported successfully.', 'success');
   };
 
   const filteredAuditLogs = auditLogs.filter((log) => {

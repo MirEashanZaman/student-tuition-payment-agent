@@ -3,12 +3,15 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { ApiRateLimitMiddleware } from './security/api-rate-limit.middleware';
+import { SecurityArmorMiddleware } from './security/security-armor.middleware';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.enableShutdownHooks();
   const server = app.getHttpAdapter().getInstance();
   const apiRateLimiter = new ApiRateLimitMiddleware();
+  const securityArmor = app.get(SecurityArmorMiddleware);
   server.disable('x-powered-by');
   app.use((_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -34,9 +37,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.use(apiRateLimiter.use.bind(apiRateLimiter));
   app.use(express.json({ limit: '16kb' }));
   app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+  app.use(securityArmor.use.bind(securityArmor));
+  app.use(apiRateLimiter.use.bind(apiRateLimiter));
 
   app.useGlobalPipes(
     new ValidationPipe({
