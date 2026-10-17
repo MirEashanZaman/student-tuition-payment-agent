@@ -14,7 +14,7 @@
 ---
 
 ### Slide 2: The International Student Problem
-- **Context:** According to UNESCO and Open Doors reports, over 90,000 students from Bangladesh and neighboring regions pursue higher education abroad annually, remitting an estimated $1.5B–$2B in tuition and academic expenses.
+- **Context:** Tens of thousands of international students pursue higher education abroad each year, navigating complex cross-border tuition remittances plagued by significant foreign exchange markups, hidden wire intermediary charges, and strict university payment deadlines.
 - **Pain Points:**
   1. *Opaque Exchange Rates:* Banks hide 2–5% markup spreads behind low advertised upfront wire fees.
   2. *Intermediary Delays:* Traditional SWIFT wires take 3–5 business days, risking university course cancellation and late fines.
@@ -53,18 +53,18 @@
   - *EduPay Prime:* Lowest cost, 24h speed, 99% reliability (Rank #1).
   - *SwiftWire Express:* Urgent 4h speed, ideal for tight deadlines.
   - *GlobalCampus Pay:* Standard 48h MTO corridor.
-  - *Legacy Wire:* 72h bank telegraphic transfer with high fees and deadline risk.
+  - *National Bank Wire (SWIFT TT):* 72h bank telegraphic transfer with high fees and deadline risk.
 
 ---
 
 ### Slide 7: Live Demonstration Flow (Scoring Focus: Task Completion 40%)
-- **Flow 1 (Happy Path):** Student asks *"Pay my $3,000 tuition from BDT"* $\rightarrow$ Agent compares corridors $\rightarrow$ Student chooses EduPay Prime $\rightarrow$ Draft generated $\rightarrow$ Explicit confirmation $\rightarrow$ Confetti celebration & balance update to 492,081.50 BDT.
+- **Flow 1 (Happy Path):** Student asks *"Pay my $3,000 tuition from BDT"* $\rightarrow$ Agent compares corridors $\rightarrow$ Student chooses EduPay Prime $\rightarrow$ Draft generated $\rightarrow$ Explicit confirmation $\rightarrow$ Confetti celebration & balance update to 491,545.15 BDT.
 - **Flow 2 (Deadline Sentinel):** Urgent 24h deadline comparison flags 48h and 72h routes with bright warning banners.
 - **Flow 3 (Safety Guardrails Block):** Attempting to transfer $4,500 USD (exceeding 400,000 BDT limit: 537,507.28 BDT) or prompt injection bypass is blocked and permanently logged.
 
 ---
 
-### Slide 8: Compliance & Immutable Audit Logging
+### Slide 8: Compliance & Append-Only Audit Logging
 - Every single tool invocation, parameter payload, security violation, and confirmation is recorded in `audit_log`.
 - Append-only by design; filterable by permission tier and status (`SUCCESS`, `BLOCKED`, `FLAGGED`).
 - One-click export for regulatory reporting and compliance auditing (`execution-evidence.json`).
