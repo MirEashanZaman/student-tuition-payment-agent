@@ -468,9 +468,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return t;
   }
 
-  // Atomic rollback transaction: in PostgreSQL mode, acquires row-level locks (SELECT ... FOR UPDATE)
-  // on both the transfer and account records to guarantee serialized fund restoration without race conditions.
-  // In sandbox/memory mode, executes synchronous mutations on the in-memory transactional store.
   async rollbackTransferAndRestoreFunds(
     transferId: string,
   ): Promise<{ transfer: TransferRecord; account: AccountRecord }> {
