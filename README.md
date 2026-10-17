@@ -78,11 +78,15 @@
 │   ├── TECHNICAL_DOCUMENTATION.md   # Architecture diagram, scoring math, lifecycle flow
 │   ├── SECURITY_REPORT.md           # Permission tiers, limit enforcement, risk matrix
 │   ├── PRESENTATION_DECK.md         # 10-minute pitch deck slides & speaker notes
+│   ├── FINTECHATHON_2026_PRESENTATION.pptx # Primary official presentation slide deck
 │   ├── DEMO_SCRIPT.md               # 5-minute video demonstration script
-│   └── EXECUTION_EVIDENCE.md        # Sandbox test execution logs with timestamps
+│   ├── EXECUTION_EVIDENCE.md        # Sandbox test execution logs with timestamps
+│   ├── execution-evidence.json      # Raw sandbox audit log export
+│   └── LICENSE                      # Open-source MIT License document copy
 │
 ├── docker-compose.yml         # One-command orchestration (PostgreSQL + Backend + Frontend)
 ├── .env.example               # Environment template (No secrets or real keys)
+├── LICENSE                    # Root repository MIT License
 ├── package.json               # Root scripts
 └── README.md
 ```
@@ -235,7 +239,7 @@ GEMINI_MODEL=gemini-1.5-flash
 MAX_TRANSFER_LIMIT_BDT=400000
 DAILY_TRANSFER_LIMIT_BDT=1000000
 ```
-*(No real API keys or passwords are committed to the codebase).*
+*(No real API keys or passwords are committed to the codebase. The default model identifier is `gemini-1.5-flash`, Google's low-latency multimodal LLM. Live API execution operates whenever a valid `GEMINI_API_KEY` is provided. If the key is omitted or left as `mock_key_offline_agent`, the application automatically activates its deterministic offline sandbox agent (`OfflineLlmClient`), enabling complete, instant evaluation of all conversational flows, corridor comparisons, and security guardrails with zero external network dependencies).*
 
 ---
 
@@ -253,13 +257,14 @@ The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) trig
 
 ## Submission Deliverables Index
 
-All 6 official FinTechathon submission documents are prepared in the repository:
-1. **Technical Documentation:** [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md)
+All official FinTechathon submission documents are prepared in the repository:
+1. **Technical Documentation:** [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) (comprehensive architectural spec, formatted for PDF generation)
 2. **Security Self-Assessment:** [docs/SECURITY_REPORT.md](docs/SECURITY_REPORT.md)
-3. **Presentation Deck:** [docs/PRESENTATION_DECK.md](docs/PRESENTATION_DECK.md) & [docs/FINTECHATHON_2026_PRESENTATION.pptx](docs/FINTECHATHON_2026_PRESENTATION.pptx)
+3. **Presentation Deck:** [docs/FINTECHATHON_2026_PRESENTATION.pptx](docs/FINTECHATHON_2026_PRESENTATION.pptx) (primary official PowerPoint deck) & [docs/PRESENTATION_DECK.md](docs/PRESENTATION_DECK.md)
 4. **Demo Video Script:** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 5. **Execution Evidence:** [docs/EXECUTION_EVIDENCE.md](docs/EXECUTION_EVIDENCE.md) & [docs/execution-evidence.json](docs/execution-evidence.json)
-6. **Source Code & Tests:** [backend/](backend/) & [frontend/](frontend/)
+6. **Open-Source License:** [LICENSE](LICENSE) & [docs/LICENSE](docs/LICENSE)
+7. **Source Code & Tests:** [backend/](backend/) & [frontend/](frontend/)
 
 ---
 
@@ -272,4 +277,4 @@ All 6 official FinTechathon submission documents are prepared in the repository:
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE) (also mirrored in [docs/LICENSE](docs/LICENSE)).
