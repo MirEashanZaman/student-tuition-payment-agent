@@ -7,6 +7,7 @@ import { ApiRateLimitMiddleware } from './security/api-rate-limit.middleware';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.enableShutdownHooks();
   const server = app.getHttpAdapter().getInstance();
   const apiRateLimiter = new ApiRateLimitMiddleware();
   server.disable('x-powered-by');
