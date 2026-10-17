@@ -816,8 +816,44 @@ export class AgentToolsService {
     return rate;
   }
 
+  async cancelTransfer(id: string, requestingStudentId?: string) {
+    const transfer = await this.db.getTransferById(id);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${id} not found`);
+    }
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${id} does not belong to requesting student.`);
+    }
+    const updated = await this.db.updateTransferStatus(id, 'CANCELLED');
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'TRANSFER_CANCELLED',
+      permission_tier: PermissionTier.DRAFT,
+      account_id: transfer.account_id,
+      transfer_id: id,
+      action_summary: `Transfer ${id} cancelled`,
+      details: JSON.stringify({ transferId: id, previousStatus: transfer.status }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return updated;
+  }
+
   async updateRate(id: string, updates: any) {
     const rate = await this.db.updateRate(id, updates);
+    if (rate) {
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'RATE_UPDATED',
+        permission_tier: PermissionTier.EXECUTE,
+        action_summary: `Remittance rate ${id} updated`,
+        details: JSON.stringify(updates),
+        status: 'SUCCESS',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
+    }
     return rate;
   }
 
@@ -826,6 +862,16 @@ export class AgentToolsService {
     if (!deleted) {
       throw new NotFoundException(`Remittance route ${id} not found`);
     }
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'RATE_DEACTIVATED',
+      permission_tier: PermissionTier.EXECUTE,
+      action_summary: `Remittance route ${id} deactivated`,
+      details: JSON.stringify({ id, is_active: false }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
     return { success: true, id, is_active: false };
   }
 }
