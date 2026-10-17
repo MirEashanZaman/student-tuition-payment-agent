@@ -15,8 +15,8 @@
 }
 
 body {
-  background-color: #090D16;
-  color: #F1F5F9;
+  background-color: #F8FAFC;
+  color: #0F172A;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -33,11 +33,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #94A3B8;
 }
+
 
