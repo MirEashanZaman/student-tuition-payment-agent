@@ -104,6 +104,7 @@ export default function RegistrationPage() {
   const [studentName, setStudentName] = useState('Ayesha Khan');
   const [email, setEmail] = useState('ayesha.student@fintechathon.org');
   const [password, setPassword] = useState('student123');
+  const [permissionTier, setPermissionTier] = useState<'READ_ONLY' | 'DRAFT' | 'EXECUTE'>('EXECUTE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -130,6 +131,7 @@ export default function RegistrationPage() {
         studentName: studentName.trim(),
         email: email.trim(),
         password,
+        permissionTier,
       });
       setSuccess(true);
       setTimeout(() => {
@@ -357,6 +359,21 @@ export default function RegistrationPage() {
                   <Lock className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
+                Initial Authorization Tier
+              </label>
+              <select
+                value={permissionTier}
+                onChange={(e) => setPermissionTier(e.target.value as 'READ_ONLY' | 'DRAFT' | 'EXECUTE')}
+                className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] focus:outline-none focus:border-[#0D9488] transition-colors"
+              >
+                <option value="EXECUTE">EXECUTE - Full Transfer Execution</option>
+                <option value="DRAFT">DRAFT - Route Comparison and Drafts</option>
+                <option value="READ_ONLY">READ_ONLY - Inquiries and Balances Only</option>
+              </select>
             </div>
 
             <div className="p-3.5 rounded-lg bg-[#F0FDFA] border border-[#CCFBF1] text-xs text-[#0D9488] flex items-start gap-2.5">
