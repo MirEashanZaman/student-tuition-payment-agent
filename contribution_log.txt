@@ -2,3 +2,4 @@ Log entry 1:
 Log entry 2: feat(auth): set up JWT token generation and validation middleware
 Log entry 3: refactor(auth): refine password hashing utility using bcrypt
 Log entry 4: test(auth): add unit tests for JWT session persistence
+Log entry 5: feat(guardrails): implement tri-tier permission structure
