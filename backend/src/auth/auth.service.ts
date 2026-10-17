@@ -253,8 +253,8 @@ export class AuthService {
     return {
       studentId: 'STU-2026-BDT01',
       password: 'student123',
-      studentName: 'Tanvir Ahmed',
-      email: 'tanvir.student@fintechathon.org',
+      studentName: 'Mir Eashan Zaman',
+      email: 'eashan.student@fintechathon.org',
       role: 'STUDENT',
       permissionTier: PermissionTier.EXECUTE,
       note: 'Pre-seeded demo persona for FinTechathon 2026 sandbox testing.',
