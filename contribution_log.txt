@@ -30,3 +30,4 @@ Log entry 29: feat(frontend): detail Saga compensation workflow in FAQ section
 Log entry 30: feat(frontend): explain 40-30-20-10 corridor scoring formula
 Log entry 31: feat(frontend): integrate login dialog auto-fill for sandbox student
 Log entry 32: feat(frontend): implement password visibility toggle control
+Log entry 33: feat(frontend): build Token Inspector drawer to display decoded claims
