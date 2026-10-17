@@ -63,7 +63,7 @@
 │   │   ├── app/
 │   │   │   ├── globals.css    # Custom dark fintech design system & glassmorphism
 │   │   │   ├── layout.tsx     # SEO metadata & viewport configuration
-│   │   │   └── page.tsx       # Agent Chat Studio, Financial Dashboard, & Audit Inspector
+│   │   │   └── page.tsx       # Home Overview & FAQ, Agent Chat Studio, Financial Dashboard, & Audit Inspector
 │   │   ├── lib/api.ts         # Type-safe API client
 │   │   └── types/             # TypeScript domain models
 │   ├── Dockerfile

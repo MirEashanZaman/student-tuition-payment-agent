@@ -20,10 +20,20 @@ import {
   Info,
   Layers,
   Lock,
+  Home as HomeIcon,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  User,
+  Key,
+  Eye,
+  EyeOff,
+  Check,
 } from 'lucide-react';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'dashboard' | 'audit'>('chat');
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'dashboard' | 'audit'>('home');
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [account, setAccount] = useState<Account | null>(null);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -70,6 +80,15 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
+    const initAuth = async () => {
+      try {
+        const session = await api.validateSession();
+        if (session) {
+          setAuthSession(session);
+        }
+      } catch (err) {}
+    };
+    initAuth();
     const interval = setInterval(loadData, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -307,6 +326,44 @@ export default function Home() {
     }
   };
 
+  const faqItems = [
+    {
+      question: 'Is this real money?',
+      answer:
+        'No. This system operates entirely within a high-fidelity institutional sandbox simulation. All student balances, correspondent banking rails (Standard Chartered, City Bank, bKash remittance), and university student accounts are sandboxed to demonstrate real-world production safety without capital exposure.',
+      highlight:
+        'Sandbox environment: safe for full functional evaluation without real monetary debit.',
+    },
+    {
+      question: 'How is my payment protected?',
+      answer:
+        'Every transaction is guarded through defense-in-depth: (1) Hard compiled velocity limits of 400,000 BDT per transfer and 1,000,000 BDT daily, (2) Pre-draft balance validation and atomic balance reservation, (3) Single-use cryptographic confirmation tokens that expire, (4) Pre-settlement re-verification, and (5) Tamper-evident immutable audit logging.',
+      highlight:
+        'Compiled security controls cannot be overridden by conversational prompts or agent instructions.',
+    },
+    {
+      question: 'Can the AI agent move funds without my explicit approval?',
+      answer:
+        'Never. By architectural design, the AI agent is strictly quarantined to READ_ONLY and DRAFT permission tiers. The agent can only fetch corridors, compare quotes, and generate a draft. The EXECUTE tier is locked to human students; funds cannot move until you physically confirm the transfer details.',
+      highlight:
+        'Zero-trust execution: human confirmation is mandatory for every single financial movement.',
+    },
+    {
+      question: 'What happens if a corridor clearance or wire transfer fails?',
+      answer:
+        'The system executes an automated Saga compensation workflow. If any clearing rail fails or a university receiving bank rejects the transaction, the transfer status transitions to FAILED and a compensating transaction immediately unreserves and restores the funds back into your available BDT balance.',
+      highlight:
+        'Deterministic rollback: no funds can be stranded in pending or indeterminate states.',
+    },
+    {
+      question: 'How are cross-border payment routes ranked and scored?',
+      answer:
+        'Corridors are evaluated using a multi-objective formula: 40% Net Landed Cost (FX spread + rail fees), 30% Settlement Speed, 20% Historical Rail Reliability, and 10% Deadline Buffer. If a route delivery date exceeds the student tuition deadline, a heavy penalty is applied to safeguard students against late payment fees.',
+      highlight:
+        'Transparent scoring: complete itemized breakdown of FX margins and landing fees.',
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       {notification && (
@@ -330,17 +387,30 @@ export default function Home() {
 
       <header className="navbar bg-[#1E3A8A] text-white px-6 py-3 shadow-md sticky top-0 z-40">
         <div className="navbar-start flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#0D9488] flex items-center justify-center text-white font-extrabold shadow-sm">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-white leading-tight">FinTechathon 2026</h1>
-            <p className="text-xs text-teal-300 font-medium">Topic C: Cross-Border Student Tuition Payment Agent</p>
-          </div>
+          <button
+            onClick={() => setActiveTab('home')}
+            className="flex items-center gap-3 text-left focus:outline-none"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#0D9488] flex items-center justify-center text-white font-extrabold shadow-sm">
+              <Zap className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-white leading-tight">FinTechathon 2026</h1>
+              <p className="text-xs text-teal-300 font-medium">Topic C: Cross-Border Student Tuition Payment Agent</p>
+            </div>
+          </button>
         </div>
 
         <div className="navbar-center hidden lg:flex">
           <div className="tabs tabs-boxed bg-blue-950/60 p-1 rounded-lg">
+            <button
+              className={`tab font-semibold text-xs gap-2 transition-all ${
+                activeTab === 'home' ? 'tab-active !bg-white !text-[#1E3A8A] shadow-sm' : 'text-slate-200 hover:text-white'
+              }`}
+              onClick={() => setActiveTab('home')}
+            >
+              <HomeIcon className="w-4 h-4" /> Overview
+            </button>
             <button
               className={`tab font-semibold text-xs gap-2 transition-all ${
                 activeTab === 'chat' ? 'tab-active !bg-white !text-[#1E3A8A] shadow-sm' : 'text-slate-200 hover:text-white'
@@ -369,7 +439,7 @@ export default function Home() {
         </div>
 
         <div className="navbar-end flex items-center gap-3">
-          <div className="badge bg-teal-600/30 text-teal-200 border-teal-500 font-semibold text-xs py-3 px-3 gap-2">
+          <div className="badge bg-teal-600/30 text-teal-200 border-teal-500 font-semibold text-xs py-3 px-3 gap-2 hidden sm:flex">
             <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
             Sandbox Active
           </div>
@@ -384,10 +454,298 @@ export default function Home() {
               <span>Connecting...</span>
             )}
           </div>
+
+          {authSession ? (
+            <div className="flex items-center gap-2">
+              <button
+                className="btn btn-xs bg-teal-500 hover:bg-teal-600 text-white border-none font-semibold flex items-center gap-1.5"
+                onClick={() => setShowTokenInspector(true)}
+                title="Inspect JWT Token Session"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">{authSession.user.studentId}</span>
+              </button>
+              <button
+                className="btn btn-xs btn-outline border-blue-300 text-blue-100 hover:bg-blue-800 hover:text-white"
+                onClick={handleLogout}
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn btn-xs bg-amber-400 hover:bg-amber-500 text-blue-950 font-bold border-none flex items-center gap-1.5 shadow-sm"
+              onClick={() => setShowLoginModal(true)}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
+        <div className="lg:hidden flex justify-center mb-4">
+          <div className="tabs tabs-boxed bg-blue-950/80 p-1 rounded-lg">
+            <button
+              className={`tab font-semibold text-xs ${activeTab === 'home' ? 'tab-active !bg-white !text-[#1E3A8A]' : 'text-slate-200'}`}
+              onClick={() => setActiveTab('home')}
+            >
+              Overview
+            </button>
+            <button
+              className={`tab font-semibold text-xs ${activeTab === 'chat' ? 'tab-active !bg-white !text-[#1E3A8A]' : 'text-slate-200'}`}
+              onClick={() => setActiveTab('chat')}
+            >
+              Chat
+            </button>
+            <button
+              className={`tab font-semibold text-xs ${activeTab === 'dashboard' ? 'tab-active !bg-white !text-[#1E3A8A]' : 'text-slate-200'}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              Dashboard
+            </button>
+            <button
+              className={`tab font-semibold text-xs ${activeTab === 'audit' ? 'tab-active !bg-white !text-[#1E3A8A]' : 'text-slate-200'}`}
+              onClick={() => setActiveTab('audit')}
+            >
+              Audit
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'home' && (
+          <div className="space-y-10 py-2">
+            <div className="bg-gradient-to-br from-[#1E3A8A] via-[#172554] to-[#0F172A] text-white rounded-3xl p-8 sm:p-12 shadow-xl border border-blue-900/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="relative z-10 max-w-4xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold mb-6">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>FinTechathon 2026 - Topic C Official Submission</span>
+                </div>
+
+                <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4 leading-tight">
+                  Student Tuition Payment Agent
+                </h1>
+
+                <p className="text-base sm:text-xl text-blue-100/90 font-normal mb-8 max-w-3xl leading-relaxed">
+                  Autonomous AI-powered cross-border financial assistant for international students paying foreign university tuition from Bangladesh with hard security guardrails.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    className="btn bg-[#0D9488] hover:bg-teal-600 text-white font-bold text-sm px-6 border-none shadow-lg shadow-teal-900/40 flex items-center gap-2"
+                    onClick={() => setActiveTab('chat')}
+                  >
+                    <span>Start Payment Assistant</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  {!authSession ? (
+                    <button
+                      className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold text-sm px-5 flex items-center gap-2"
+                      onClick={() => setShowLoginModal(true)}
+                    >
+                      <Lock className="w-4 h-4 text-teal-300" />
+                      <span>Student Sign In (JWT)</span>
+                    </button>
+                  ) : (
+                    <button
+                      className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold text-sm px-5 flex items-center gap-2"
+                      onClick={() => setShowTokenInspector(true)}
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-teal-400" />
+                      <span>Authenticated: {authSession.user.studentId}</span>
+                    </button>
+                  )}
+
+                  <button
+                    className="btn btn-ghost text-blue-200 hover:text-white hover:bg-white/10 text-sm font-medium"
+                    onClick={() => setActiveTab('dashboard')}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>View Financial Dashboard</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 mt-8 border-t border-blue-800/40 text-xs">
+                  <div>
+                    <div className="text-blue-300/80">Per-Transfer Cap</div>
+                    <div className="text-lg font-bold font-mono text-white mt-0.5">400,000 BDT</div>
+                  </div>
+                  <div>
+                    <div className="text-blue-300/80">Daily Spending Limit</div>
+                    <div className="text-lg font-bold font-mono text-white mt-0.5">1,000,000 BDT</div>
+                  </div>
+                  <div>
+                    <div className="text-blue-300/80">Safety Architecture</div>
+                    <div className="text-lg font-bold text-teal-300 mt-0.5">Tri-Tier Isolation</div>
+                  </div>
+                  <div>
+                    <div className="text-blue-300/80">Settlement Guarantee</div>
+                    <div className="text-lg font-bold text-white mt-0.5">Saga Rollback</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-[#1E3A8A]">
+                  Engineered for High-Stakes Tuition Remittances
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Three core pillars ensuring financial safety, cost efficiency, and automated cross-border compliance.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="card bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0D9488] mb-4">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div className="badge badge-sm bg-teal-100 text-teal-800 border-none font-bold text-[10px] mb-2">
+                    PILLAR 1
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                    Tri-Tier Permission Guardrails
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    Strict separation between autonomous intelligence and money movement. The AI agent operates solely in READ_ONLY and DRAFT tiers; fund execution requires explicit human student authorization.
+                  </p>
+                  <ul className="text-xs text-slate-700 space-y-2 pt-3 border-t border-slate-100">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>READ_ONLY:</strong> Autonomous rates &amp; corridors</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>DRAFT:</strong> Cryptographic confirmation token</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>EXECUTE:</strong> Human-only fund settlement</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="card bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1E3A8A] mb-4">
+                    <Zap className="w-6 h-6" />
+                  </div>
+                  <div className="badge badge-sm bg-blue-100 text-blue-800 border-none font-bold text-[10px] mb-2">
+                    PILLAR 2
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                    Multi-Objective Corridor Scoring
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    Real-time optimization engine scoring banking rails, fintech corridors, and card options based on net landed cost, arrival speed, and tuition deadlines.
+                  </p>
+                  <ul className="text-xs text-slate-700 space-y-2 pt-3 border-t border-slate-100">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>Net Cost Scoring:</strong> Real FX margins + flat fees</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>Speed Analytics:</strong> 2h to 48h settlement curves</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>Deadline Sentinel:</strong> Dynamic late-penalty scoring</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="card bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-4">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div className="badge badge-sm bg-amber-100 text-amber-800 border-none font-bold text-[10px] mb-2">
+                    PILLAR 3
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                    Hard Limits &amp; Immutable Audit
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    Institutional-grade safety controls prevent catastrophic financial loss, prompt injections, or unauthorized transactions with automated Saga rollbacks.
+                  </p>
+                  <ul className="text-xs text-slate-700 space-y-2 pt-3 border-t border-slate-100">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>Hard Compiled Limits:</strong> 400k/tx, 1M/day</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>Saga Compensation:</strong> Auto rollback on failure</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                      <span><strong>Immutable Trail:</strong> Exportable JSON audit evidence</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-100/70 border border-slate-200 rounded-3xl p-8 sm:p-10">
+              <div className="max-w-3xl mb-8">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-[#1E3A8A] text-xs font-semibold mb-3">
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>How It Works &amp; Security Story</span>
+                </div>
+                <h2 className="text-2xl font-bold text-[#1E3A8A]">
+                  Frequently Asked Questions
+                </h2>
+                <p className="text-xs text-slate-600 mt-1">
+                  Answers to key architectural and compliance questions for evaluators and students.
+                </p>
+              </div>
+
+              <div className="space-y-4 max-w-4xl">
+                {faqItems.map((item, idx) => {
+                  const isOpen = expandedFaq === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="card bg-white border border-slate-200 rounded-2xl overflow-hidden transition-all shadow-sm"
+                    >
+                      <button
+                        className="w-full text-left p-5 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
+                        onClick={() => setExpandedFaq(isOpen ? null : idx)}
+                      >
+                        <span className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-lg bg-teal-50 text-[#0D9488] text-xs font-bold flex items-center justify-center shrink-0 border border-teal-200">
+                            Q{idx + 1}
+                          </span>
+                          {item.question}
+                        </span>
+                        {isOpen ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 bg-slate-50/50">
+                          <p>{item.answer}</p>
+                          {item.highlight && (
+                            <div className="mt-3 p-3 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs font-medium flex items-start gap-2">
+                              <ShieldCheck className="w-4 h-4 text-[#0D9488] shrink-0 mt-0.5" />
+                              <span>{item.highlight}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'chat' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-140px)]">
             <div className="lg:col-span-8 flex flex-col h-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -934,6 +1292,164 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="card bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div className="bg-[#1E3A8A] text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-teal-300" />
+                <h3 className="font-bold text-base">Student Authentication</h3>
+              </div>
+              <button
+                className="btn btn-sm btn-circle btn-ghost text-white"
+                onClick={() => setShowLoginModal(false)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex justify-between items-center">
+                <div>
+                  <div className="font-semibold">Demo Sandbox Account</div>
+                  <div className="text-[11px] text-blue-700">ID: STU-2026-BDT01 / Pass: student123</div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-xs bg-[#1E3A8A] text-white border-none"
+                  onClick={handleDemoFill}
+                >
+                  Auto-Fill
+                </button>
+              </div>
+
+              {loginError && (
+                <div className="alert bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Student ID or Email</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="input input-bordered w-full text-xs bg-slate-50 text-slate-900 border-slate-300 focus:bg-white focus:border-[#1E3A8A]"
+                    value={loginInput.studentIdOrEmail}
+                    onChange={(e) =>
+                      setLoginInput((prev) => ({ ...prev, studentIdOrEmail: e.target.value }))
+                    }
+                    placeholder="STU-2026-BDT01"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="input input-bordered w-full text-xs bg-slate-50 text-slate-900 border-slate-300 focus:bg-white focus:border-[#1E3A8A] pr-10"
+                    value={loginInput.password}
+                    onChange={(e) =>
+                      setLoginInput((prev) => ({ ...prev, password: e.target.value }))
+                    }
+                    placeholder="student123"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="btn bg-[#0D9488] hover:bg-teal-700 text-white flex-1 border-none font-bold text-xs"
+                >
+                  {loginLoading ? 'Authenticating...' : 'Sign In & Get JWT'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline border-slate-300 text-slate-700 text-xs px-4"
+                  onClick={() => setShowLoginModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showTokenInspector && authSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="card bg-white border border-slate-200 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div className="bg-[#1E3A8A] text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-teal-300" />
+                <h3 className="font-bold text-base">JWT Security Session Inspector</h3>
+              </div>
+              <button
+                className="btn btn-sm btn-circle btn-ghost text-white"
+                onClick={() => setShowTokenInspector(false)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="text-slate-500 font-medium">Student Name:</span>
+                  <div className="font-bold text-slate-900">{authSession.user.studentName}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Student ID:</span>
+                  <div className="font-mono font-bold text-slate-900">{authSession.user.studentId}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Account Role:</span>
+                  <div className="font-bold text-[#0D9488]">{authSession.user.role}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Session Expiry:</span>
+                  <div className="text-slate-700 font-mono">
+                    {authSession.expiresIn ? `${authSession.expiresIn}s` : '86400s'}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Bearer Authorization Token
+                </label>
+                <div className="p-3 bg-slate-900 text-teal-300 font-mono text-[11px] rounded-xl break-all select-all max-h-32 overflow-y-auto">
+                  {authSession.accessToken}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  className="btn btn-sm bg-[#1E3A8A] text-white border-none font-bold"
+                  onClick={() => setShowTokenInspector(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
