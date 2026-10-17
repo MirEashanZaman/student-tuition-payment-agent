@@ -279,6 +279,15 @@ export const api = {
     }
   },
 
+  async rollbackTransfer(transferId: string, reason = 'User requested transfer rollback'): Promise<any> {
+    try {
+      const response = await apiClient.post(`/transfers/${transferId}/rollback`, { reason });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to roll back transfer');
+    }
+  },
+
   async getTransfers(studentId?: string, status?: string): Promise<TransferRecord[]> {
     try {
       const params: Record<string, string> = {};
