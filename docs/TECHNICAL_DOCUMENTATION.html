@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Tuition Payment Agent - Technical Documentation</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #F8FAFC;
+      background: #0B132B;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1, h2, h3, h4 { color: #38BDF8; margin-top: 1.5em; }
+    h1 { font-size: 2.2em; border-bottom: 2px solid #1E293B; padding-bottom: 0.3em; }
+    h2 { font-size: 1.6em; border-bottom: 1px solid #1E293B; padding-bottom: 0.2em; }
+    h3 { font-size: 1.3em; }
+    p, li { color: #CBD5E1; }
+    pre {
+      background: #1C2541;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid #334155;
+    }
+    code { font-family: "Courier New", Courier, monospace; color: #38BDF8; }
+    blockquote {
+      border-left: 4px solid #38BDF8;
+      padding: 8px 16px;
+      margin: 16px 0;
+      background: #1C2541;
+      border-radius: 0 8px 8px 0;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 20px 0;
+      background: #1C2541;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+    th, td {
+      border: 1px solid #334155;
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th { background: #0F172A; color: #38BDF8; font-weight: bold; }
+    hr { border: 0; height: 1px; background: #334155; margin: 30px 0; }
+    .mermaid {
+      background: #1C2541;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+    @media print {
+      body { background: white !important; color: black !important; }
+      h1, h2, h3 { color: #0284C7 !important; }
+      p, li { color: #333333 !important; }
+      pre, blockquote, table, .mermaid { background: #F8FAFC !important; border-color: #CBD5E1 !important; color: black !important; }
+      code { color: #0369A1 !important; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+  </script>
+</head>
+<body>
+  <h1>Technical Documentation: Cross-Border Student Tuition Payment Agent</h1>
+<p>**FinTechathon 2026 | International Track — Topic C: Cross-Border &amp; Student Finance Assistant**</p>
+<hr>
+<h2>1. Executive Summary &amp; Architecture Overview</h2>
+<p>The **Student Tuition Payment Agent** is an autonomous, security-first financial assistant engineered specifically for international students paying foreign university tuition from Bangladesh (BDT). </p>
+<p>Traditional cross-border tuition remittances suffer from opaque exchange-rate markups, hidden wire intermediary fees, and delayed settlements that risk university enrollment holds. Our system addresses these pain points by pairing an **Autonomous LLM Agent (Google Gemini API with Offline Sandbox Fallback)** with a **strict NestJS Policy Engine**, a **Multi-Objective Corridors Scoring Engine**, and an **Append-Only PostgreSQL Audit Trail**.</p>
+<h3>Architecture Diagram</h3>
+<div class="mermaid">
+graph TD
+    subgraph Client["Next.js 14 Frontend UI"]
+        UI_Chat["Agent Chat Studio"]
+        UI_Dash["Financial Dashboard & Explainability"]
+        UI_Audit["Security & Audit Inspector"]
+        UI_Consent["Human-in-the-Loop Confirmation Modal"]
+    end
+
+    subgraph Backend["NestJS Enterprise Backend API"]
+        Controller["Agent & Transfer Controller"]
+        
+        subgraph Guardrails["Security & Policy Guardrails"]
+            TierGuard["Permission Tier Validator\n(READ_ONLY | DRAFT | EXECUTE)"]
+            LimitGuard["Financial Limits Guard\n(Per-Transfer: 400k BDT | Daily: 1M BDT)"]
+            InjectionFilter["Prompt Injection Sanitizer & Flag"]
+        end
+
+        subgraph CoreAgent["Agentic Engine"]
+            LLM["Gemini 1.5 Flash / Offline Sandbox Agent"]
+            Tools["Agent Tools Service\n(getBalance, compareRoutes, createDraft, confirmTransfer)"]
+            Scoring["Multi-Objective Corridors Scoring Engine"]
+        end
+
+        subgraph Storage["Data Layer (PostgreSQL / Sandbox Store)"]
+        Accounts[("accounts Table")]
+        Rates[("rates Table")]
+        Transfers[("transfers Table")]
+        AuditLog[("audit_log Table (Append-Only)")]
+        end
+    end
+
+    UI_Chat -->|"User Prompt"| Controller
+    Controller --> InjectionFilter
+    InjectionFilter --> CoreAgent
+    CoreAgent --> TierGuard
+    TierGuard --> Tools
+    Tools --> LimitGuard
+    LimitGuard --> Storage
+    Tools --> Scoring
+    Scoring --> Rates
+    UI_Consent -->|"Cryptographic Token & Consent"| Controller
+</div>
+<hr>
+<h2>2. Request &amp; Execution Lifecycle</h2>
+<p>Every user request follows a deterministic 5-stage lifecycle that isolates untrusted natural language from sensitive financial state changes:</p>
+<div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Student as International Student
+    participant UI as Next.js Client
+    participant Controller as NestJS Controller
+    participant Filter as Prompt Injection Filter
+    participant Agent as Agent Service (Gemini/Sandbox)
+    participant Guard as Safety & Limits Guard
+    participant DB as PostgreSQL Database
+
+    Student->>UI: "Pay my $3,000 tuition from BDT"
+    UI->>Controller: POST /api/chat { message, studentId }
+    Controller->>Filter: Inspect for prompt injection / jailbreaks
+    Filter-->>Controller: Sanitized text & threat status
+    Controller->>Agent: Process user intent with Tool Calling
+    Agent->>DB: Query student balance & active remittance corridors
+    Agent->>Agent: Compute Multi-Objective Route Score & Deadline Check
+    Agent-->>UI: Route Comparison Cards & Explanations (READ_ONLY Tier)
+    
+    Student->>UI: Clicks "Select & Prepare Transfer Draft"
+    UI->>Controller: POST /api/transfers/draft
+    Controller->>Guard: Validate per-transfer & daily limits
+    Guard->>DB: Persist Transfer in PENDING_CONFIRMATION status
+    DB-->>UI: Draft receipt + Secure confirmationToken (DRAFT Tier)
+    
+    Note over Student, UI: Human-In-The-Loop Consent Barrier
+    Student->>UI: Clicks [Authorize & Confirm Payment]
+    UI->>Controller: POST /api/transfers/:id/confirm { token, userConsent: true }
+    Controller->>Guard: Verify PermissionTierValidator(EXECUTE, isUserInitiated=true)
+    Guard->>DB: Deduct funds from student account, mark CONFIRMED
+    Guard->>DB: Write permanent audit_log entry
+    Controller-->>UI: Confirmation receipt & settled transaction hash
+</div>
+<hr>
+<h2>3. Core Route Scoring Algorithm</h2>
+<p>Cross-border tuition transactions involve trade-offs between fee transparency, clearance speed, and network reliability. Our algorithm scores each corridor across three dimensions, with an urgent deadline penalty:</p>
+<h3>Mathematical Formula</h3>
+<p>$$\text{CompositeScore} = w_{\text{cost}} \cdot S_{\text{cost}} + w_{\text{speed}} \cdot S_{\text{speed}} + w_{\text{rel}} \cdot S_{\text{rel}} - \Delta_{\text{deadline}}$$</p>
+<p>Where:</p>
+<li>$w_{\text{cost}} = 0.50$ (Cost Weight: 50%)</li>
+<li>$w_{\text{speed}} = 0.30$ (Speed Weight: 30%)</li>
+<li>$w_{\text{rel}} = 0.20$ (Reliability Weight: 20%)</li>
+<h3>Total Cost Calculation</h3>
+<p>$$\text{TotalCost}_{\text{BDT}} = \text{FlatFee}_{\text{BDT}} + (\text{SourceAmount}_{\text{BDT}} \times \text{PercentageFee}) + \text{FXMarkupLoss}_{\text{BDT}}$$</p>
+<p>$$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{BenchmarkRate}) \times \text{Amount}_{\text{USD}}\right)$$</p>
+<h3>Normalization Functions</h3>
+<p>1. **Cost Score ($S_{\text{cost}}$)**:</p>
+<p>   $$S_{\text{cost}} = \frac{\text{MaxCost} - \text{TotalCost}}{\text{MaxCost} - \text{MinCost}} \times 100$$</p>
+<p>   *(Lowest cost receives 100 points, highest cost receives 0 points)*</p>
+<p>2. **Speed Score ($S_{\text{speed}}$)**:</p>
+<p>   $$S_{\text{speed}} = \frac{\text{MaxHours} - \text{RouteHours}}{\text{MaxHours} - \text{MinHours}} \times 100$$</p>
+<p>   *(Fastest clearing rail receives 100 points)*</p>
+<p>3. **Reliability Score ($S_{\text{rel}}$)**:</p>
+<p>   $$S_{\text{rel}} = \text{ReliabilityRatio} \times 100 \quad (e.g., 0.99 \rightarrow 99)$$</p>
+<p>4. **Deadline Penalty ($\Delta_{\text{deadline}}$)**:</p>
+<p>   $$\Delta_{\text{deadline}} = \begin{cases} 40, &amp; \text{if EstimatedDelivery} &gt; \text{TuitionDeadline} \\ 0, &amp; \text{otherwise} \end{cases}$$</p>
+<hr>
+<h2>4. Technology Stack</h2>
+<tr><th>Layer</th><th>Technology</th><th>Rationale</th></tr>
+<tr><td>**Backend Framework**</td><td>**NestJS (Node.js/TypeScript)**</td><td>Enterprise-grade modular architecture, dependency injection, strict validation pipes, built-in exception filters.</td></tr>
+<tr><td>**Frontend Framework**</td><td>**Next.js 14 (React 18)**</td><td>High-performance React SSR/client, componentized structure, instant state synchronization.</td></tr>
+<tr><td>**Styling &amp; Design**</td><td>**Vanilla CSS (Design System Tokens)**</td><td>Sleek dark fintech mode, frosted glassmorphism, responsive grid, zero external CSS runtime overhead.</td></tr>
+<tr><td>**Database**</td><td>**PostgreSQL 14+ (pg driver)**</td><td>ACID-compliant relational storage for financial accounts, transactions, and append-only audit logs.</td></tr>
+<tr><td>**AI / Agent Engine**</td><td>**Google Gemini 1.5 Flash + Sandbox Engine**</td><td>Low-latency tool calling; deterministic offline sandbox fallback for instant judge testing without API keys.</td></tr>
+<tr><td>**Testing**</td><td>**Jest &amp; ts-jest**</td><td>Unit and integration test coverage for security guardrails, financial limit enforcement, and ranking logic.</td></tr>
+<tr><td>**Containerization**</td><td>**Docker &amp; Docker Compose**</td><td>Reproducible, single-command environment spinning up frontend, backend, and PostgreSQL database.</td></tr>
+<hr>
+<h2>5. Security &amp; Permission Tier Design</h2>
+<p>To comply with the FinTechathon 30% Security &amp; Compliance criterion:</p>
+<li>**READ_ONLY Tier**: Executable without risk (`getBalance`, `compareRoutes`, `getAuditLog`).</li>
+<li>**DRAFT Tier**: Generates a pending state transfer record (`createTransferDraft`). No funds are moved. Produces a single-use `confirmationToken`.</li>
+<li>**EXECUTE Tier**: Fund settlement (`confirmTransfer`). **Strictly blocked from autonomous LLM execution.** Must originate from a human user confirmation action supplying the matching cryptographic token.</li>
+<hr>
+<h2>6. Enterprise Architectural Design Patterns</h2>
+<p>The backend is engineered with production-grade software design patterns that isolate responsibilities and enforce financial safety:</p>
+<tr><th>Feature</th><th>Pattern</th><th>Implementation Details</th></tr>
+<tr><td>Route comparison and ranking</td><td>Strategy</td><td>Distinct scoring classes for Balanced, Cheapest, Fastest, and Reliable (`RouteScoringStrategy`). When a student indicates urgency (e.g., "prioritize speed"), the engine swaps strategy dynamically at runtime.</td></tr>
+<tr><td>Transfer lifecycle (draft, confirm, execute, fail)</td><td>State machine (a light Saga)</td><td>Validated transitions include `PENDING_CONFIRMATION` -&gt; `CONFIRMED` -&gt; `EXECUTED` -&gt; `SETTLED`. The authenticated owner can request compensation for `CONFIRMED`, `EXECUTED`, or `FAILED` transfers. Account restoration and the `ROLLED_BACK` status change occur atomically; pending, settled, cancelled, blocked, or already rolled-back transfers cannot be compensated.</td></tr>
+<tr><td>Safety checks (limits, confirmation, unusual amounts)</td><td>Chain of Responsibility</td><td>Small, decoupled handlers run sequentially: `PromptInjectionCheckHandler`, `PermissionTierCheckHandler`, `AnomalyCheckHandler`, `FinancialLimitCheckHandler`, `ConfirmationCheckHandler`. Any check can short-circuit, reject execution, and emit an append-only security audit event.</td></tr>
+<tr><td>The 5 agent tools exposed to the LLM</td><td>Facade</td><td>`AgentToolsService` acts as a unified Facade that coordinates the bank gateway, rates engine, safety guardrails, state machine, and event emitter behind a clean tool interface for the AI assistant.</td></tr>
+<tr><td>LLM and mock bank</td><td>Dependency Inversion (the D in SOLID)</td><td>Business logic depends strictly on abstract interfaces (`ILlmClient`, `IBankGateway`). Production utilizes Gemini AI and direct banking rails, while automated test suites inject mock implementations without external network dependencies.</td></tr>
+<tr><td>Audit logging</td><td>Observer (NestJS events)</td><td>Operations emit decoupled domain events (`transfer.drafted`, `transfer.confirmed`, `transfer.compensated`, `route.compared`). An asynchronous `AuditLogListener` observer records events in the audit log, keeping core financial code clean of logging side-effects.</td></tr>
+<tr><td>Database access</td><td>Repository</td><td>Dedicated repositories (`AccountRepository`, `RateRepository`, `TransferRepository`, `AuditRepository`) decouple domain logic from PostgreSQL queries and in-memory test stores.</td></tr>
+<tr><td>Services in general</td><td>SOLID, Singleton</td><td>NestJS providers operate as singletons by default, adhering to Single Responsibility and avoiding shared mutable state.</td></tr>
+<hr>
+<h2>7. RESTful API Specification</h2>
+<p>The backend controller exposes full RESTful lifecycle operations incorporating `@Param()`, `@Body()`, `@Query()`, `@Get()`, `@Post()`, `@Put()`, `@Patch()`, and `@Delete()` decorators:</p>
+<tr><th>Method</th><th>Endpoint</th><th>Decorators Used</th><th>Parameters / Request Body</th><th>Description</th></tr>
+<tr><td>POST</td><td>`/api/chat`</td><td>`@Body()`</td><td>`ChatDto { message, studentId }`</td><td>Autonomous conversational reasoning with tool calling</td></tr>
+<tr><td>GET</td><td>`/api/accounts/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Retrieve student account balance and daily limits</td></tr>
+<tr><td>PUT</td><td>`/api/accounts/:id/limits`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `UpdateDailyLimitDto { dailyLimitBdt }`</td><td>Update daily financial limit threshold</td></tr>
+<tr><td>POST</td><td>`/api/accounts/:id/deposit`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `DepositDto { amountBdt }`</td><td>Deposit BDT funds to student account</td></tr>
+<tr><td>GET</td><td>`/api/rates`</td><td>`@Query('activeOnly')`, `@Query('targetCurrency')`</td><td>Query filters</td><td>List active remittance corridors</td></tr>
+<tr><td>GET</td><td>`/api/rates/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Retrieve remittance route details</td></tr>
+<tr><td>PUT</td><td>`/api/rates/:id`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `UpdateRateDto`</td><td>Update route rate or active status</td></tr>
+<tr><td>DELETE</td><td>`/api/rates/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Deactivate remittance route</td></tr>
+<tr><td>POST</td><td>`/api/routes/compare`</td><td>`@Body()`</td><td>`CompareRoutesDto`</td><td>Multi-objective corridor comparison and ranking</td></tr>
+<tr><td>GET</td><td>`/api/transfers`</td><td>`@Query('studentId')`, `@Query('status')`</td><td>Query filters</td><td>Retrieve transfers with optional status filter</td></tr>
+<tr><td>GET</td><td>`/api/transfers/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Fetch single transfer record by ID</td></tr>
+<tr><td>POST</td><td>`/api/transfers/draft`</td><td>`@Body()`</td><td>`CreateDraftDto`</td><td>Create transfer draft (DRAFT tier)</td></tr>
+<tr><td>PUT</td><td>`/api/transfers/:id`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `UpdateDraftDto`</td><td>Update draft details prior to confirmation</td></tr>
+<tr><td>PATCH</td><td>`/api/transfers/:id`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `UpdateDraftDto`</td><td>Partial update of unconfirmed transfer draft</td></tr>
+<tr><td>DELETE</td><td>`/api/transfers/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Discard transfer draft</td></tr>
+<tr><td>POST</td><td>`/api/transfers/:id/confirm`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `ConfirmTransferDto`</td><td>Human-in-the-loop transfer execution (EXECUTE tier)</td></tr>
+<tr><td>POST</td><td>`/api/transfers/:id/compensate`</td><td>`@Param('id')`, `@Body()`</td><td>`id: string`, `CompensateTransferDto`</td><td>Saga compensating rollback transaction</td></tr>
+<tr><td>POST</td><td>`/api/transfers/:id/cancel`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Cancel transfer draft</td></tr>
+<tr><td>GET</td><td>`/api/audit`</td><td>`@Query('limit')`, `@Query('tier')`, `@Query('status')`</td><td>Query filters</td><td>Fetch append-only audit logs with multi-field filtering</td></tr>
+<tr><td>GET</td><td>`/api/audit/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Fetch specific audit log by ID</td></tr>
+<tr><td>DELETE</td><td>`/api/audit/:id`</td><td>`@Param('id')`</td><td>`id: string`</td><td>Sandbox development audit log pruning (AdminRoleGuard only)</td></tr>
+<tr><td>POST</td><td>`/api/sandbox/reset`</td><td>None</td><td>None</td><td>Reset database to initial seed state (AdminRoleGuard &amp; non-production only)</td></tr>
+<tr><td>GET</td><td>`/api/sandbox/export-logs`</td><td>None</td><td>None</td><td>Export audit log archive (AdminRoleGuard only)</td></tr>
+<hr>
+<h2>8. SOLID Architectural Principles Implementation</h2>
+<p>The codebase adheres strictly to all five Object-Oriented SOLID design principles:</p>
+<h3>1. Single Responsibility Principle (SRP)</h3>
+<li>Each service and component owns one single reason to change.</li>
+<li>`TuitionCalculationService`: Exclusively calculates exchange conversions, fee structures, benchmark FX markup losses, delivery estimates, and composite ranking scores without performing database I/O or network requests.</li>
+<li>`AgentToolsService`: Operates purely as an orchestration Facade coordinating services.</li>
+<li>`PromptInjectionFilter`: Focuses solely on detecting and neutralizing adversarial prompt injections.</li>
+<h3>2. Open / Closed Principle (OCP)</h3>
+<li>Modules are open for extension but closed for modification.</li>
+<li>`RouteScoringStrategy`: Adding a new corridor ranking strategy (e.g. `DiscountScoringStrategy`) requires creating a new strategy class inheriting `RouteScoringStrategy` without altering existing strategies.</li>
+<li>`SafetyRuleEngine`: Safety policies implement `ISafetyRule` (`PerTransferLimitRule`, `DailyLimitRule`, `AccountBalanceRule`). New regulatory checks (e.g. `SanctionedCountryRule`) can be registered into the engine dynamically without modifying the engine.</li>
+<h3>3. Liskov Substitution Principle (LSP)</h3>
+<li>Subtypes can substitute their base abstractions without altering program correctness.</li>
+<li>`IBankGateway`: `MockBankGateway` and live banking integrations fulfill the identical behavioral contract, allowing seamless test substitution.</li>
+<li>`ILlmClient`: `OfflineLlmClient` and `GeminiLlmClient` can substitute each other transparently.</li>
+<li>`IAccountRepository` / `ITransferRepository`: Repository implementations conform strictly to interface contracts.</li>
+<h3>4. Interface Segregation Principle (ISP)</h3>
+<li>Clients are not forced to depend on methods they do not need.</li>
+<li>Repository operations are segregated into read-only and write interfaces:</li>
+<p>  - `IAccountReader` &amp; `IAccountWriter`</p>
+<p>  - `IRateReader` &amp; `IRateWriter`</p>
+<p>  - `ITransferReader` &amp; `ITransferWriter`</p>
+<p>  - `IAuditReader` &amp; `IAuditWriter`</p>
+<li>Read-only consumers (such as rate inspection endpoints) depend solely on reader interfaces (`IRateReader`).</li>
+<h3>5. Dependency Inversion Principle (DIP)</h3>
+<li>High-level business logic depends on abstract interfaces, never on concrete implementations.</li>
+<li>Dependencies are bound via injection tokens:</li>
+<p>  - `ACCOUNT_REPOSITORY_TOKEN`</p>
+<p>  - `RATE_REPOSITORY_TOKEN`</p>
+<p>  - `TRANSFER_REPOSITORY_TOKEN`</p>
+<p>  - `AUDIT_REPOSITORY_TOKEN`</p>
+<p>  - `TUITION_CALCULATOR_TOKEN`</p>
+<p>  - `BANK_GATEWAY_TOKEN`</p>
+<p>  - `LLM_CLIENT_TOKEN`</p>
+<li>Modules resolve abstractions using `@Inject(TOKEN)`, decoupling core logic from underlying storage or API providers.</li>
+<hr>
+<h2>9. CI/CD Pipeline Architecture</h2>
+<p>The repository incorporates an enterprise-grade automated CI/CD pipeline implemented via GitHub Actions (`.github/workflows/ci.yml`):</p>
+<h3>Pipeline Stages</h3>
+<tr><th>Stage</th><th>Trigger</th><th>Actions Executed</th><th>Purpose</th></tr>
+<tr><td>**Backend CI**</td><td>Push &amp; PR (`main`, `Eashan`)</td><td>`npm ci`, `npm test` (Jest suite, 80 test cases), `npm run build`</td><td>Validates security guardrails, financial limits, and NestJS production compilation.</td></tr>
+<tr><td>**Frontend CI**</td><td>Push &amp; PR (`main`, `Eashan`)</td><td>`npm ci`, `npm run build`</td><td>Validates Next.js SSR and client bundle compilation with static page optimization.</td></tr>
+<tr><td>**Docker Build Verification**</td><td>On CI success</td><td>`docker build` backend and frontend images</td><td>Ensures multi-stage container builds succeed reproducibly for production deployments.</td></tr>
+<tr><td>**Security &amp; Cleanliness Scan**</td><td>Push &amp; PR</td><td>Node.js automated repository audit</td><td>Enforces code cleanliness, verifies zero exposed secrets, and prevents unauthorized syntax patterns.</td></tr>
+<tr><td>**Deployment Verification**</td><td>Push to `main` / `Eashan`</td><td>Manifest verification (`docker-compose.yml`, Dockerfiles, `.env.example`)</td><td>Confirms all deployment orchestration artifacts are synchronized and ready for production execution.</td></tr>
+<hr>
+<h2>10. Authentication and Student Registration Architecture</h2>
+<p>The application provides a complete authentication, session management, and student registration subsystem designed for both production security and seamless hackathon evaluation:</p>
+<h3>Cryptographic Security &amp; Sessions</h3>
+<li>**Password Hashing:** Passwords are salted and hashed using Node.js `scrypt` with a 64-byte derived key and unique 16-byte cryptographically secure random salts.</li>
+<li>**Stateless JWT Tokens:** Authentication returns HS256 signed JWT tokens containing student identity, email, role, and granted permission tier (`EXECUTE`).</li>
+<li>**Session Verification:** `JwtAuthGuard` validates the `Authorization: Bearer &lt;token&gt;` header on protected routes and attaches the verified student context to incoming requests.</li>
+<h3>Student Registration Flow</h3>
+<li>**API Endpoint:** `POST /api/auth/registration` (with `POST /api/auth/register` alias).</li>
+<li>**Validation:** Enforces non-empty student ID, student name, RFC-compliant email, and minimum 6-character password via `class-validator` and `zod` schemas.</li>
+<li>**Account Auto-Provisioning:** Newly registered accounts receive an initial sandbox allocation of 850,000.00 BDT balance and 1,000,000.00 BDT daily limit.</li>
+<li>**Audit Trail:** Registration operations record an append-only `AUTH_REGISTRATION_SUCCESS` event in the audit log.</li>
+<li>**Frontend Route:** Accessible at `/registration` with dark theme styling, demo persona auto-fill, and immediate redirection into the student dashboard upon completion.</li>
+<h3>Evaluation Demo Account Showcase</h3>
+<li>**Demo Persona:** `STU-2026-BDT01` (Mir Eashan Zaman), password: `student123`.</li>
+<li>**Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.</li>
+<hr>
+<h2>11. Next.js 14 Hybrid Rendering Architecture: SSG, ISR, SSR, and CSR</h2>
+<p>The frontend implements an enterprise-grade hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:</p>
+<tr><th>Route</th><th>Strategy</th><th>Config / Implementation</th><th>Architectural Rationale &amp; Why</th></tr>
+<tr><td>**FAQ / Compliance** (`/faq`)</td><td>**SSG** (Static Site Generation)</td><td>`export const dynamic = 'force-static'`</td><td>Pure educational content explaining sandbox security, defense-in-depth, and Saga rollbacks. Pre-rendered to HTML at build time for sub-10ms delivery from edge CDN cache with zero server execution penalty.</td></tr>
+<tr><td>**Corridors &amp; FX Board** (`/rates`)</td><td>**ISR** (Incremental Static Regeneration)</td><td>`export const revalidate = 60`</td><td>Public remittance corridors and live foreign exchange rates (BDT to USD) are identical for all visiting students. Pre-rendered statically at build time, and revalidated in the background every 60 seconds when new requests arrive, delivering instant cached loads with guaranteed fresh bank rates.</td></tr>
+<tr><td>**System Liveness Verifier** (`/status`)</td><td>**SSR** (Server-Side Rendering)</td><td>`export const dynamic = 'force-dynamic'`, `cache: 'no-store'`</td><td>Real-time regulatory audit verifier measuring backend ping latency, database store connectivity, rate limiter health, and cryptographic session verification. Must never be served from stale cache; dynamically evaluated on the server per request at the exact millisecond of access.</td></tr>
+<tr><td>**Agent Chat Studio** (`/chat`)</td><td>**CSR** (Client-Side Rendering)</td><td>`'use client'`, React state &amp; streaming</td><td>Stateful AI conversational agent loop managing interactive speech/text input, real-time tool calling execution, and student JWT authorization.</td></tr>
+<tr><td>**Financial Dashboard** (`/dashboard`)</td><td>**CSR** (Client-Side Rendering)</td><td>`'use client'`, 8-second polling interval</td><td>Private, authenticated student account ledger displaying dynamic BDT balance, daily limit quotas, pending transfer state machines, and deposit actions.</td></tr>
+<tr><td>**Audit &amp; Safety Ledger** (`/audit`)</td><td>**CSR** (Client-Side Rendering)</td><td>`'use client'`, client-side filtering</td><td>Interactive security audit log view enabling multi-field client filtering by permission tier (`READ_ONLY`, `DRAFT`, `EXECUTE`) and status, plus browser JSON file export.</td></tr>
+<tr><td>**Student Sign In** (`/login`)</td><td>**CSR** (Client-Side Rendering)</td><td>`'use client'`, password eye toggle</td><td>Interactive authentication form with client-side credential validation, demo account auto-fill, and immediate `localStorage` JWT token acquisition.</td></tr>
+<tr><td>**Student Registration** (`/registration`)</td><td>**CSR** (Client-Side Rendering)</td><td>`'use client'`, form validation</td><td>Interactive registration form with real-time field validation, demo persona auto-fill, and post-registration automated session onboarding.</td></tr>
+</body>
+</html>
