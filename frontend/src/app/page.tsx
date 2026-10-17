@@ -1669,35 +1669,44 @@ export default function Home({
       </main>
 
       {showLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="bg-[#1E3A8A] text-white p-5 flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#0D9488] flex items-center justify-center text-white">
-                  <Lock className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200/90 rounded-3xl max-w-md w-full shadow-[0_25px_60px_-15px_rgba(15,23,42,0.3)] overflow-hidden transition-all">
+            <div className="bg-white px-6 pt-6 pb-4 border-b border-slate-100 flex justify-between items-start">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-[#0D9488] shadow-sm">
+                  <Lock className="w-5 h-5 text-[#0D9488]" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Student Sign In</h3>
-                  <p className="text-[11px] text-blue-200">Authenticate for cross-border tuition transfer</p>
+                  <h3 className="font-bold text-base text-[#0F172A] tracking-tight">Student Sign In</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Authenticate for cross-border tuition transfer</p>
                 </div>
               </div>
               <button
-                className="text-white hover:text-slate-200 text-xl font-bold p-1"
+                type="button"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                 onClick={() => setShowLoginModal(false)}
+                aria-label="Close sign in dialog"
               >
-                &times;
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 flex justify-between items-center">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs text-slate-700 flex justify-between items-center shadow-xs">
                 <div>
-                  <div className="font-semibold text-slate-900">Demo Persona Account</div>
-                  <div className="text-[11px] text-[#0D9488] font-mono mt-0.5">STU-2026-BDT01 / student123</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">Demo Persona Account</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0D9488] bg-teal-100/60 border border-teal-200/70 px-1.5 py-0.5 rounded">Sandbox</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 font-mono mt-1 flex items-center gap-1.5">
+                    <span className="font-semibold text-slate-800">STU-2026-BDT01</span>
+                    <span className="text-slate-400">/</span>
+                    <span className="font-semibold text-slate-800">student123</span>
+                  </div>
                 </div>
                 <button
                   type="button"
-                  className="py-1 px-2.5 rounded-lg bg-[#1E3A8A] hover:bg-blue-900 text-white text-[11px] font-bold transition-colors"
+                  className="py-1.5 px-3.5 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
                   onClick={handleDemoFill}
                 >
                   Auto-Fill
@@ -1705,17 +1714,17 @@ export default function Home({
               </div>
 
               {loginError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-[#DC2626] text-xs flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-[#DC2626] text-xs flex items-center gap-2.5 font-medium">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-[#DC2626]" />
                   <span>{loginError}</span>
                 </div>
               )}
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">Student ID or Email</label>
                 <input
                   type="text"
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] font-mono"
+                  className="w-full bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0D9488] focus:bg-white focus:ring-2 focus:ring-[#0D9488]/15 font-mono transition-all"
                   value={loginInput.studentIdOrEmail}
                   onChange={(e) =>
                     setLoginInput((prev) => ({ ...prev, studentIdOrEmail: e.target.value }))
@@ -1725,12 +1734,12 @@ export default function Home({
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] pr-10"
+                    className="w-full bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0D9488] focus:bg-white focus:ring-2 focus:ring-[#0D9488]/15 pr-10 transition-all"
                     value={loginInput.password}
                     onChange={(e) =>
                       setLoginInput((prev) => ({ ...prev, password: e.target.value }))
@@ -1740,15 +1749,16 @@ export default function Home({
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">Authorization Tier</label>
                 <select
                   value={loginInput.permissionTier}
@@ -1758,7 +1768,7 @@ export default function Home({
                       permissionTier: e.target.value as 'READ_ONLY' | 'DRAFT' | 'EXECUTE',
                     }))
                   }
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                  className="w-full bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#0D9488] focus:bg-white focus:ring-2 focus:ring-[#0D9488]/15 transition-all font-medium"
                 >
                   <option value="EXECUTE">EXECUTE - Full Transfer Execution</option>
                   <option value="DRAFT">DRAFT - Route Comparison and Drafts</option>
@@ -1770,23 +1780,23 @@ export default function Home({
                 Need a new account?{' '}
                 <Link
                   href="/registration"
-                  className="font-semibold text-[#0D9488] hover:underline"
+                  className="font-semibold text-[#0D9488] hover:text-teal-700 hover:underline transition-colors"
                 >
                   Go to Student Registration
                 </Link>
               </div>
 
-              <div className="pt-2 flex gap-2.5">
+              <div className="pt-2 flex gap-3">
                 <button
                   type="submit"
                   disabled={loginLoading}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-sm hover:shadow transition-all active:scale-[0.99] disabled:opacity-50"
                 >
                   {loginLoading ? 'Authenticating...' : 'Sign In & Get JWT'}
                 </button>
                 <button
                   type="button"
-                  className="py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-colors"
+                  className="py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 text-xs font-semibold transition-all"
                   onClick={() => setShowLoginModal(false)}
                 >
                   Cancel
