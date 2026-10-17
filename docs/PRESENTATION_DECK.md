@@ -72,7 +72,7 @@
 ---
 
 ### Slide 9: Automated Test Coverage & Verification
-- 80/80 automated Jest security and integration test cases passing (100% deterministic pass across `security-hardening.spec.ts` and `security.spec.ts`):
+- 80/80 automated Jest security and integration test cases passing (54 tests in `security.spec.ts` and 26 tests in `security-hardening.spec.ts`):
   - Over-limit transfers blocked.
   - Transfers without confirmation blocked.
   - Audit logging for every action verified.
