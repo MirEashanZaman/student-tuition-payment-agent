@@ -606,13 +606,13 @@ export default function Home({
       )}
 
       <header className="sticky top-0 z-40 bg-[#1E3A8A] text-white px-3 sm:px-6 py-2.5 shadow-md border-b border-blue-950">
-        <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
+        <div className="w-full flex items-center justify-between gap-2 sm:gap-4">
           <button
             onClick={() => setActiveTab('home')}
             className="flex items-center gap-2.5 text-left focus:outline-none shrink-0 group"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold group-hover:bg-teal-600 transition-colors shrink-0">
-              <Zap className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold group-hover:bg-teal-600 transition-colors shrink-0">
+              <Zap className="w-4 h-4 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -621,14 +621,13 @@ export default function Home({
                   Topic C
                 </span>
               </div>
-              <p className="text-[11px] text-teal-200 font-medium whitespace-nowrap hidden 2xl:block">Cross-Border Student Tuition Agent</p>
             </div>
           </button>
 
-          <nav className="hidden lg:flex items-center gap-0.5 sm:gap-1 bg-blue-950/80 p-1 rounded-xl border border-blue-900/70 shadow-xs shrink-0">
+          <nav className="hidden lg:flex items-center gap-1 bg-blue-950/80 p-1 rounded-xl border border-blue-900/70 shadow-xs shrink-0">
             <button
               onClick={() => setActiveTab('home')}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'home'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
@@ -639,7 +638,7 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('chat')}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'chat'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
@@ -650,7 +649,7 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
@@ -661,7 +660,7 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'audit'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
@@ -671,49 +670,43 @@ export default function Home({
               <span>Audit ({auditLogs.length})</span>
             </button>
 
-            <div className="hidden xl:flex items-center gap-0.5 sm:gap-1">
+            <div className="hidden xl:flex items-center gap-1">
               <span className="w-px h-4 bg-blue-800/80 my-auto mx-1 shrink-0"></span>
 
               <Link
                 href="/rates"
-                className="px-2 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors whitespace-nowrap"
                 title="Incremental Static Regeneration (ISR) Live FX Corridors"
               >
-                <span>Rates</span>
-                <span className="hidden 2xl:inline text-[10px] font-mono text-teal-300 font-semibold">(ISR)</span>
+                Rates
               </Link>
               <Link
                 href="/status"
-                className="px-2 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors whitespace-nowrap"
                 title="Server-Side Rendered (SSR) Real-Time Liveness Verifier"
               >
-                <span>Status</span>
-                <span className="hidden 2xl:inline text-[10px] font-mono text-teal-300 font-semibold">(SSR)</span>
+                Status
               </Link>
               <Link
                 href="/faq"
-                className="px-2 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors whitespace-nowrap"
                 title="Static Site Generation (SSG) Institutional Security FAQ"
               >
-                <span>FAQ</span>
-                <span className="hidden 2xl:inline text-[10px] font-mono text-teal-300 font-semibold">(SSG)</span>
+                FAQ
               </Link>
             </div>
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-950/70 border border-teal-500/30 text-teal-200 text-xs font-medium shadow-xs whitespace-nowrap shrink-0">
+            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-950/70 border border-teal-500/30 text-teal-200 text-xs font-medium shadow-xs whitespace-nowrap shrink-0">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0D9488]"></span>
               </span>
-              <span>Sandbox Active</span>
+              <span>Sandbox</span>
             </div>
 
             <div className="bg-blue-950/80 text-white border border-blue-800/80 rounded-xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5 text-xs shadow-xs shrink-0 whitespace-nowrap">
-              <span className="text-blue-300 hidden xl:inline font-medium">
-                {account ? account.studentName.split(' ')[0] : 'Student'}:
-              </span>
               <span className="font-mono font-bold text-teal-300">
                 {account ? `${account.balance.toLocaleString()} BDT` : authSession ? 'Connecting...' : 'Not Logged In'}
               </span>
@@ -738,7 +731,7 @@ export default function Home({
                   title="Sign Out of Session"
                 >
                   <LogOut className="w-3.5 h-3.5 text-rose-300 shrink-0" />
-                  <span className="hidden sm:inline">Sign Out</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             ) : (
@@ -748,7 +741,7 @@ export default function Home({
                 id="login-modal-trigger"
               >
                 <Lock className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Sign In</span>
+                <span>Sign In</span>
               </button>
             )}
           </div>
