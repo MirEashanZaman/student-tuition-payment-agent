@@ -1,13 +1,13 @@
 # 5-Minute Demo Video Script & Walkthrough
 **FinTechathon 2026 | Topic C: Student Tuition Payment Agent**
 
-**Target Video Length:** 4 minutes 30 seconds (Strictly under 5 minutes)
-**Presenters:** You & Friend (or single presenter)
+**Target Video Length:** 4 minutes 30 seconds (Strictly under 5 minutes)  
+**Presenters:** Mir Eashan Zaman & Ishmam Mubtasim (American International University-Bangladesh - AIUB)
 
 ---
 
 ### Segment 1: Introduction & Problem Setup (0:00 – 0:45)
-- **Visual:** Open browser on `http://localhost:4567`. Show the sleek dark fintech interface, glowing brand logo, and student profile (`Mir Eashan Zaman | 850,000 BDT`).
+- **Visual:** Open browser on `http://localhost:4567`. Show the sleek dark fintech interface, glowing brand logo, and student profile (`Mir Eashan Zaman | 850,000.00 BDT`).
 - **Narration:**
   > *"Hello judges! Welcome to our FinTechathon 2026 project: The Student Tuition Payment Agent. When international students from Bangladesh need to pay foreign university tuition, they face confusing exchange rate spreads, hidden wire fees, and the constant fear of delayed payments missing university deadlines.*
   > *Today, we demonstrate our autonomous AI agent built with NestJS, Next.js, and PostgreSQL, governed by strict permission tiers and financial safety guardrails."*
@@ -25,7 +25,7 @@
   - The chat dynamically renders the **Transfer Draft Confirmation Card** with status `PENDING_CONFIRMATION` and the unique `confirmationToken`.
 - **Narration:**
   > *"Notice that even though the draft is created, no money has moved! Under our Tri-Tier Permission Model, autonomous agents operate in the DRAFT tier and cannot unilaterally deduct funds. Fund movement requires explicit human authorization."*
-- **Action:** Click **[Authorize & Confirm Payment]**. Confetti animation triggers, the receipt displays, and the student's available balance in the top right immediately updates from 850,000 BDT to 492,086 BDT!
+- **Action:** Click **[Authorize & Confirm Payment]**. Confetti animation triggers, the receipt displays, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 492,081.50 BDT!
 
 ---
 
@@ -33,9 +33,9 @@
 - **Visual:** Type into the chat input:
   `"Pay my $4,500 tuition to Harvard University"`
 - **Action:**
-  - $4,500 USD equates to ~538,000 BDT, which exceeds the per-transfer safety limit of 400,000 BDT.
+  - $4,500 USD equates to 537,507.28 BDT, which exceeds the per-transfer safety limit of 400,000 BDT.
   - The agent's backend policy guard (`FinancialLimitsGuard`) immediately blocks draft creation and throws an error badge:
-    `"Security Policy Check Failed: Transfer amount of 538,000 BDT exceeds the per-transfer security limit of 400,000 BDT."`
+    `"Security Policy Check Failed: Transfer amount of 537,507.28 BDT exceeds the per-transfer security limit of 400,000 BDT."`
 - **Narration:**
   > *"Our safety guardrails are hardcoded in compiled NestJS middleware, completely independent of model prompts. Even if a user attempts a transfer beyond safe ceilings, the transaction is rejected instantly and logged for compliance."*
 

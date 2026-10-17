@@ -147,7 +147,7 @@ cd backend
 npm test
 ```
 
-### Verified Test Cases (46 Passed):
+### Verified Test Cases (80 Passed):
 1. `should block a single transfer draft exceeding the per-transfer limit (400,000 BDT)` (PASSED)
 2. `should block transfers that would breach the daily limit (1,000,000 BDT)` (PASSED)
 3. `should forbid the automated LLM/agent from unilaterally executing confirmTransfer` (PASSED)
@@ -248,11 +248,11 @@ The system implements complete RESTful HTTP operations using `@Param()`, `@Body(
 - `POST /api/transfers/:id/compensate` - Saga compensating transaction rollback (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/rollback` - Unified Saga rollback restoring student balance and unreserving gateway funds (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/cancel` - Cancel transfer draft (`@Param('id')`)
-- `GET /api/audit` - Immutable audit logs with tier and status filtering (`@Query('limit')`, `@Query('tier')`, `@Query('status')`)
+- `GET /api/audit` - Append-only audit logs with tier and status filtering (`@Query('limit')`, `@Query('tier')`, `@Query('status')`)
 - `GET /api/audit/:id` - Fetch specific audit log by ID (`@Param('id')`)
-- `DELETE /api/audit/:id` - Remove audit log record (`@Param('id')`)
-- `POST /api/sandbox/reset` - Reset sandbox database
-- `GET /api/sandbox/export-logs` - Export full audit records archive
+- `DELETE /api/audit/:id` - Sandbox development audit log pruning (AdminRoleGuard only) (`@Param('id')`)
+- `POST /api/sandbox/reset` - Reset sandbox database to seed data (AdminRoleGuard & non-production only)
+- `GET /api/sandbox/export-logs` - Export full audit records archive (AdminRoleGuard only)
 
 ---
 

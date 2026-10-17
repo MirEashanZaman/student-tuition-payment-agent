@@ -8,13 +8,13 @@
 ### Slide 1: Title Slide
 - **Project Title:** Student Tuition Payment Agent: Autonomous Cross-Border Settlement with Permission Tiers & Guardrails
 - **Track:** International Track | Topic C
-- **Team:** FinTechathon 2026 Team
+- **Team:** Mir Eashan Zaman & Ishmam Mubtasim (American International University-Bangladesh - AIUB)
 - **Tagline:** Turning a stressful, opaque, multi-day tuition remittance into a transparent, safe, and intelligent 60-second experience.
 
 ---
 
 ### Slide 2: The International Student Problem
-- **Context:** Over 100,000 students from South Asia study abroad annually, paying over $2B in tuition fees.
+- **Context:** According to UNESCO and Open Doors reports, over 90,000 students from Bangladesh and neighboring regions pursue higher education abroad annually, remitting an estimated $1.5B–$2B in tuition and academic expenses.
 - **Pain Points:**
   1. *Opaque Exchange Rates:* Banks hide 2–5% markup spreads behind low advertised upfront wire fees.
   2. *Intermediary Delays:* Traditional SWIFT wires take 3–5 business days, risking university course cancellation and late fines.
@@ -35,7 +35,7 @@
 - **Frontend:** Next.js 14 hybrid SSG/CSR architecture (instant SSG Home & FAQ landing for evaluators, dynamic CSR Chat, Dashboard, and Login) with custom dark fintech design system.
 - **Backend:** NestJS enterprise architecture with modular policy guards and dependency injection.
 - **Data Layer:** PostgreSQL schema with 4 core tables (`accounts`, `rates`, `transfers`, `audit_log`).
-- **AI Engine:** Google Gemini 1.5 Flash with tool calling + high-fidelity offline sandbox fallback for reliable evaluation.
+- **AI Engine:** Google Gemini 1.5 Flash with tool calling + high-fidelity offline sandbox fallback for resilient evaluation.
 
 ---
 
@@ -58,26 +58,26 @@
 ---
 
 ### Slide 7: Live Demonstration Flow (Scoring Focus: Task Completion 40%)
-- **Flow 1 (Happy Path):** Student asks *"Pay my $3,000 tuition from BDT"* $\rightarrow$ Agent compares corridors $\rightarrow$ Student chooses EduPay Prime $\rightarrow$ Draft generated $\rightarrow$ Explicit confirmation $\rightarrow$ Confetti celebration & balance update.
+- **Flow 1 (Happy Path):** Student asks *"Pay my $3,000 tuition from BDT"* $\rightarrow$ Agent compares corridors $\rightarrow$ Student chooses EduPay Prime $\rightarrow$ Draft generated $\rightarrow$ Explicit confirmation $\rightarrow$ Confetti celebration & balance update to 492,081.50 BDT.
 - **Flow 2 (Deadline Sentinel):** Urgent 24h deadline comparison flags 48h and 72h routes with bright warning banners.
-- **Flow 3 (Safety Guardrails Block):** Attempting to transfer 4,000 USD (exceeding 400,000 BDT limit) or prompt injection bypass is blocked and permanently logged.
+- **Flow 3 (Safety Guardrails Block):** Attempting to transfer $4,500 USD (exceeding 400,000 BDT limit: 537,507.28 BDT) or prompt injection bypass is blocked and permanently logged.
 
 ---
 
 ### Slide 8: Compliance & Immutable Audit Logging
 - Every single tool invocation, parameter payload, security violation, and confirmation is recorded in `audit_log`.
-- Filterable by permission tier and status (`SUCCESS`, `BLOCKED`, `FLAGGED`).
-- One-click export for regulatory reporting and compliance auditing.
+- Append-only by design; filterable by permission tier and status (`SUCCESS`, `BLOCKED`, `FLAGGED`).
+- One-click export for regulatory reporting and compliance auditing (`execution-evidence.json`).
 
 ---
 
 ### Slide 9: Automated Test Coverage & Verification
-- 10/10 automated Jest security test cases passing:
+- 80/80 automated Jest security and integration test cases passing (100% deterministic pass across `security-hardening.spec.ts` and `security.spec.ts`):
   - Over-limit transfers blocked.
   - Transfers without confirmation blocked.
   - Audit logging for every action verified.
   - Route ranking and deadline penalties verified.
-  - Prompt injection neutralization verified.
+  - Prompt injection neutralization and WAF shell-bomb defenses verified.
 
 ---
 
