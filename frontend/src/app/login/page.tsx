@@ -22,9 +22,14 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loginInput, setLoginInput] = useState({
+  const [loginInput, setLoginInput] = useState<{
+    studentIdOrEmail: string;
+    password: string;
+    permissionTier: 'READ_ONLY' | 'DRAFT' | 'EXECUTE';
+  }>({
     studentIdOrEmail: 'STU-2026-BDT01',
     password: 'student123',
+    permissionTier: 'EXECUTE',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,7 +37,7 @@ export default function LoginPage() {
   const [session, setSession] = useState<AuthSession | null>(null);
 
   const handleDemoFill = () => {
-    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
+    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123', permissionTier: 'EXECUTE' });
     setError(null);
   };
 
@@ -41,9 +46,13 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.login(loginInput.studentIdOrEmail, loginInput.password);
+      const res = await api.login({
+        studentIdOrEmail: loginInput.studentIdOrEmail,
+        password: loginInput.password,
+        permissionTier: loginInput.permissionTier,
+      });
       setSession(res);
-      authStorage.setToken(res.accessToken);
+      authStorage.setToken(res.accessToken, res.user.studentId);
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please check credentials.');
     } finally {
@@ -150,7 +159,7 @@ export default function LoginPage() {
                   <span>Authentication Successful!</span>
                 </div>
                 <p className="text-[#0F172A]">
-                  Welcome back, <strong className="text-[#0F172A]">{session.user.studentName}</strong>. JWT session is authenticated.
+                  Welcome back, <strong className="text-[#0F172A]">{session.user.studentName}</strong>. JWT session is authenticated ({session.user.permissionTier || 'EXECUTE'}).
                 </p>
                 <div className="p-2.5 bg-white text-[#0D9488] font-mono text-[10px] rounded border border-[#BBF7D0] break-all">
                   {session.accessToken.substring(0, 90)}...
@@ -217,6 +226,26 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
+                  Authorization Tier
+                </label>
+                <select
+                  value={loginInput.permissionTier}
+                  onChange={(e) =>
+                    setLoginInput((prev) => ({
+                      ...prev,
+                      permissionTier: e.target.value as 'READ_ONLY' | 'DRAFT' | 'EXECUTE',
+                    }))
+                  }
+                  className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] focus:outline-none focus:border-[#0D9488] transition-colors"
+                >
+                  <option value="EXECUTE">EXECUTE - Full Transfer Execution</option>
+                  <option value="DRAFT">DRAFT - Route Comparison and Drafts</option>
+                  <option value="READ_ONLY">READ_ONLY - Inquiries and Balances Only</option>
+                </select>
               </div>
 
               <div className="pt-2">
