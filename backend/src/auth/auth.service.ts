@@ -40,6 +40,7 @@ export class AuthService {
     studentIdOrEmail: string,
     plainPassword: string,
     ipAddress = '127.0.0.1',
+    requestedTier?: PermissionTier,
   ): Promise<AuthSessionResponse> {
     if (!studentIdOrEmail || !plainPassword) {
       throw new BadRequestException('Student ID / email and password are required.');
@@ -79,13 +80,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid student ID/email or password.');
     }
 
+    const tier = requestedTier || PermissionTier.EXECUTE;
     const payload: JwtPayload = {
       sub: account.id,
       studentId: account.student_id,
       studentName: account.student_name,
       email: account.email,
       role: account.role || 'STUDENT',
-      permissionTier: PermissionTier.EXECUTE,
+      permissionTier: tier,
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -112,7 +114,7 @@ export class AuthService {
         studentName: account.student_name,
         email: account.email,
         role: account.role || 'STUDENT',
-        permissionTier: PermissionTier.EXECUTE,
+        permissionTier: tier,
         balance: account.balance,
         currency: account.currency,
         dailyLimit: account.daily_limit,
@@ -172,6 +174,7 @@ export class AuthService {
       password: string;
     },
     ipAddress = '127.0.0.1',
+    requestedTier?: PermissionTier,
   ): Promise<AuthSessionResponse> {
     if (!dto.studentId || !dto.studentName || !dto.email || !dto.password) {
       throw new BadRequestException('Student ID, student name, email, and password are required.');
@@ -214,13 +217,14 @@ export class AuthService {
       created_at: new Date(),
     });
 
+    const tier = requestedTier || PermissionTier.EXECUTE;
     const payload: JwtPayload = {
       sub: newAccount.id,
       studentId: newAccount.student_id,
       studentName: newAccount.student_name,
       email: newAccount.email,
       role: newAccount.role || 'STUDENT',
-      permissionTier: PermissionTier.EXECUTE,
+      permissionTier: tier,
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -236,7 +240,7 @@ export class AuthService {
         studentName: newAccount.student_name,
         email: newAccount.email,
         role: newAccount.role || 'STUDENT',
-        permissionTier: PermissionTier.EXECUTE,
+        permissionTier: tier,
         balance: newAccount.balance,
         currency: newAccount.currency,
         dailyLimit: newAccount.daily_limit,
