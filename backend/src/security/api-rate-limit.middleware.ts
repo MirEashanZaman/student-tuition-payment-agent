@@ -22,7 +22,8 @@ export class ApiRateLimitMiddleware {
     }
 
     const policy = this.getPolicy(request.path);
-    const address = request.ip || request.socket.remoteAddress || 'unknown';
+    const rawAddress = request.ip || request.socket.remoteAddress || 'unknown';
+    const address = rawAddress.replace(/^::ffff:/, '');
     const key = `${address}:${policy.name}`;
     const now = Date.now();
     let bucket = this.buckets.get(key);
@@ -54,6 +55,9 @@ export class ApiRateLimitMiddleware {
   private getPolicy(path: string): RateLimitPolicy {
     if (path === '/api/auth/login') {
       return { name: 'login', limit: 5, windowMs: 15 * 60 * 1000 };
+    }
+    if (path === '/api/auth/registration' || path === '/api/auth/register') {
+      return { name: 'registration', limit: 10, windowMs: 15 * 60 * 1000 };
     }
     if (path === '/api/chat') {
       return { name: 'chat', limit: 20, windowMs: 60 * 1000 };
