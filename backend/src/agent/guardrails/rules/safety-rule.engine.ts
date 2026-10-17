@@ -70,6 +70,76 @@ export class AccountBalanceRule implements ISafetyRule {
 }
 
 @Injectable()
+export class AnomalyCheckRule implements ISafetyRule {
+  readonly ruleName = 'ANOMALY_CHECK_RULE';
+
+  evaluate(context: SafetyRuleContext): SafetyRuleEvaluation {
+    const amount = context.amountBdt;
+    if (amount === undefined) {
+      return { passed: true };
+    }
+
+    if (isNaN(amount) || !Number.isFinite(amount) || amount <= 0) {
+      return {
+        passed: false,
+        code: 'ANOMALOUS_AMOUNT',
+        reason: 'Anomaly detected: Amount must be a positive finite number greater than zero.',
+      };
+    }
+
+    const envCeiling = parseFloat(process.env.ANOMALY_CEILING_LIMIT || '');
+    const anomalyCeiling = !isNaN(envCeiling) && envCeiling > 0 ? envCeiling : 5000000;
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
+
+    if (amount > anomalyCeiling) {
+      return {
+        passed: false,
+        code: 'ANOMALOUS_AMOUNT',
+        reason: `Anomaly detected: Requested amount of ${amount.toLocaleString()} ${currency} exceeds hard safety anomaly ceiling (${anomalyCeiling.toLocaleString()} ${currency}).`,
+      };
+    }
+
+    return { passed: true };
+  }
+}
+
+@Injectable()
+export class ConfirmationRequirementRule implements ISafetyRule {
+  readonly ruleName = 'CONFIRMATION_REQUIREMENT_RULE';
+
+  evaluate(context: SafetyRuleContext): SafetyRuleEvaluation {
+    if (context.isConfirmationStep) {
+      if (context.userConsent !== true) {
+        return {
+          passed: false,
+          code: 'CONFIRMATION_REQUIRED',
+          reason: 'Explicit user consent is mandatory for transfer execution.',
+        };
+      }
+      if (!context.confirmationToken || typeof context.confirmationToken !== 'string' || context.confirmationToken.length < 8) {
+        return {
+          passed: false,
+          code: 'CONFIRMATION_TOKEN_INVALID',
+          reason: 'A valid cryptographic confirmation token is required for execution.',
+        };
+      }
+      if (context.tokenCreatedAt) {
+        const ageMs = Date.now() - new Date(context.tokenCreatedAt).getTime();
+        const maxValidityMs = 15 * 60 * 1000;
+        if (ageMs > maxValidityMs) {
+          return {
+            passed: false,
+            code: 'CONFIRMATION_TOKEN_EXPIRED',
+            reason: 'Confirmation token has expired after 15 minutes of inactivity.',
+          };
+        }
+      }
+    }
+    return { passed: true };
+  }
+}
+
+@Injectable()
 export class SafetyRuleEngine {
   private rules: ISafetyRule[] = [];
 
