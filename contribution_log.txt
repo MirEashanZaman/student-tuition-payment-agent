@@ -61,3 +61,4 @@ Log entry 60: feat(frontend): design toast notifications for auth success events
 Log entry 61: feat(frontend): build interactive route comparison table
 Log entry 62: feat(frontend): add security guarantee badge to payment dialog
 Log entry 63: feat(frontend): optimize mobile navigation menu toggle performance
+Log entry 64: feat(frontend): render student profile drawer with session claims
