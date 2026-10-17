@@ -9,6 +9,8 @@ interface ThreatDetectionResult {
   matchedPattern?: string;
 }
 
+// Application-level Web Application Firewall (WAF) shield protecting against
+// remote code execution, fork bombing, path traversal, and payload bombing.
 @Injectable()
 export class SecurityArmorMiddleware implements NestMiddleware {
   constructor(private readonly db?: DatabaseService) {}
@@ -43,6 +45,8 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     /;\s*exec\s+xp_cmdshell\b/i,
   ];
 
+  // Intercepts requests before reaching Nest controllers or route handlers.
+  // Returns HTTP 403 with detailed alert telemetry upon malicious signature match.
   use(request: Request, response: Response, next: NextFunction): void {
     const threat = this.scanRequest(request);
     if (threat.detected) {
@@ -59,6 +63,8 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     next();
   }
 
+  // Scans URL, query parameters, route parameters, headers, and parsed JSON bodies.
+  // Checks both raw and percent-decoded paths to counter double-encoding evasion attempts.
   private scanRequest(request: Request): ThreatDetectionResult {
     const rawUrl = request.originalUrl || request.url || '';
     if (rawUrl) {
@@ -70,6 +76,7 @@ export class SecurityArmorMiddleware implements NestMiddleware {
         const decodedCheck = this.inspectString(decoded);
         if (decodedCheck.detected) return decodedCheck;
       } catch {
+        // Catches malformed percent-encoding sequences that could throw URIError in downstream routers
         return {
           detected: true,
           threatType: 'MALFORMED_URI_ATTACK',
@@ -88,6 +95,8 @@ export class SecurityArmorMiddleware implements NestMiddleware {
       if (paramsCheck.detected) return paramsCheck;
     }
 
+    // Skip Authorization Bearer tokens from regex matching since cryptographic JWT verification
+    // handles validation and base64 strings could produce false positives.
     if (request.headers && typeof request.headers === 'object') {
       for (const [key, value] of Object.entries(request.headers)) {
         if (key.toLowerCase() === 'authorization' && typeof value === 'string' && value.startsWith('Bearer ')) {
@@ -106,6 +115,9 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     return { detected: false };
   }
 
+  // Recursively inspects nested objects with a max depth of 10 to prevent call-stack exhaustion
+  // from nested payload bombing attacks (e.g. billion laughs JSON equivalents).
+  // TODO(waf): consider offloading high-volume pattern scanning to an eBPF or Envoy gateway filter in production.
   private inspect(value: unknown, depth = 0): ThreatDetectionResult {
     if (depth > 10) {
       return {
