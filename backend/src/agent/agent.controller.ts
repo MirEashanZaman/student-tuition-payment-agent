@@ -209,7 +209,7 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     const studentId = id === 'me' ? request.user.studentId : id;
-    return await this.toolsService.getBalance(studentId);
+    return await this.toolsService.getBalance(studentId, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
@@ -321,10 +321,14 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.toolsService.updateTransferDraft(id, {
-      recipient_university: dto.recipientUniversity,
-      student_reg_number: dto.studentRegNumber,
-    });
+    return await this.toolsService.updateTransferDraft(
+      id,
+      {
+        recipient_university: dto.recipientUniversity,
+        student_reg_number: dto.studentRegNumber,
+      },
+      request.user.studentId,
+    );
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
@@ -336,10 +340,14 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.toolsService.updateTransferDraft(id, {
-      recipient_university: dto.recipientUniversity,
-      student_reg_number: dto.studentRegNumber,
-    });
+    return await this.toolsService.updateTransferDraft(
+      id,
+      {
+        recipient_university: dto.recipientUniversity,
+        student_reg_number: dto.studentRegNumber,
+      },
+      request.user.studentId,
+    );
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
@@ -350,7 +358,7 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.toolsService.deleteTransferDraft(id);
+    return await this.toolsService.deleteTransferDraft(id, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
@@ -367,6 +375,7 @@ export class AgentController {
       dto.confirmationToken,
       dto.userConsent,
       true,
+      request.user.studentId,
     );
   }
 
