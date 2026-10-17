@@ -31,6 +31,8 @@ interface CountryConfig {
   grantLabel: string;
 }
 
+// FinTechathon 2026 corridor configurations. BDT is the active primary settlement rail
+// for Topic C, while secondary corridors simulate regional origin remittance options.
 const SUPPORTED_COUNTRIES: CountryConfig[] = [
   {
     code: 'BD',
@@ -112,6 +114,7 @@ export default function RegistrationPage() {
   const activeCountry =
     SUPPORTED_COUNTRIES.find((c) => c.code === selectedCountryCode) || SUPPORTED_COUNTRIES[0];
 
+  // Auto-formats unique student ID prefix per country to keep test accounts separated in audit logs.
   const handleCountryChange = (countryCode: string) => {
     setSelectedCountryCode(countryCode);
     const country = SUPPORTED_COUNTRIES.find((c) => c.code === countryCode) || SUPPORTED_COUNTRIES[0];
@@ -120,6 +123,9 @@ export default function RegistrationPage() {
     setError(null);
   };
 
+  // Registers the student and auto-provisions sandbox initial seed funds (850,000 BDT)
+  // so judges can immediately test quote comparisons and remittances without separate deposit steps.
+  // TODO: connect KYC document upload (passport / university admission offer letter) when moving beyond sandbox staging.
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
