@@ -5,3 +5,4 @@ Log entry 4: test(auth): add unit test coverage for invalid signature handling
 Log entry 5: feat(guardrails): construct real-time transfer velocity tracker
 Log entry 6: feat(guardrails): set hard daily transactional threshold caps
 Log entry 7: refactor(guardrails): optimize prompt injection scanner performance
+Log entry 8: test(security): add test cases for SQL injection sanitization
