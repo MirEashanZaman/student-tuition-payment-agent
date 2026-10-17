@@ -108,9 +108,14 @@ export default function Home({
   } | null>(null);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(initialShowLogin);
-  const [loginInput, setLoginInput] = useState({
+  const [loginInput, setLoginInput] = useState<{
+    studentIdOrEmail: string;
+    password: string;
+    permissionTier: 'READ_ONLY' | 'DRAFT' | 'EXECUTE';
+  }>({
     studentIdOrEmail: 'STU-2026-BDT01',
     password: 'student123',
+    permissionTier: 'EXECUTE',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -153,12 +158,13 @@ export default function Home({
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (targetStudentId?: string) => {
     try {
       await ensureAuth();
+      const currentStudentId = targetStudentId || authSession?.user.studentId || authStorage.getStudentId() || 'me';
       const [accData, txData, auditData] = await Promise.all([
-        api.getAccount().catch(() => null),
-        api.getTransfers().catch(() => []),
+        api.getAccount(currentStudentId).catch(() => null),
+        api.getTransfers(currentStudentId === 'me' ? undefined : currentStudentId).catch(() => []),
         api.getAuditLogs(30).catch(() => []),
       ]);
       if (accData) setAccount(accData);
@@ -193,11 +199,15 @@ export default function Home({
     setLoginLoading(true);
     setLoginError(null);
     try {
-      const session = await api.login(loginInput.studentIdOrEmail, loginInput.password);
+      const session = await api.login({
+        studentIdOrEmail: loginInput.studentIdOrEmail,
+        password: loginInput.password,
+        permissionTier: loginInput.permissionTier,
+      });
       setAuthSession(session);
       setShowLoginModal(false);
-      showNotification(`Welcome, ${session.user.studentName}! JWT session authenticated.`, 'success');
-      await loadData();
+      showNotification(`Welcome, ${session.user.studentName}! JWT session authenticated (${session.user.permissionTier || 'EXECUTE'}).`, 'success');
+      await loadData(session.user.studentId);
     } catch (err: any) {
       setLoginError(err.message || 'Login failed. Please check credentials.');
     } finally {
@@ -217,7 +227,7 @@ export default function Home({
   };
 
   const handleDemoFill = () => {
-    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
+    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123', permissionTier: 'EXECUTE' });
     setLoginError(null);
   };
 
@@ -612,6 +622,9 @@ export default function Home({
                 >
                   <User className="w-3.5 h-3.5 text-teal-400" />
                   <span className="hidden md:inline">{authSession.user.studentId}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0D9488]/30 text-teal-300 border border-teal-500/40 font-bold uppercase">
+                    {authSession.user.permissionTier || 'EXECUTE'}
+                  </span>
                 </button>
                 <button
                   onClick={handleLogout}
@@ -1596,6 +1609,24 @@ export default function Home({
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Authorization Tier</label>
+                <select
+                  value={loginInput.permissionTier}
+                  onChange={(e) =>
+                    setLoginInput((prev) => ({
+                      ...prev,
+                      permissionTier: e.target.value as 'READ_ONLY' | 'DRAFT' | 'EXECUTE',
+                    }))
+                  }
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                >
+                  <option value="EXECUTE">EXECUTE - Full Transfer Execution</option>
+                  <option value="DRAFT">DRAFT - Route Comparison and Drafts</option>
+                  <option value="READ_ONLY">READ_ONLY - Inquiries and Balances Only</option>
+                </select>
+              </div>
+
               <div className="text-center text-xs text-slate-500 pt-1">
                 Need a new account?{' '}
                 <Link
@@ -1663,10 +1694,20 @@ export default function Home({
                   <div className="font-bold text-[#0D9488] mt-0.5">{authSession.user.role}</div>
                 </div>
                 <div>
+                  <span className="text-slate-500 font-medium">Permission Tier:</span>
+                  <div className="font-mono font-bold text-[#1E3A8A] mt-0.5">
+                    {authSession.user.permissionTier || 'EXECUTE'}
+                  </div>
+                </div>
+                <div>
                   <span className="text-slate-500 font-medium">Session Expiry:</span>
                   <div className="text-slate-700 font-mono mt-0.5">
                     {authSession.expiresIn ? `${authSession.expiresIn}s` : '86400s'}
                   </div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Corridor Scope:</span>
+                  <div className="text-slate-700 font-mono mt-0.5">BDT / USD / CNY</div>
                 </div>
               </div>
 
