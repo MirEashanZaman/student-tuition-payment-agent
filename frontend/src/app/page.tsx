@@ -40,6 +40,7 @@ import {
   EyeOff,
   Check,
   Globe,
+  RotateCcw,
 } from 'lucide-react';
 
 const renderFormattedText = (content: string) => {
@@ -122,6 +123,7 @@ export default function Home({
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showTokenInspector, setShowTokenInspector] = useState(false);
   const [auditFilter, setAuditFilter] = useState<'ALL' | 'HUMAN' | 'SECURITY' | 'RATES'>('ALL');
+  const [rollingBackId, setRollingBackId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -424,6 +426,38 @@ export default function Home({
       await loadData();
     } catch (err: any) {
       showNotification(err.message, 'error');
+    }
+  };
+
+  const handleRollbackTransfer = async (transferId: string, amountBdt: number) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to execute a Saga rollback for transfer ${transferId}?\n\nThis will reverse the transaction and restore ${amountBdt.toLocaleString()} BDT back to your tuition balance.`,
+    );
+    if (!confirmed) return;
+
+    setRollingBackId(transferId);
+    try {
+      const result = await api.rollbackTransfer(transferId, 'User initiated manual dashboard rollback');
+      showNotification(`Transfer ${transferId} successfully rolled back. Funds restored.`, 'success');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `rollback-${Date.now()}`,
+          sender: 'system',
+          text:
+            `**Saga Rollback Completed Successfully**\n\n` +
+            `• **Transfer ID:** \`${transferId}\`\n` +
+            `• **Status:** \`${result?.status || 'ROLLED_BACK'}\`\n` +
+            `• **Restored Amount:** **${amountBdt.toLocaleString()} BDT**\n` +
+            `• **Audit Verification:** Compensation event registered in immutable audit ledger.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+      await loadData();
+    } catch (err: any) {
+      showNotification(err.message || 'Failed to roll back transfer', 'error');
+    } finally {
+      setRollingBackId(null);
     }
   };
 
@@ -1380,6 +1414,7 @@ export default function Home({
                         <th className="py-2.5 px-3 font-semibold">USD Amount</th>
                         <th className="py-2.5 px-3 font-semibold">Total BDT Deducted</th>
                         <th className="py-2.5 px-3 font-semibold">Status</th>
+                        <th className="py-2.5 px-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1402,11 +1437,38 @@ export default function Home({
                                   ? 'bg-green-100 text-green-800 border border-green-300'
                                   : tx.status === 'PENDING_CONFIRMATION'
                                   ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : tx.status === 'ROLLED_BACK'
+                                  ? 'bg-slate-100 text-slate-700 border border-slate-300'
                                   : 'bg-red-100 text-red-800 border border-red-300'
                               }`}
                             >
                               {tx.status}
                             </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            {tx.status === 'CONFIRMED' || tx.status === 'EXECUTED' || tx.status === 'FAILED' ? (
+                              <button
+                                onClick={() => handleRollbackTransfer(tx.id, tx.source_amount_bdt)}
+                                disabled={rollingBackId === tx.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors disabled:opacity-50"
+                                title="Execute compensating Saga transaction to restore balance"
+                              >
+                                <RotateCcw className={`w-3 h-3 ${rollingBackId === tx.id ? 'animate-spin' : ''}`} />
+                                <span>{rollingBackId === tx.id ? 'Rolling back...' : 'Rollback'}</span>
+                              </button>
+                            ) : tx.status === 'PENDING_CONFIRMATION' ? (
+                              <button
+                                onClick={() => handleRollbackTransfer(tx.id, tx.source_amount_bdt)}
+                                disabled={rollingBackId === tx.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors disabled:opacity-50"
+                                title="Cancel transfer draft"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Cancel Draft</span>
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-mono">Completed</span>
+                            )}
                           </td>
                         </tr>
                       ))}
