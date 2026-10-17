@@ -31,8 +31,14 @@ import {
   Check,
 } from 'lucide-react';
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'dashboard' | 'audit'>('home');
+export default function Home({
+  initialTab = 'home',
+  initialShowLogin = false,
+}: {
+  initialTab?: 'home' | 'chat' | 'dashboard' | 'audit';
+  initialShowLogin?: boolean;
+} = {}) {
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'dashboard' | 'audit'>(initialTab);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [account, setAccount] = useState<Account | null>(null);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
@@ -42,7 +48,7 @@ export default function Home() {
   const [activeDraft, setActiveDraft] = useState<TransferDraft | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(initialShowLogin);
   const [loginInput, setLoginInput] = useState({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123' });
   const [showPassword, setShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
