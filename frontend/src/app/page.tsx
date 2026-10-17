@@ -132,7 +132,7 @@ export default function Home({
       id: 'init-1',
       sender: 'agent',
       text:
-        `Hello Tanvir! I am your **Cross-Border Student Tuition Payment Agent** for FinTechathon 2026.\n\n` +
+        `Hello Mir Eashan Zaman! I am your **Cross-Border Student Tuition Payment Agent** for FinTechathon 2026.\n\n` +
         `I optimize tuition remittances from Bangladesh (BDT) with **Permission Tiers**, **Multi-Objective Route Ranking**, and strict **Financial Safety Guardrails**.\n\n` +
         `How can I assist your tuition payment today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -144,6 +144,9 @@ export default function Home({
   const ensureAuth = async (): Promise<boolean> => {
     if (authStorage.getToken()) {
       return true;
+    }
+    if (typeof window !== 'undefined' && sessionStorage.getItem('fintech_logged_out') === 'true') {
+      return false;
     }
     if (isLoggingInRef.current) {
       return false;
@@ -162,7 +165,12 @@ export default function Home({
 
   const loadData = async (targetStudentId?: string) => {
     try {
-      await ensureAuth();
+      const hasAuth = await ensureAuth();
+      if (!hasAuth && !authStorage.getToken()) {
+        setAccount(null);
+        setTransfers([]);
+        return;
+      }
       const currentStudentId = targetStudentId || authSession?.user.studentId || authStorage.getStudentId() || 'me';
       const [accData, txData, auditData] = await Promise.all([
         api.getAccount(currentStudentId).catch(() => null),
@@ -201,6 +209,9 @@ export default function Home({
     setLoginLoading(true);
     setLoginError(null);
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('fintech_logged_out');
+      }
       const session = await api.login({
         studentIdOrEmail: loginInput.studentIdOrEmail,
         password: loginInput.password,
@@ -219,10 +230,14 @@ export default function Home({
 
   const handleLogout = async () => {
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('fintech_logged_out', 'true');
+      }
       await api.logout();
       setAuthSession(null);
+      setAccount(null);
+      setTransfers([]);
       showNotification('Logged out of session.', 'info');
-      await loadData();
     } catch (err: any) {
       showNotification(err.message, 'error');
     }
@@ -966,7 +981,7 @@ export default function Home({
                       <div className="text-[11px] text-slate-500 mb-1 flex items-center gap-2">
                         {msg.sender === 'user' ? (
                           <span className="font-semibold text-slate-700 ml-auto">
-                            Student ({account ? account.studentName.split(' ')[0] : 'Tanvir'})
+                            Student ({account ? account.studentName.split(' ')[0] : 'Mir'})
                           </span>
                         ) : (
                           <span className="font-semibold text-[#1E3A8A]">Tuition Payment Agent</span>
