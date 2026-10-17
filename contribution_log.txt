@@ -78,3 +78,4 @@ Log entry 77: fix(frontend): resolve missing key warning in dynamic list render
 Log entry 78: fix(backend): fix unhandled promise rejection in FX stream service
 Log entry 79: style(css): adjust focus ring styles for native input elements
 Log entry 80: chore(build): prune unused CSS utility classes from build output
+Log entry 81: feat(auth): validate session revocation list on protected routes
