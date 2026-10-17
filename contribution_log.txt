@@ -65,3 +65,4 @@ Log entry 64: feat(frontend): render student profile drawer with session claims
 Log entry 65: feat(frontend): add empty state UI placeholders for payment ledger
 Log entry 66: style(frontend): unify typography scale across form field labels
 Log entry 67: ci(pipeline): add automated audit check for npm dependencies
+Log entry 68: ci(pipeline): configure test coverage threshold reporting
