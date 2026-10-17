@@ -204,8 +204,12 @@ export class AgentController {
   @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
   @RequirePermissionTier(PermissionTier.READ_ONLY)
   @Get('accounts/:id')
-  async getAccount(@Param('id') id: string) {
-    return await this.toolsService.getBalance(id);
+  async getAccount(
+    @Param('id') id: string,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    const studentId = id === 'me' ? request.user.studentId : id;
+    return await this.toolsService.getBalance(studentId);
   }
 
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
