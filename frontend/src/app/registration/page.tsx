@@ -147,42 +147,42 @@ export default function RegistrationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col justify-between font-sans selection:bg-teal-500 selection:text-white">
-      <header className="sticky top-0 z-40 bg-slate-950/80 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-8 py-3">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-between font-sans selection:bg-[#0D9488] selection:text-white">
+      <header className="sticky top-0 z-40 bg-[#1E3A8A] border-b border-[#1E3A8A] text-white px-4 sm:px-8 py-3 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
-              <Zap className="w-5 h-5" />
+          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none">
+            <div className="w-9 h-9 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold">
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
-                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-[#0D9488] text-white">
                   Topic C
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">Cross-Border Student Tuition Agent</p>
+              <p className="text-[11px] text-blue-100 font-medium">Cross-Border Student Tuition Agent</p>
             </div>
           </Link>
 
           <nav className="flex items-center gap-2 text-xs">
             <Link
               href="/"
-              className="px-3 py-1.5 rounded-lg font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg font-semibold text-blue-100 hover:text-white hover:bg-[#172E6F] transition-colors flex items-center gap-1.5"
             >
               <HomeIcon className="w-3.5 h-3.5" />
               <span>Overview</span>
             </Link>
             <Link
               href="/login"
-              className="px-3 py-1.5 rounded-lg font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg font-semibold text-blue-100 hover:text-white hover:bg-[#172E6F] transition-colors flex items-center gap-1.5"
             >
-              <Lock className="w-3.5 h-3.5 text-teal-400" />
+              <Lock className="w-3.5 h-3.5 text-teal-300" />
               <span>Sign In</span>
             </Link>
             <Link
               href="/chat"
-              className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+              className="py-1.5 px-3 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
             >
               <span>Agent Chat</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -192,51 +192,51 @@ export default function RegistrationPage() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <div className="max-w-xl w-full bg-slate-900/90 border border-slate-800/80 rounded-2xl shadow-2xl p-6 sm:p-8 backdrop-blur-md">
+        <div className="max-w-xl w-full bg-white border border-[#E2E8F0] rounded-xl shadow-sm p-6 sm:p-8">
           <div className="flex items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md">
-                <Zap className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-lg bg-[#1E3A8A] flex items-center justify-center text-white shadow-sm font-bold">
+                <Zap className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white tracking-tight">Student Registration</h1>
-                <p className="text-xs text-slate-400 font-medium">Cross-Border Tuition Payment Agent</p>
+                <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">Student Registration</h1>
+                <p className="text-xs text-[#64748B] font-medium">Cross-Border Tuition Payment Agent</p>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-[11px] font-semibold">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-[11px] font-semibold">
               <Globe className="w-3.5 h-3.5" />
               <span>Global Rail</span>
             </div>
           </div>
 
           <div className="mb-6">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#64748B]">
               Register your verified student profile to route cross-border tuition directly to foreign universities with zero-trust safety guardrails.
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="mb-4 p-3 rounded-lg bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#DC2626]" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <div className="mb-4 p-3 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-[#16A34A] text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-[#16A34A]" />
               <span>Registration successful! Launching student dashboard...</span>
             </div>
           )}
 
           <form onSubmit={handleRegistration} className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+            <div className="p-3.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-teal-400" />
+                <label className="text-xs font-semibold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-[#0D9488]" />
                   <span>Country of Origin &amp; Currency</span>
                 </label>
-                <span className="text-[11px] font-mono font-semibold text-teal-300 bg-teal-950/80 border border-teal-800/80 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-mono font-semibold text-[#0D9488] bg-[#F0FDFA] border border-[#CCFBF1] px-2 py-0.5 rounded">
                   {activeCountry.currencyCode} - {activeCountry.currencyName}
                 </span>
               </div>
@@ -244,33 +244,33 @@ export default function RegistrationPage() {
               <select
                 value={selectedCountryCode}
                 onChange={(e) => handleCountryChange(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500 transition-colors cursor-pointer"
+                className="w-full bg-white border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#0D9488] transition-colors cursor-pointer"
               >
                 {SUPPORTED_COUNTRIES.map((country) => (
-                  <option key={country.code} value={country.code} className="bg-slate-900 text-white">
+                  <option key={country.code} value={country.code} className="bg-white text-[#0F172A]">
                     {country.name} ({country.currencyCode} - {country.currencyName})
                   </option>
                 ))}
               </select>
 
-              <div className="pt-2 border-t border-slate-800/80">
+              <div className="pt-2 border-t border-[#E2E8F0]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <Landmark className="w-3 h-3 text-slate-400" />
+                  <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider flex items-center gap-1">
+                    <Landmark className="w-3 h-3 text-[#64748B]" />
                     <span>Destination Tuition Corridors</span>
                   </span>
-                  <span className="text-[10px] text-slate-500">Foreign University Endpoints</span>
+                  <span className="text-[10px] text-[#64748B]">Foreign University Endpoints</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                   {TARGET_CORRIDORS.map((corridor) => (
                     <div
                       key={corridor.code}
-                      className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 flex flex-col items-center text-center"
+                      className="p-1.5 rounded-lg bg-white border border-[#E2E8F0] flex flex-col items-center text-center"
                     >
-                      <span className="text-xs font-bold text-white font-mono">
+                      <span className="text-xs font-bold text-[#0F172A] font-mono">
                         {corridor.code} ({corridor.symbol})
                       </span>
-                      <span className="text-[10px] text-slate-400 truncate w-full">{corridor.name}</span>
+                      <span className="text-[10px] text-[#64748B] truncate w-full">{corridor.name}</span>
                     </div>
                   ))}
                 </div>
@@ -279,7 +279,7 @@ export default function RegistrationPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
                   Student ID
                 </label>
                 <div className="relative">
@@ -288,15 +288,15 @@ export default function RegistrationPage() {
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors font-mono"
+                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors font-mono"
                     placeholder="STU-2026-BDT02"
                   />
-                  <User className="w-4 h-4 text-slate-500 absolute right-3.5 top-2.5" />
+                  <User className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
                   Student Full Name
                 </label>
                 <div className="relative">
@@ -305,17 +305,17 @@ export default function RegistrationPage() {
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
+                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors"
                     placeholder="Ayesha Khan"
                   />
-                  <User className="w-4 h-4 text-slate-500 absolute right-3.5 top-2.5" />
+                  <User className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
                   Email Address
                 </label>
                 <div className="relative">
@@ -324,15 +324,15 @@ export default function RegistrationPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
+                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors"
                     placeholder="ayesha.student@fintechathon.org"
                   />
-                  <Mail className="w-4 h-4 text-slate-500 absolute right-3.5 top-2.5" />
+                  <Mail className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
                   Password
                 </label>
                 <div className="relative">
@@ -341,21 +341,21 @@ export default function RegistrationPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
+                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors"
                     placeholder="Minimum 6 characters"
                   />
-                  <Lock className="w-4 h-4 text-slate-500 absolute right-3.5 top-2.5" />
+                  <Lock className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
                 </div>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-teal-950/40 border border-teal-800/60 text-xs text-teal-300 flex items-start gap-2.5">
-              <Wallet className="w-4 h-4 shrink-0 text-teal-400 mt-0.5" />
+            <div className="p-3.5 rounded-lg bg-[#F0FDFA] border border-[#CCFBF1] text-xs text-[#0D9488] flex items-start gap-2.5">
+              <Wallet className="w-4 h-4 shrink-0 text-[#0D9488] mt-0.5" />
               <div>
-                <div className="font-semibold text-white">
+                <div className="font-semibold text-[#0F172A]">
                   Sandbox Initial Grant: {activeCountry.grantLabel}
                 </div>
-                <div className="text-[11px] text-teal-300/80 mt-0.5">
+                <div className="text-[11px] text-[#64748B] mt-0.5">
                   Provides initial liquidity for testing tuition settlements to US, UK, and European universities through AI-optimized banking corridors.
                 </div>
               </div>
@@ -365,7 +365,7 @@ export default function RegistrationPage() {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full py-2.5 px-4 rounded-lg bg-[#1E3A8A] hover:bg-[#172E6F] text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
                 <span>{loading ? 'Processing Registration...' : 'Complete Registration'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -373,12 +373,12 @@ export default function RegistrationPage() {
             </div>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-slate-800">
+          <div className="mt-5 pt-4 border-t border-[#E2E8F0]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
                 International Demo Personas
               </span>
-              <span className="text-[11px] text-slate-500">1-Click Auto-Fill</span>
+              <span className="text-[11px] text-[#64748B]">1-Click Auto-Fill</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
@@ -392,10 +392,10 @@ export default function RegistrationPage() {
                     'student123',
                   )
                 }
-                className="text-left p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 transition-colors"
+                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
               >
-                <div className="text-xs font-bold text-white truncate">Ayesha Khan</div>
-                <div className="text-[10px] text-teal-400 font-mono">BD - BDT (STU-02)</div>
+                <div className="text-xs font-bold text-[#0F172A] truncate">Ayesha Khan</div>
+                <div className="text-[10px] text-[#0D9488] font-mono">BD - BDT (STU-02)</div>
               </button>
 
               <button
@@ -409,10 +409,10 @@ export default function RegistrationPage() {
                     'student123',
                   )
                 }
-                className="text-left p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 transition-colors"
+                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
               >
-                <div className="text-xs font-bold text-white truncate">Priya Sharma</div>
-                <div className="text-[10px] text-teal-400 font-mono">IN - INR (STU-01)</div>
+                <div className="text-xs font-bold text-[#0F172A] truncate">Priya Sharma</div>
+                <div className="text-[10px] text-[#0D9488] font-mono">IN - INR (STU-01)</div>
               </button>
 
               <button
@@ -426,35 +426,35 @@ export default function RegistrationPage() {
                     'student123',
                   )
                 }
-                className="text-left p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 transition-colors"
+                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
               >
-                <div className="text-xs font-bold text-white truncate">Rohan Shrestha</div>
-                <div className="text-[10px] text-teal-400 font-mono">NP - NPR (STU-01)</div>
+                <div className="text-xs font-bold text-[#0F172A] truncate">Rohan Shrestha</div>
+                <div className="text-[10px] text-[#0D9488] font-mono">NP - NPR (STU-01)</div>
               </button>
             </div>
           </div>
 
           <div className="mt-5 text-center">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#64748B]">
               Already registered?{' '}
               <button
                 type="button"
                 onClick={() => router.push('/login')}
-                className="font-semibold text-teal-400 hover:text-teal-300 underline underline-offset-4 transition-colors"
+                className="font-semibold text-[#0D9488] hover:text-[#0F766E] underline underline-offset-4 transition-colors"
               >
                 Return to Login
               </button>
             </p>
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-slate-500 text-xs pt-4 border-t border-slate-800">
-            <ShieldCheck className="w-4 h-4 text-teal-400" />
+          <div className="mt-6 flex items-center justify-center gap-2 text-[#64748B] text-xs pt-4 border-t border-[#E2E8F0]">
+            <ShieldCheck className="w-4 h-4 text-[#0D9488]" />
             <span>Secured with Scrypt Password Hashing and JWT Sessions</span>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-slate-500 py-6 border-t border-slate-800/80">
+      <footer className="text-center text-xs text-[#64748B] py-6 border-t border-[#E2E8F0] bg-white">
         FinTechathon 2026 • Cross-Border Student Tuition Payment Agent
       </footer>
     </div>
