@@ -53,14 +53,14 @@ describe('API rate limiting', () => {
     let baseUrl: string;
     let jwtService: JwtService;
 
-    const tokenFor = (studentId: string, role = 'STUDENT') =>
+    const tokenFor = (studentId: string, role = 'STUDENT', permissionTier = 'EXECUTE') =>
       jwtService.sign({
         sub: `account-${studentId}`,
         studentId,
         studentName: studentId,
         email: `${studentId.toLowerCase()}@example.test`,
         role,
-        permissionTier: 'EXECUTE',
+        permissionTier,
       });
 
     beforeAll(async () => {
@@ -173,6 +173,87 @@ describe('API rate limiting', () => {
       expect(response.status).toBe(200);
       expect(logs.map((log: { id: string }) => log.id)).toContain('audit-owned');
       expect(logs.map((log: { id: string }) => log.id)).not.toContain('audit-other');
+    });
+
+    it('enforces READ_ONLY permission tier by blocking transfer draft creation', async () => {
+      const readOnlyToken = tokenFor('STU-2026-BDT01', 'STUDENT', 'READ_ONLY');
+      const accountRes = await fetch(`${baseUrl}/accounts/STU-2026-BDT01`, {
+        headers: { Authorization: `Bearer ${readOnlyToken}` },
+      });
+      expect(accountRes.status).toBe(200);
+
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${readOnlyToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'University of Toronto',
+        }),
+      });
+      expect(draftRes.status).toBe(403);
+    });
+
+    it('enforces DRAFT permission tier by allowing drafting but blocking transfer confirmation', async () => {
+      const draftToken = tokenFor('STU-2026-BDT01', 'STUDENT', 'DRAFT');
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${draftToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'University of Toronto',
+        }),
+      });
+      expect(draftRes.status).toBe(201);
+      const draft = await draftRes.json();
+
+      const confirmRes = await fetch(`${baseUrl}/transfers/${draft.transferId}/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${draftToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          confirmationToken: draft.confirmationToken,
+          userConsent: true,
+        }),
+      });
+      expect(confirmRes.status).toBe(403);
+    });
+
+    it('prevents a student from querying another student transfer list via query parameter', async () => {
+      const response = await fetch(`${baseUrl}/transfers?studentId=STU-OTHER`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(403);
+    });
+
+    it('allows a student to read their own account using the me alias', async () => {
+      const response = await fetch(`${baseUrl}/accounts/me`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.studentId).toBe('STU-2026-BDT01');
+    });
+
+    it('ensures getTransfers returns only the authenticated student transfers', async () => {
+      const response = await fetch(`${baseUrl}/transfers`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(200);
+      const list = await response.json();
+      expect(Array.isArray(list)).toBe(true);
+      for (const t of list) {
+        expect(t.student_id).toBe('STU-2026-BDT01');
+      }
     });
 
     it('blocks sandbox administration and demo credentials in production', async () => {
