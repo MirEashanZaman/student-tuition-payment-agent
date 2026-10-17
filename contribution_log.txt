@@ -12,3 +12,4 @@ Log entry 11: feat(agent): implement multi-objective corridor scoring algorithm
 Log entry 12: refactor(agent): optimize FX spread and clearing fee matrix computation
 Log entry 13: feat(agent): add deadline buffer evaluation for cross-border routes
 Log entry 14: feat(saga): implement rollback handlers for failed clearing transfers
+Log entry 15: feat(database): integrate PostgreSQL repository methods for transactions
