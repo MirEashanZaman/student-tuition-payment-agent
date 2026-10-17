@@ -983,7 +983,7 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(session.accessToken).toBeDefined();
       expect(session.tokenType).toBe('Bearer');
       expect(session.user.studentId).toBe('STU-2026-BDT01');
-      expect(session.user.studentName).toBe('Tanvir Ahmed');
+      expect(session.user.studentName).toBe('Mir Eashan Zaman');
 
       const logs = await db.getAuditLogs(10);
       const successAuthLog = logs.find((l) => l.event_type === 'AUTH_LOGIN_SUCCESS');
@@ -1008,8 +1008,8 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       const payload = {
         sub: 'acc-stu-2026-bdt',
         studentId: 'STU-2026-BDT01',
-        studentName: 'Tanvir Ahmed',
-        email: 'tanvir.student@fintechathon.org',
+        studentName: 'Mir Eashan Zaman',
+        email: 'eashan.student@fintechathon.org',
         role: 'STUDENT',
       };
 
