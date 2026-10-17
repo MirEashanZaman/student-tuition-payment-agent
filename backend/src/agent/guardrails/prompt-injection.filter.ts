@@ -8,10 +8,10 @@ export class PromptInjectionFilter {
   private static readonly SUSPICIOUS_PATTERNS = [
     /ignore\s+(all\s+)?(previous|prior|existing)\s+instructions?/i,
     /ignore\s+(this|the)\s+(system|security|safety|developer|policy)\s+prompt/i,
-    /override\s+(transfer|daily|security|financial|permission|tier|safety|all)?\s*(limit|policy|rule|guardrail)s?/i,
+    /override\s+(transfer|daily|security|financial|permission|tier|safety|all)?\s*(limit|policy|rule|guardrail|tier)s?/i,
     /bypass\s+(all\s+)?(safety|guardrails|confirmation|verification|permission|tier|limit|policy|checks?)/i,
-    /execute\s+(immediately|now|without\s+confirmation|without\s+approval)/i,
-    /you\s+are\s+now\s+in\s+developer\s+mode/i,
+    /execute\s+(immediately|now|without\s+confirmation|without\s+approval|without\s+token)/i,
+    /you\s+are\s+now\s+(in\s+developer\s+mode|[a-z0-9_-]*(?:admin|root|unrestricted|jailbroken))/i,
     /set\s+(your|the|my|account)?\s*(permission|access|role|tier)\s*(to|=|\:)\s*(execute|draft|read_only|read-only|admin|root|superuser)/i,
     /disregard\s+(the\s+)?(safety|security|financial|permission|tier)\s+(rules?|guardrails?|policies?)/i,
     /system\s+override/i,
@@ -34,6 +34,8 @@ export class PromptInjectionFilter {
     /<\s*(system|instruction|admin|override)\s*>/i,
     /###\s*instruction/i,
     /pretend\s+(you\s+are|to\s+be)\s+(an\s+)?unrestricted/i,
+    /(system\s+prompt|system\s+instructions?)\s*(dump|leak|reveal|output|display)/i,
+    /(output|display|show|reveal|dump|leak|repeat)\s+(your\s+)?(original\s+|initial\s+|system\s+)?(system\s+prompt|instructions?|rules?)/i,
   ];
 
   private static normalizeUserText(userInput: string): string {
@@ -78,10 +80,10 @@ export class PromptInjectionFilter {
   static isLimitOrTierTampering(userInput: string): boolean {
     const normalized = this.normalizeUserText(userInput);
     const tamperingPatterns = [
-      /(set|change|raise|increase|update|modify|lift|remove|disable|override)\s+(the\s+|my\s+|account\s+|transfer\s+|daily\s+)?(transfer|daily|financial|safety)?\s*limits?/i,
+      /(set|change|raise|increase|update|modify|lift|remove|disable|override)\s+(the\s+|my\s+|account\s+|transfer\s+|daily\s+)?(transfer|daily|financial|safety|permission)?\s*(limits?|tier|tiers|policy)/i,
       /limit\s*(=|:|\s+to)\s*[0-9]+/i,
       /unlimited\s+(transfer|spending|balance|funds|allowance)/i,
-      /(elevate|escalate|promote|grant|upgrade|set|change)\s+(my\s+|your\s+|user\s+)?(permission|tier|role|privilege|access|rights)/i,
+      /(elevate|escalate|promote|grant|upgrade|set|change|override)\s+(my\s+|your\s+|user\s+)?(permission|tier|role|privilege|access|rights)/i,
       /grant\s+(me\s+)?(execute|admin|root|full)\s*(access|permission|tier|rights)?/i,
       /switch\s+(to|=)?\s*(execute|admin|root|superuser)\s*(tier|mode|role)?/i,
       /set\s+(your|the|my|account)?\s*(permission|access|role|tier)\s*(to|=|\:)\s*(execute|draft|read_only|read-only|admin|root|superuser)/i,
