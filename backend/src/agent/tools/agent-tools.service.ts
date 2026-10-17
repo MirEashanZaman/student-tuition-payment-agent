@@ -706,6 +706,61 @@ export class AgentToolsService {
     }
   }
 
+  async rollbackTransfer(
+    transferId: string,
+    reason = 'User requested transfer rollback',
+    requestingStudentId?: string,
+  ) {
+    const transfer = await this.db.getTransferById(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException('You can only roll back your own transfer.');
+    }
+
+    if (transfer.status === 'ROLLED_BACK') {
+      throw new BadRequestException('Transfer has already been rolled back.');
+    }
+
+    if (transfer.status === 'CANCELLED') {
+      throw new BadRequestException('Transfer has already been cancelled.');
+    }
+
+    if (transfer.status === 'PENDING_CONFIRMATION' || transfer.status === 'BLOCKED') {
+      const cancelled = await this.cancelTransfer(transferId, requestingStudentId);
+      return {
+        success: true,
+        transferId,
+        status: cancelled.status,
+        message: 'Transfer draft cancelled and rolled back successfully.',
+        restoredAmountBdt: 0,
+      };
+    }
+
+    if (
+      transfer.status !== 'CONFIRMED' &&
+      transfer.status !== 'EXECUTED' &&
+      transfer.status !== 'FAILED'
+    ) {
+      throw new BadRequestException(`Cannot roll back transfer with status "${transfer.status}".`);
+    }
+
+    await this.compensateTransfer(transferId, reason, requestingStudentId);
+    const updatedTransfer = await this.db.getTransferById(transferId);
+    const updatedAccount = await this.db.getAccountByStudentId(transfer.student_id);
+
+    return {
+      success: true,
+      transferId,
+      status: updatedTransfer?.status || 'ROLLED_BACK',
+      message: 'Transfer successfully rolled back and student balance restored.',
+      restoredAmountBdt: transfer.source_amount_bdt,
+      updatedBalance: updatedAccount?.balance,
+    };
+  }
+
   async getAuditLog(limit = 50, tier?: string, status?: string) {
     if (this.auditRepo && !tier && !status) {
       return this.auditRepo.findRecent(limit);
