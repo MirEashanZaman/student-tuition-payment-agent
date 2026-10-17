@@ -42,6 +42,7 @@ import {
   Globe,
   RotateCcw,
   X,
+  LogOut,
 } from 'lucide-react';
 
 const renderFormattedText = (content: string) => {
@@ -604,14 +605,14 @@ export default function Home({
         </div>
       )}
 
-      <header className="sticky top-0 z-40 bg-[#1E3A8A] text-white px-4 sm:px-8 py-3 shadow-md border-b border-blue-950">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-[#1E3A8A] text-white px-4 sm:px-6 lg:px-8 py-2.5 shadow-md border-b border-blue-950">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
           <button
             onClick={() => setActiveTab('home')}
-            className="flex items-center gap-3 text-left focus:outline-none shrink-0"
+            className="flex items-center gap-2.5 sm:gap-3 text-left focus:outline-none shrink-0 group"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold">
-              <Zap className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold group-hover:bg-teal-600 transition-colors">
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -624,13 +625,13 @@ export default function Home({
             </div>
           </button>
 
-          <nav className="hidden lg:flex items-center gap-1 bg-blue-950/70 p-1 rounded-xl border border-blue-900/60">
+          <nav className="hidden lg:flex items-center gap-1 bg-blue-950/80 p-1 rounded-xl border border-blue-900/70 shadow-xs">
             <button
               onClick={() => setActiveTab('home')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'home'
-                  ? 'bg-white text-[#1E3A8A] shadow-sm'
-                  : 'text-blue-100 hover:text-white hover:bg-blue-900/60'
+                  ? 'bg-white text-[#1E3A8A] shadow-xs'
+                  : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <HomeIcon className="w-3.5 h-3.5" />
@@ -638,10 +639,10 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('chat')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'chat'
-                  ? 'bg-white text-[#1E3A8A] shadow-sm'
-                  : 'text-blue-100 hover:text-white hover:bg-blue-900/60'
+                  ? 'bg-white text-[#1E3A8A] shadow-xs'
+                  : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <Activity className="w-3.5 h-3.5" />
@@ -649,10 +650,10 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'dashboard'
-                  ? 'bg-white text-[#1E3A8A] shadow-sm'
-                  : 'text-blue-100 hover:text-white hover:bg-blue-900/60'
+                  ? 'bg-white text-[#1E3A8A] shadow-xs'
+                  : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -660,74 +661,81 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'audit'
-                  ? 'bg-white text-[#1E3A8A] shadow-sm'
-                  : 'text-blue-100 hover:text-white hover:bg-blue-900/60'
+                  ? 'bg-white text-[#1E3A8A] shadow-xs'
+                  : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Audit Trail ({auditLogs.length})</span>
             </button>
 
-            <span className="w-px h-4 bg-blue-800 my-auto mx-1"></span>
+            <span className="w-px h-4 bg-blue-800/80 my-auto mx-1 shrink-0"></span>
 
             <Link
               href="/rates"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-200 hover:text-white hover:bg-blue-900/60 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1"
               title="Incremental Static Regeneration (ISR) Live FX Corridors"
             >
-              Rates (ISR)
+              <span>Rates</span>
+              <span className="text-[10px] font-mono text-teal-300 font-semibold">(ISR)</span>
             </Link>
             <Link
               href="/status"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-200 hover:text-white hover:bg-blue-900/60 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1"
               title="Server-Side Rendered (SSR) Real-Time Liveness Verifier"
             >
-              Status (SSR)
+              <span>Status</span>
+              <span className="text-[10px] font-mono text-teal-300 font-semibold">(SSR)</span>
             </Link>
             <Link
               href="/faq"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-100 hover:text-white hover:bg-blue-900/60 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1"
               title="Static Site Generation (SSG) Institutional Security FAQ"
             >
-              FAQ (SSG)
+              <span>FAQ</span>
+              <span className="text-[10px] font-mono text-teal-300 font-semibold">(SSG)</span>
             </Link>
           </nav>
 
-          <div className="flex items-center gap-2.5">
-            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-800/40 border border-teal-400/40 text-teal-200 text-xs font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-300 animate-pulse"></span>
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-950/70 border border-teal-500/30 text-teal-200 text-xs font-medium shadow-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0D9488]"></span>
+              </span>
               <span>Sandbox Active</span>
             </div>
 
-            <div className="bg-white text-[#1E3A8A] border border-blue-200 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs shadow-sm">
-              <span className="text-slate-600 hidden sm:inline">
+            <div className="bg-blue-950/80 text-white border border-blue-800/80 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs shadow-xs">
+              <span className="text-blue-300 hidden sm:inline font-medium">
                 {account ? account.studentName.split(' ')[0] : 'Student'}:
               </span>
-              <span className="font-mono font-bold text-[#0D9488]">
+              <span className="font-mono font-bold text-teal-300">
                 {account ? `${account.balance.toLocaleString()} BDT` : authSession ? 'Connecting...' : 'Not Logged In'}
               </span>
             </div>
 
             {authSession ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowTokenInspector(true)}
-                  className="px-2.5 py-1.5 rounded-xl bg-blue-950 border border-blue-800 text-teal-200 text-xs font-mono font-semibold flex items-center gap-1.5 hover:bg-blue-900 transition-colors"
+                  className="px-3 py-1.5 rounded-xl bg-blue-950/90 border border-blue-800/80 text-teal-200 text-xs font-mono font-semibold flex items-center gap-2 hover:bg-blue-900 transition-colors shadow-xs whitespace-nowrap"
                   title="Inspect JWT Token Session"
                 >
-                  <User className="w-3.5 h-3.5 text-teal-400" />
-                  <span className="hidden md:inline">{authSession.user.studentId}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0D9488]/30 text-teal-300 border border-teal-500/40 font-bold uppercase">
+                  <User className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span className="hidden md:inline font-mono">{authSession.user.studentId}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0D9488]/30 text-teal-300 border border-teal-500/40 font-bold uppercase tracking-wider">
                     {authSession.user.permissionTier || 'EXECUTE'}
                   </span>
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-2 py-1.5 rounded-xl text-xs font-semibold text-blue-200 hover:text-white hover:bg-blue-900/60 transition-colors"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/70 border border-rose-800/40 hover:border-rose-600/60 transition-all flex items-center gap-1.5 shadow-xs"
                 >
-                  Sign Out
+                  <LogOut className="w-3.5 h-3.5 text-rose-300 shrink-0" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             ) : (
@@ -777,13 +785,13 @@ export default function Home({
         >
           Audit ({auditLogs.length})
         </button>
-        <Link href="/rates" className="px-2 py-1 text-xs text-purple-200 whitespace-nowrap">
+        <Link href="/rates" className="px-2 py-1 text-xs text-blue-200 hover:text-white whitespace-nowrap">
           Rates
         </Link>
-        <Link href="/status" className="px-2 py-1 text-xs text-amber-200 whitespace-nowrap">
+        <Link href="/status" className="px-2 py-1 text-xs text-blue-200 hover:text-white whitespace-nowrap">
           Status
         </Link>
-        <Link href="/faq" className="px-2 py-1 text-xs text-blue-200 whitespace-nowrap">
+        <Link href="/faq" className="px-2 py-1 text-xs text-blue-200 hover:text-white whitespace-nowrap">
           FAQ
         </Link>
       </div>
@@ -1254,14 +1262,14 @@ export default function Home({
               </div>
             </div>
 
-            <div className="lg:col-span-4 flex flex-col gap-4 overflow-y-auto no-scrollbar">
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-[#1E3A8A] mb-3 flex items-center gap-2">
+            <div className="lg:col-span-4 flex flex-col gap-3 overflow-y-auto pr-1 pb-10">
+              <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-sm">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-[#1E3A8A] mb-2.5 flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-[#0D9488]" /> Student Account Summary
                 </h3>
 
                 {account ? (
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Student:</span>
                       <strong className="text-slate-900">{account.studentName}</strong>
@@ -1317,11 +1325,11 @@ export default function Home({
                 )}
               </div>
 
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-[#1E3A8A] mb-3 flex items-center gap-2">
+              <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-sm">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-[#1E3A8A] mb-2.5 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#0D9488]" /> Active Safety Rules
                 </h3>
-                <ul className="space-y-2 text-xs text-slate-700">
+                <ul className="space-y-1.5 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
                     <span><strong>Per-Transfer Limit:</strong> 400,000 BDT max</span>
@@ -1345,24 +1353,26 @@ export default function Home({
                 </ul>
               </div>
 
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600 mb-3 flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 text-[#F59E0B]" /> Sandbox &amp; Evaluator Controls
+              <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-sm">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600 mb-2.5 flex items-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 text-[#F59E0B]" /> Sandbox &amp; Evaluator Controls
                 </h3>
-                <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
-                    className="w-full py-2 px-3 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    className="w-full py-2.5 px-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-[0.98]"
                     onClick={handleResetSandbox}
+                    title="Reset Sandbox Database to Initial Seed State"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-[#F59E0B]" />
-                    <span>Reset Sandbox Database</span>
+                    <RefreshCw className="w-3.5 h-3.5 text-[#F59E0B] shrink-0" />
+                    <span className="truncate">Reset Database</span>
                   </button>
                   <button
-                    className="w-full py-2 px-3 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    className="w-full py-2.5 px-3 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98]"
                     onClick={handleExportLogs}
+                    title="Export Tamper-Evident Evidence Log (JSON)"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Export Evidence (JSON)</span>
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Export Evidence</span>
                   </button>
                 </div>
               </div>
