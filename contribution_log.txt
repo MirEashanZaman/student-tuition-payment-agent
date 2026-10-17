@@ -13,3 +13,4 @@ Log entry 12: feat(agent): add automatic retry strategy for timed-out FX endpoin
 Log entry 13: feat(saga): add state persistence layer for pending tuition payouts
 Log entry 14: feat(database): index transaction ledger for high-concurrency reads
 Log entry 15: test(database): verify ACID compliance during simulated rollbacks
+Log entry 16: feat(frontend): polish responsive typography across landing views
