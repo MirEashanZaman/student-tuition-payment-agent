@@ -204,8 +204,12 @@ export class AgentController {
   @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
   @RequirePermissionTier(PermissionTier.READ_ONLY)
   @Get('accounts/:id')
-  async getAccount(@Param('id') id: string) {
-    return await this.toolsService.getBalance(id);
+  async getAccount(
+    @Param('id') id: string,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    const studentId = id === 'me' ? request.user.studentId : id;
+    return await this.toolsService.getBalance(studentId, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
@@ -317,10 +321,14 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.toolsService.updateTransferDraft(id, {
-      recipient_university: dto.recipientUniversity,
-      student_reg_number: dto.studentRegNumber,
-    });
+    return await this.toolsService.updateTransferDraft(
+      id,
+      {
+        recipient_university: dto.recipientUniversity,
+        student_reg_number: dto.studentRegNumber,
+      },
+      request.user.studentId,
+    );
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
@@ -332,10 +340,14 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.toolsService.updateTransferDraft(id, {
-      recipient_university: dto.recipientUniversity,
-      student_reg_number: dto.studentRegNumber,
-    });
+    return await this.toolsService.updateTransferDraft(
+      id,
+      {
+        recipient_university: dto.recipientUniversity,
+        student_reg_number: dto.studentRegNumber,
+      },
+      request.user.studentId,
+    );
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
@@ -346,7 +358,7 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.toolsService.deleteTransferDraft(id);
+    return await this.toolsService.deleteTransferDraft(id, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
@@ -363,6 +375,7 @@ export class AgentController {
       dto.confirmationToken,
       dto.userConsent,
       true,
+      request.user.studentId,
     );
   }
 
@@ -389,6 +402,22 @@ export class AgentController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
+  @Post('transfers/:id/rollback')
+  async rollbackTransfer(
+    @Param('id') id: string,
+    @Body() dto: CompensateTransferDto,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    await this.assertTransferOwner(id, request.user.studentId);
+    return await this.toolsService.rollbackTransfer(
+      id,
+      dto?.reason || 'User requested transfer rollback',
+      request.user.studentId,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
   @RequirePermissionTier(PermissionTier.DRAFT)
   @Post('transfers/:id/cancel')
   async cancelTransfer(
@@ -396,7 +425,7 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.db.updateTransferStatus(id, 'CANCELLED');
+    return await this.toolsService.cancelTransfer(id, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)

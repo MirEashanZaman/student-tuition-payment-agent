@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 export const ChatMessageInputSchema = z.object({
-  message: z.string().trim().min(1, 'Message cannot be empty').max(4000, 'Message cannot exceed 4000 characters'),
+  message: z
+    .string()
+    .trim()
+    .min(1, 'Message cannot be empty')
+    .max(4000, 'Message cannot exceed 4000 characters')
+    .transform((val) => val.normalize('NFKC')),
   studentId: z.string().min(1).default('STU-2026-BDT01'),
 });
 
@@ -38,11 +43,23 @@ export const DepositFundsInputSchema = z.object({
 export const LoginInputSchema = z.object({
   studentIdOrEmail: z.string().trim().min(1, 'Student ID or Email is required'),
   password: z.string().min(1, 'Password is required'),
+  permissionTier: z.enum(['READ_ONLY', 'DRAFT', 'EXECUTE']).optional(),
 });
 
 export const RegistrationInputSchema = z.object({
-  studentId: z.string().trim().min(2, 'Student ID must be at least 2 characters').max(64),
-  studentName: z.string().trim().min(2, 'Student name must be at least 2 characters').max(128),
+  studentId: z
+    .string()
+    .trim()
+    .min(2, 'Student ID must be at least 2 characters')
+    .max(64)
+    .regex(/^[A-Za-z0-9_-]+$/, 'Student ID may only contain letters, numbers, hyphens, and underscores'),
+  studentName: z
+    .string()
+    .trim()
+    .min(2, 'Student name must be at least 2 characters')
+    .max(128)
+    .regex(/^[^\u0000-\u001F<>]+$/, 'Student name must not contain HTML or control characters'),
   email: z.string().trim().email('Valid email address is required').max(254),
   password: z.string().min(6, 'Password must be at least 6 characters').max(128),
+  permissionTier: z.enum(['READ_ONLY', 'DRAFT', 'EXECUTE']).optional(),
 });

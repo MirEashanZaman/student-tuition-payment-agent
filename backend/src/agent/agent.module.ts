@@ -40,6 +40,8 @@ import {
   PerTransferLimitRule,
   DailyLimitRule,
   AccountBalanceRule,
+  AnomalyCheckRule,
+  ConfirmationRequirementRule,
   SafetyRuleEngine,
 } from './guardrails/rules/safety-rule.engine';
 
@@ -76,6 +78,8 @@ import {
     PerTransferLimitRule,
     DailyLimitRule,
     AccountBalanceRule,
+    AnomalyCheckRule,
+    ConfirmationRequirementRule,
     SafetyRuleEngine,
   ],
   exports: [
@@ -89,6 +93,8 @@ import {
     LLM_CLIENT_TOKEN,
     TuitionCalculationService,
     TUITION_CALCULATOR_TOKEN,
+    AnomalyCheckRule,
+    ConfirmationRequirementRule,
     SafetyRuleEngine,
   ],
 })

@@ -92,7 +92,7 @@ export class StudentScopeGuard implements CanActivate {
       (value): value is string => typeof value === 'string' && value.length > 0,
     );
 
-    if (targetStudentId && targetStudentId !== user.studentId) {
+    if (targetStudentId && targetStudentId !== 'me' && targetStudentId !== user.studentId) {
       throw new ForbiddenException('Access denied: you can only access your own account and transfer records.');
     }
 

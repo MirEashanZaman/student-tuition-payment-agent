@@ -53,14 +53,14 @@ describe('API rate limiting', () => {
     let baseUrl: string;
     let jwtService: JwtService;
 
-    const tokenFor = (studentId: string, role = 'STUDENT') =>
+    const tokenFor = (studentId: string, role = 'STUDENT', permissionTier = 'EXECUTE') =>
       jwtService.sign({
         sub: `account-${studentId}`,
         studentId,
         studentName: studentId,
         email: `${studentId.toLowerCase()}@example.test`,
         role,
-        permissionTier: 'EXECUTE',
+        permissionTier,
       });
 
     beforeAll(async () => {
@@ -175,6 +175,87 @@ describe('API rate limiting', () => {
       expect(logs.map((log: { id: string }) => log.id)).not.toContain('audit-other');
     });
 
+    it('enforces READ_ONLY permission tier by blocking transfer draft creation', async () => {
+      const readOnlyToken = tokenFor('STU-2026-BDT01', 'STUDENT', 'READ_ONLY');
+      const accountRes = await fetch(`${baseUrl}/accounts/STU-2026-BDT01`, {
+        headers: { Authorization: `Bearer ${readOnlyToken}` },
+      });
+      expect(accountRes.status).toBe(200);
+
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${readOnlyToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'University of Toronto',
+        }),
+      });
+      expect(draftRes.status).toBe(403);
+    });
+
+    it('enforces DRAFT permission tier by allowing drafting but blocking transfer confirmation', async () => {
+      const draftToken = tokenFor('STU-2026-BDT01', 'STUDENT', 'DRAFT');
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${draftToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'University of Toronto',
+        }),
+      });
+      expect(draftRes.status).toBe(201);
+      const draft = await draftRes.json();
+
+      const confirmRes = await fetch(`${baseUrl}/transfers/${draft.transferId}/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${draftToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          confirmationToken: draft.confirmationToken,
+          userConsent: true,
+        }),
+      });
+      expect(confirmRes.status).toBe(403);
+    });
+
+    it('prevents a student from querying another student transfer list via query parameter', async () => {
+      const response = await fetch(`${baseUrl}/transfers?studentId=STU-OTHER`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(403);
+    });
+
+    it('allows a student to read their own account using the me alias', async () => {
+      const response = await fetch(`${baseUrl}/accounts/me`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.studentId).toBe('STU-2026-BDT01');
+    });
+
+    it('ensures getTransfers returns only the authenticated student transfers', async () => {
+      const response = await fetch(`${baseUrl}/transfers`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(200);
+      const list = await response.json();
+      expect(Array.isArray(list)).toBe(true);
+      for (const t of list) {
+        expect(t.student_id).toBe('STU-2026-BDT01');
+      }
+    });
+
     it('blocks sandbox administration and demo credentials in production', async () => {
       const originalNodeEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
@@ -214,6 +295,256 @@ describe('API rate limiting', () => {
           process.env.DATABASE_URL = originalDatabaseUrl;
         }
       }
+    });
+
+    it('blocks classic bash fork bomb attacks with HTTP 403 Forbidden', async () => {
+      const response = await fetch(`${baseUrl}/chat`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: ':(){ :|:& };:' }),
+      });
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.message).toContain('Security Shield Alert');
+      expect(data.threatType).toBe('SHELL_BOMB');
+    });
+
+    it('blocks command injection and shell execution attacks', async () => {
+      const attackVectors = [
+        '; rm -rf /',
+        '$(whoami)',
+        '`whoami`',
+        'cat /etc/passwd',
+        'powershell -enc aW52b2tlLWV4cHJlc3Npb24=',
+      ];
+      for (const vector of attackVectors) {
+        const response = await fetch(`${baseUrl}/chat`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: vector }),
+        });
+        expect(response.status).toBe(403);
+        const data = await response.json();
+        expect(data.message).toContain('Security Shield Alert');
+      }
+    });
+
+    it('blocks path traversal attacks in URL query and path parameters', async () => {
+      const response = await fetch(`${baseUrl}/transfers/..%2f..%2fetc%2fpasswd`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.message).toContain('Security Shield Alert');
+    });
+
+    it('blocks SQL injection attack vectors in request payloads', async () => {
+      const response = await fetch(`${baseUrl}/transfers?status=' UNION ALL SELECT * FROM accounts--`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.message).toContain('Security Shield Alert');
+      expect(data.threatType).toBe('SQL_INJECTION');
+    });
+
+    it('blocks prototype pollution payload attempts', async () => {
+      const response = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: '{"routeId":"route-edupay-prime","amountUsd":100,"recipientUniversity":"University of Oxford","__proto__":{"isAdmin":true}}',
+      });
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.threatType).toBe('PROTOTYPE_POLLUTION');
+    });
+
+    it('blocks null byte poisoning attacks in URL and payloads', async () => {
+      const response = await fetch(`${baseUrl}/transfers/TR-123%00.txt`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.threatType).toBe('NULL_BYTE_POISONING');
+    });
+
+    it('executes a complete rollback on confirmed transfers, restoring balance and daily spent quota', async () => {
+      const database = app.get(DatabaseService);
+      const initialAccount = await database.getAccountByStudentId('STU-2026-BDT01');
+      const startBalance = initialAccount!.balance;
+      const startDailySpent = initialAccount!.daily_spent;
+
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'Monash University Malaysia',
+        }),
+      });
+      expect(draftRes.status).toBe(201);
+      const draft = await draftRes.json();
+
+      const confirmRes = await fetch(`${baseUrl}/transfers/${draft.transferId}/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          confirmationToken: draft.confirmationToken,
+          userConsent: true,
+        }),
+      });
+      expect(confirmRes.status).toBe(201);
+
+      const confirmedAccount = await database.getAccountByStudentId('STU-2026-BDT01');
+      expect(confirmedAccount!.balance).toBeLessThan(startBalance);
+
+      const rollbackRes = await fetch(`${baseUrl}/transfers/${draft.transferId}/rollback`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Accidental double payment' }),
+      });
+      expect(rollbackRes.status).toBe(201);
+      const rollbackData = await rollbackRes.json();
+      expect(rollbackData.success).toBe(true);
+      expect(rollbackData.status).toBe('ROLLED_BACK');
+      expect(rollbackData.restoredAmountBdt).toBeGreaterThan(0);
+
+      const restoredAccount = await database.getAccountByStudentId('STU-2026-BDT01');
+      expect(restoredAccount!.balance).toBe(startBalance);
+      expect(restoredAccount!.daily_spent).toBe(startDailySpent);
+
+      const updatedTx = await database.getTransferById(draft.transferId);
+      expect(updatedTx!.status).toBe('ROLLED_BACK');
+    });
+
+    it('rolls back draft transfers by safely cancelling them without moving funds', async () => {
+      const database = app.get(DatabaseService);
+      const initialAccount = await database.getAccountByStudentId('STU-2026-BDT01');
+      const startBalance = initialAccount!.balance;
+
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'University of Melbourne',
+        }),
+      });
+      expect(draftRes.status).toBe(201);
+      const draft = await draftRes.json();
+
+      const rollbackRes = await fetch(`${baseUrl}/transfers/${draft.transferId}/rollback`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Changed mind before confirm' }),
+      });
+      expect(rollbackRes.status).toBe(201);
+      const rollbackData = await rollbackRes.json();
+      expect(rollbackData.success).toBe(true);
+      expect(rollbackData.status).toBe('CANCELLED');
+
+      const afterAccount = await database.getAccountByStudentId('STU-2026-BDT01');
+      expect(afterAccount!.balance).toBe(startBalance);
+    });
+
+    it('prevents cross-student unauthorized rollback of another student transfer', async () => {
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'University of Sydney',
+        }),
+      });
+      const draft = await draftRes.json();
+
+      const rollbackRes = await fetch(`${baseUrl}/transfers/${draft.transferId}/rollback`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-OTHER')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Malicious rollback attempt' }),
+      });
+      expect(rollbackRes.status).toBe(403);
+    });
+
+    it('rejects duplicate rollback on an already rolled-back transfer', async () => {
+      const draftRes = await fetch(`${baseUrl}/transfers/draft`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          routeId: 'route-edupay-prime',
+          amountUsd: 100,
+          recipientUniversity: 'National University of Singapore',
+        }),
+      });
+      const draft = await draftRes.json();
+
+      await fetch(`${baseUrl}/transfers/${draft.transferId}/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          confirmationToken: draft.confirmationToken,
+          userConsent: true,
+        }),
+      });
+
+      const firstRollback = await fetch(`${baseUrl}/transfers/${draft.transferId}/rollback`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Initial rollback' }),
+      });
+      expect(firstRollback.status).toBe(201);
+
+      const secondRollback = await fetch(`${baseUrl}/transfers/${draft.transferId}/rollback`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Duplicate rollback' }),
+      });
+      expect(secondRollback.status).toBe(400);
     });
   });
 

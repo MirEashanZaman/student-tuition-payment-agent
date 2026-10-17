@@ -50,12 +50,13 @@ export class PromptInjectionCheckHandler extends SafetyCheckHandler {
     if (!context.userPrompt) {
       return { passed: true };
     }
+    const isTampering = PromptInjectionFilter.isLimitOrTierTampering(context.userPrompt);
     const result = PromptInjectionFilter.inspect(context.userPrompt);
-    if (result.isSuspicious) {
+    if (result.isSuspicious || isTampering) {
       return {
         passed: false,
         blockedBy: 'PromptInjectionCheckHandler',
-        reason: 'Prompt injection pattern flagged: ' + result.flaggedPatterns.join(', '),
+        reason: 'Prompt injection pattern flagged: ' + (result.flaggedPatterns.length > 0 ? result.flaggedPatterns.join(', ') : 'Limit or tier tampering attempt detected'),
       };
     }
     return { passed: true };
@@ -158,6 +159,15 @@ export class AnomalyCheckHandler extends SafetyCheckHandler {
           passed: false,
           blockedBy: 'AnomalyCheckHandler',
           reason: 'Transfer amount must be strictly greater than zero.',
+        };
+      }
+      const envCeiling = parseFloat(process.env.ANOMALY_CEILING_LIMIT || '');
+      const anomalyCeiling = !isNaN(envCeiling) && envCeiling > 0 ? envCeiling : 5000000;
+      if (context.amountBdt > anomalyCeiling) {
+        return {
+          passed: false,
+          blockedBy: 'AnomalyCheckHandler',
+          reason: `Flagged suspicious anomaly: Requested amount exceeds hard safety ceiling of ${anomalyCeiling.toLocaleString()} BDT.`,
         };
       }
     }

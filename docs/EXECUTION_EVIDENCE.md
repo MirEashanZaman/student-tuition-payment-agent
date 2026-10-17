@@ -7,7 +7,7 @@
 
 ## 1. Automated Test Suite Execution Results
 
-All 46 required security, financial limit, architectural, and hardening evaluation criteria executed against the Jest test suite:
+All 80 required security, financial limit, architectural, shell bombing defense, and Saga rollback criteria executed against the Jest test suite:
 
 ```bash
 > student-tuition-payment-backend@1.0.0 test
@@ -17,9 +17,9 @@ PASS test/security-hardening.spec.ts
 PASS test/security.spec.ts
 
 Test Suites: 2 passed, 2 total
-Tests:       46 passed, 46 total
+Tests:       80 passed, 80 total
 Snapshots:   0 total
-Time:        5.576 s
+Time:        7.627 s
 Ran all test suites.
 ```
 
@@ -102,5 +102,35 @@ The following entries reflect real sandbox operations captured in the `audit_log
   "status": "SUCCESS",
   "ip_address": "127.0.0.1",
   "created_at": "2026-10-16T10:14:25.882Z"
+}
+```
+
+### Entry 6: Saga Rollback & Balance Restoration (EXECUTE Tier)
+```json
+{
+  "id": "5e1a7b03-99b4-4632-a5ec-90cb812fe811",
+  "event_type": "TRANSFER_COMPENSATED",
+  "permission_tier": "EXECUTE",
+  "account_id": "acc-stu-2026-bdt",
+  "transfer_id": "TRX-7B29A4E1",
+  "action_summary": "Saga compensating transaction executed: 357,918.50 BDT restored to student account. Reason: User initiated manual dashboard rollback",
+  "details": "{\"transferId\":\"TRX-7B29A4E1\",\"restoredBalanceBdt\":850000,\"dailySpentBdt\":0,\"reason\":\"User initiated manual dashboard rollback\"}",
+  "status": "WARNING",
+  "ip_address": "127.0.0.1",
+  "created_at": "2026-10-17T15:22:11.412Z"
+}
+```
+
+### Entry 7: Penetration Attack Blocked (WAF Armor)
+```json
+{
+  "id": "8b3f1209-43c1-4198-8c10-23a5d89b1420",
+  "event_type": "PENETRATION_ATTACK_BLOCKED",
+  "permission_tier": "READ_ONLY",
+  "action_summary": "Security Armor blocked SHELL_BOMB on /api/chat",
+  "details": "{\"threatType\":\"SHELL_BOMB\",\"matchedPattern\":\":\\\\s*\\\\(\\\\s*\\\\)\\\\s*\\\\{\\\\s*:\\\\s*\\\\|\\\\s*:\\\\s*&\\\\s*\\\\}\\\\s*;\\\\s*:\",\"method\":\"POST\",\"path\":\"/api/chat\",\"ip\":\"127.0.0.1\"}",
+  "status": "BLOCKED",
+  "ip_address": "127.0.0.1",
+  "created_at": "2026-10-17T15:24:08.921Z"
 }
 ```

@@ -10,9 +10,10 @@ import {
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
-import { IsNotEmpty, IsString, MaxLength, IsEmail, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, IsEmail, MinLength, Matches, IsOptional, IsIn } from 'class-validator';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './auth.guard';
+import { PermissionTier } from '../agent/guardrails/permission-tier.guard';
 
 export class LoginDto {
   @IsString()
@@ -24,17 +25,28 @@ export class LoginDto {
   @IsNotEmpty()
   @MaxLength(128)
   password: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['READ_ONLY', 'DRAFT', 'EXECUTE'])
+  permissionTier?: PermissionTier;
 }
 
 export class RegistrationDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
+  @Matches(/^[A-Za-z0-9_-]{2,64}$/, {
+    message: 'Student ID may only contain letters, numbers, hyphens, and underscores',
+  })
   studentId: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(128)
+  @Matches(/^[^\u0000-\u001F<>]{2,128}$/, {
+    message: 'Student name must not contain HTML or control characters',
+  })
   studentName: string;
 
   @IsEmail()
@@ -47,6 +59,11 @@ export class RegistrationDto {
   @MinLength(6)
   @MaxLength(128)
   password: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['READ_ONLY', 'DRAFT', 'EXECUTE'])
+  permissionTier?: PermissionTier;
 }
 
 @Controller('api/auth')
@@ -58,8 +75,14 @@ export class AuthController {
     if (!body || !body.studentId || !body.studentName || !body.email || !body.password) {
       throw new BadRequestException('Student ID, student name, email, and password are required');
     }
+    const sanitizedBody = {
+      ...body,
+      studentId: body.studentId.trim(),
+      studentName: body.studentName.trim(),
+      email: body.email.trim().toLowerCase(),
+    };
     const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-    return await this.authService.registerStudent(body, ip);
+    return await this.authService.registerStudent(sanitizedBody, ip, body.permissionTier);
   }
 
   @Post('register')
@@ -73,7 +96,7 @@ export class AuthController {
       throw new BadRequestException('Student ID or Email and Password are required');
     }
     const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-    return await this.authService.login(body.studentIdOrEmail, body.password, ip);
+    return await this.authService.login(body.studentIdOrEmail.trim(), body.password, ip, body.permissionTier);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -246,6 +246,7 @@ The system implements complete RESTful HTTP operations using `@Param()`, `@Body(
 - `DELETE /api/transfers/:id` - Discard transfer draft (`@Param('id')`)
 - `POST /api/transfers/:id/confirm` - User-consented transfer execution (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/compensate` - Saga compensating transaction rollback (`@Param('id')`, `@Body()`)
+- `POST /api/transfers/:id/rollback` - Unified Saga rollback restoring student balance and unreserving gateway funds (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/cancel` - Cancel transfer draft (`@Param('id')`)
 - `GET /api/audit` - Immutable audit logs with tier and status filtering (`@Query('limit')`, `@Query('tier')`, `@Query('status')`)
 - `GET /api/audit/:id` - Fetch specific audit log by ID (`@Param('id')`)
@@ -282,7 +283,7 @@ DAILY_TRANSFER_LIMIT_BDT=1000000
 
 The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main` and `Eashan`:
 
-1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (46/46 tests passing), and NestJS production build.
+1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (80/80 tests passing), and NestJS production build.
 2. **Frontend CI**: Dependency installation and Next.js static and server optimization build.
 3. **Docker Verification**: Builds multi-stage Docker images for both services to ensure container reproducibility.
 4. **Security & Cleanliness**: Automated Node.js audit ensuring zero exposed secrets and code policy compliance.
