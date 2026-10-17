@@ -6,7 +6,7 @@ export interface InjectionCheckResult {
 
 export class PromptInjectionFilter {
   private static readonly SUSPICIOUS_PATTERNS = [
-    /ignore\s+(all\s+)?(previous|prior|existing)\s+instructions?/i,
+    /ignore\s+(all\s+)?(previous\s+|prior\s+|existing\s+)?instructions?/i,
     /ignore\s+(this|the)\s+(system|security|safety|developer|policy)\s+prompt/i,
     /override\s+(transfer|daily|security|financial|permission|tier|safety|all)?\s*(limit|policy|rule|guardrail|tier)s?/i,
     /bypass\s+(all\s+)?(safety|guardrails|confirmation|verification|permission|tier|limit|policy|checks?)/i,

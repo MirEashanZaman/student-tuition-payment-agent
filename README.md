@@ -150,8 +150,8 @@ npm test
 ### Verified Test Cases (80 Passed):
 
 All 80 test cases pass deterministically across two dedicated test suites:
-- `test/security.spec.ts` (46 tests): Core financial invariants, permission tiers, Saga rollback restoration, multi-objective route ranking, and prompt injection filters.
-- `test/security-hardening.spec.ts` (34 tests): Rate limiting, ownership boundary enforcement, production startup hardening, prototype pollution immunity, and WAF shell-bomb defenses.
+- `test/security.spec.ts` (54 tests): Core financial invariants, permission tiers, Saga rollback restoration, multi-objective route ranking, and prompt injection filters.
+- `test/security-hardening.spec.ts` (26 tests): Rate limiting, ownership boundary enforcement, production startup hardening, prototype pollution immunity, and WAF shell-bomb defenses.
 
 See [backend/test/](backend/test/) for complete test suite definitions.
 

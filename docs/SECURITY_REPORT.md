@@ -118,7 +118,7 @@ The following risk register categorizes known vulnerabilities, structural limita
 
 The system is validated through comprehensive automated test suites encompassing 80 test cases across two core specifications:
 
-1. **[security.spec.ts](backend/test/security.spec.ts) (61 tests)**:
+1. **[security.spec.ts](backend/test/security.spec.ts) (54 tests)**:
    - Financial limits enforcement (per-transfer, daily, anomaly ceiling, non-finite values).
    - Permission tier hierarchy and human-in-the-loop confirmation enforcement.
    - Multi-objective route scoring and deadline buffer penalties.
@@ -128,7 +128,7 @@ The system is validated through comprehensive automated test suites encompassing
    - Cross-student scoping and IDOR prevention on account balances, transfer drafts, updates, confirmations, and cancellations.
    - RESTful parameter filtering, Zod schema validation, and scrypt password hashing.
 
-2. **[security-hardening.spec.ts](backend/test/security-hardening.spec.ts) (19 tests)**:
+2. **[security-hardening.spec.ts](backend/test/security-hardening.spec.ts) (26 tests)**:
    - IP-based rate limiting on authentication and conversational endpoints.
    - JWT authentication requirements and unauthorized 401 rejections.
    - Cross-student account read blocking (403 Forbidden).
