@@ -24,18 +24,17 @@ export class FinancialLimitsGuard {
     };
   }
 
-  static validateTransfer(
+  static validateAnomaly(
     amountBdt: number,
-    currentBalance: number,
-    dailySpent: number,
+    currentBalance?: number,
   ): LimitValidationResult {
     const limits = this.getLimits();
 
-    if (isNaN(amountBdt) || amountBdt <= 0) {
+    if (isNaN(amountBdt) || !Number.isFinite(amountBdt) || amountBdt <= 0) {
       return {
         isValid: false,
         code: 'INVALID_INPUT',
-        reason: 'Transfer amount must be a positive number greater than 0.',
+        reason: 'Transfer amount must be a positive finite number greater than 0.',
       };
     }
 
@@ -43,9 +42,24 @@ export class FinancialLimitsGuard {
       return {
         isValid: false,
         code: 'ANOMALOUS_AMOUNT',
-        reason: `Flagged suspicious anomaly: Requested amount of ${amountBdt.toLocaleString()} ${limits.currency} exceeds hard safety ceiling.`,
+        reason: `Flagged suspicious anomaly: Requested amount of ${amountBdt.toLocaleString()} ${limits.currency} exceeds hard safety ceiling of ${limits.anomalyCeiling.toLocaleString()} ${limits.currency}.`,
       };
     }
+
+    return { isValid: true };
+  }
+
+  static validateTransfer(
+    amountBdt: number,
+    currentBalance: number,
+    dailySpent: number,
+  ): LimitValidationResult {
+    const anomalyCheck = this.validateAnomaly(amountBdt, currentBalance);
+    if (!anomalyCheck.isValid) {
+      return anomalyCheck;
+    }
+
+    const limits = this.getLimits();
 
     if (amountBdt > limits.perTransferLimit) {
       return {
