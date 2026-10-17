@@ -23,3 +23,4 @@ Log entry 22: feat(frontend): enhance zero-trust architecture badge contrast
 Log entry 23: feat(frontend): structure FAQ accordion keyboard accessibility
 Log entry 24: feat(frontend): build copy-to-clipboard trigger for auth JWT debug panel
 Log entry 25: feat(frontend): add clear error boundary wrapper for chat studio
+Log entry 26: feat(frontend): support dark mode color variable overrides
