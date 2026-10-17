@@ -66,13 +66,19 @@ export class ApiRateLimitMiddleware {
 
   private getPolicy(path: string): RateLimitPolicy {
     if (path === '/api/auth/login') {
-      return { name: 'login', limit: 5, windowMs: 15 * 60 * 1000 };
+      const defaultLimit = process.env.NODE_ENV === 'test' ? 5 : 60;
+      const limit = parseInt(process.env.RATE_LIMIT_LOGIN_MAX || '', 10) || defaultLimit;
+      return { name: 'login', limit, windowMs: 15 * 60 * 1000 };
     }
     if (path === '/api/auth/registration' || path === '/api/auth/register') {
-      return { name: 'registration', limit: 10, windowMs: 15 * 60 * 1000 };
+      const defaultLimit = process.env.NODE_ENV === 'test' ? 10 : 30;
+      const limit = parseInt(process.env.RATE_LIMIT_REGISTRATION_MAX || '', 10) || defaultLimit;
+      return { name: 'registration', limit, windowMs: 15 * 60 * 1000 };
     }
     if (path === '/api/chat') {
-      return { name: 'chat', limit: 20, windowMs: 60 * 1000 };
+      const defaultLimit = process.env.NODE_ENV === 'test' ? 20 : 60;
+      const limit = parseInt(process.env.RATE_LIMIT_CHAT_MAX || '', 10) || defaultLimit;
+      return { name: 'chat', limit, windowMs: 60 * 1000 };
     }
     return { name: 'api', limit: 120, windowMs: 60 * 1000 };
   }
