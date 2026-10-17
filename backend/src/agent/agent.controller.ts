@@ -400,7 +400,7 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     await this.assertTransferOwner(id, request.user.studentId);
-    return await this.db.updateTransferStatus(id, 'CANCELLED');
+    return await this.toolsService.cancelTransfer(id, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
