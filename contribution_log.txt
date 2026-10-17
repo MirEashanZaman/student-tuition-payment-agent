@@ -21,3 +21,4 @@ Log entry 20: feat(frontend): embed Student Sign In modal trigger in hero sectio
 Log entry 21: feat(frontend): build interactive Financial Dashboard entry panel
 Log entry 22: feat(frontend): add tri-tier permission highlight card
 Log entry 23: feat(frontend): add corridor scoring breakdown section
+Log entry 24: feat(frontend): add velocity limit and saga compensation summary UI
