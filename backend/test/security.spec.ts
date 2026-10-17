@@ -3,7 +3,7 @@ import { DatabaseService } from '../src/database/database.service';
 import { AgentToolsService } from '../src/agent/tools/agent-tools.service';
 import { AgentService } from '../src/agent/agent.service';
 import { FinancialLimitsGuard } from '../src/agent/guardrails/financial-limits.guard';
-import { PermissionPolicyException } from '../src/agent/guardrails/permission-tier.guard';
+import { PermissionPolicyException, PermissionTier } from '../src/agent/guardrails/permission-tier.guard';
 import {
   BadRequestException,
   ExecutionContext,
@@ -414,6 +414,66 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
 
       const updatedLogs = await db.getAuditLogs(100);
       expect(updatedLogs.length).toBe(countBefore + 2);
+    });
+
+    it('should record audit log when a transfer draft is created, updated, and cancelled', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        200,
+        'University of Testing',
+        'REG-TEST-001',
+      );
+      expect(draft.transferId).toBeDefined();
+
+      const logsAfterDraft = await db.getAuditLogs(5);
+      const draftLog = logsAfterDraft.find((l) => l.event_type === 'DRAFT_CREATED' && l.transfer_id === draft.transferId);
+      expect(draftLog).toBeDefined();
+      expect(draftLog?.permission_tier).toBe(PermissionTier.DRAFT);
+
+      await toolsService.updateTransferDraft(draft.transferId, {
+        recipient_university: 'Updated Testing University',
+      });
+      const logsAfterUpdate = await db.getAuditLogs(5);
+      const updateLog = logsAfterUpdate.find((l) => l.event_type === 'DRAFT_UPDATED' && l.transfer_id === draft.transferId);
+      expect(updateLog).toBeDefined();
+
+      const cancelled = await toolsService.cancelTransfer(draft.transferId, 'STU-2026-BDT01');
+      expect(cancelled.status).toBe('CANCELLED');
+
+      const logsAfterCancel = await db.getAuditLogs(5);
+      const cancelLog = logsAfterCancel.find((l) => l.event_type === 'TRANSFER_CANCELLED' && l.transfer_id === draft.transferId);
+      expect(cancelLog).toBeDefined();
+      expect(cancelLog?.permission_tier).toBe(PermissionTier.DRAFT);
+    });
+
+    it('should record audit logs for rate updates and deactivations', async () => {
+      const routeId = 'route-national-tt-wire';
+      await toolsService.updateRate(routeId, { exchange_rate: 124.75 });
+      const logsAfterUpdate = await db.getAuditLogs(5);
+      const rateUpdateLog = logsAfterUpdate.find((l) => l.event_type === 'RATE_UPDATED');
+      expect(rateUpdateLog).toBeDefined();
+      expect(rateUpdateLog?.permission_tier).toBe(PermissionTier.EXECUTE);
+
+      await toolsService.deleteRate(routeId);
+      const logsAfterDelete = await db.getAuditLogs(5);
+      const rateDeleteLog = logsAfterDelete.find((l) => l.event_type === 'RATE_DEACTIVATED');
+      expect(rateDeleteLog).toBeDefined();
+      expect(rateDeleteLog?.permission_tier).toBe(PermissionTier.EXECUTE);
+    });
+
+    it('should record audit logs for account deposits and daily limit updates', async () => {
+      await toolsService.depositFunds('STU-2026-BDT01', 50000);
+      const logsAfterDeposit = await db.getAuditLogs(5);
+      const depositLog = logsAfterDeposit.find((l) => l.event_type === 'FUNDS_DEPOSITED');
+      expect(depositLog).toBeDefined();
+      expect(depositLog?.permission_tier).toBe(PermissionTier.EXECUTE);
+
+      await toolsService.updateDailyLimit('STU-2026-BDT01', 1200000);
+      const logsAfterLimit = await db.getAuditLogs(5);
+      const limitLog = logsAfterLimit.find((l) => l.event_type === 'DAILY_LIMIT_UPDATED');
+      expect(limitLog).toBeDefined();
+      expect(limitLog?.permission_tier).toBe(PermissionTier.EXECUTE);
     });
   });
 
