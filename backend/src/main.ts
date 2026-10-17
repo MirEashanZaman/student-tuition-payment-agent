@@ -48,12 +48,13 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT || 4568;
-  await app.listen(port);
+  const host = process.env.HOST || '0.0.0.0';
+  await app.listen(port, host);
   logger.log(`================================================================`);
   logger.log(` FinTechathon 2026: Student Tuition Payment Agent Backend       `);
-  logger.log(` Server is listening at http://localhost:${port}                `);
-  logger.log(` Health check: http://localhost:${port}/api/rates               `);
-  logger.log(` Chat API: http://localhost:${port}/api/chat                    `);
+  logger.log(` Server is listening at http://${host}:${port}                  `);
+  logger.log(` Health check: http://${host}:${port}/api/rates                 `);
+  logger.log(` Chat API: http://${host}:${port}/api/chat                      `);
   logger.log(`================================================================`);
 }
 
