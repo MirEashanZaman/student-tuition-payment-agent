@@ -160,7 +160,6 @@ export class AgentController {
     private readonly db: DatabaseService,
   ) {}
 
-  // Restricts transfer mutations strictly to the owning student (horizontal authorization).
   private async assertTransferOwner(transferId: string, studentId: string) {
     const transfer = await this.db.getTransferById(transferId);
     if (!transfer) {
@@ -402,7 +401,6 @@ export class AgentController {
     };
   }
 
-  // Financial rollback endpoint requires EXECUTE tier because it executes compensating ledger debits/credits.
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
   @RequirePermissionTier(PermissionTier.EXECUTE)
   @Post('transfers/:id/rollback')
