@@ -26,8 +26,8 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     /\$\((?:whoami|id|uname|cat|ls|pwd|curl|wget)\b/i,
     /`(?:whoami|id|uname|cat|ls|pwd|rm|curl|wget)\b/i,
     /(?:curl|wget)\s+[^|\n\r]+?\|\s*(?:ba)?sh/i,
-    /powershell(?:\.exe)?\s+(?:-[a-zA-Z]+\s+)*(?:iex|invoke-expression|downloadstring)/i,
-    /cmd(?:\.exe)?\s+\/c\s+/i,
+    /(?:powershell|pwsh)(?:\.exe)?\b/i,
+    /(?:^|[;&|`$])\s*cmd(?:\.exe)?\s+\/c/i,
   ];
 
   private readonly pathTraversalPatterns: RegExp[] = [
