@@ -560,14 +560,25 @@ export default function Home({
   };
 
   const handleExportLogs = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(auditLogs, null, 2));
+    const payload = {
+      evidencePackage: 'FinTechathon 2026 Sandbox Execution Evidence',
+      studentId: authSession?.user?.studentId || 'STU-2026-BDT01',
+      studentName: authSession?.user?.studentName || 'Mir Eashan Zaman',
+      exportedAt: new Date().toISOString(),
+      activeTier: authSession?.user?.permissionTier || 'EXECUTE',
+      totalAuditEntries: auditLogs.length,
+      auditRecords: auditLogs,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `audit_logs_${Date.now()}.json`);
+    downloadAnchor.setAttribute('href', url);
+    downloadAnchor.setAttribute('download', `evidence_audit_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    showNotification('Audit log evidence exported.', 'success');
+    URL.revokeObjectURL(url);
+    showNotification('Audit log evidence package exported successfully.', 'success');
   };
 
   const filteredAuditLogs = auditLogs.filter((log) => {
