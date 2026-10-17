@@ -25,7 +25,7 @@
   - The chat dynamically renders the **Transfer Draft Confirmation Card** with status `PENDING_CONFIRMATION` and the unique `confirmationToken`.
 - **Narration:**
   > *"Notice that even though the draft is created, no money has moved! Under our Tri-Tier Permission Model, autonomous agents operate in the DRAFT tier and cannot unilaterally deduct funds. Fund movement requires explicit human authorization."*
-- **Action:** Click **[Authorize & Confirm Payment]**. Confetti animation triggers, the receipt displays, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 492,081.50 BDT!
+- **Action:** Click **[Authorize & Confirm Payment]**. Confetti animation triggers, the receipt displays, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 491,545.15 BDT!
 
 ---
 
@@ -52,7 +52,7 @@
 
 ---
 
-### Segment 5: Dashboard & Immutable Audit Trail (3:30 – 4:30)
+### Segment 5: Dashboard & Append-Only Audit Trail (3:30 – 4:30)
 - **Visual:** Switch tabs to **"Financial Dashboard"**.
   - Show the live KPI cards, student balance, and the tuition transfer history table with `CONFIRMED` and `BLOCKED` status badges.
   - Show the **"Why I Chose This Route" Explainability Panel**, showing the exact weights (50% Cost, 30% Speed, 20% Reliability).
