@@ -23,3 +23,4 @@ Log entry 22: feat(frontend): add tri-tier permission highlight card
 Log entry 23: feat(frontend): add corridor scoring breakdown section
 Log entry 24: feat(frontend): add velocity limit and saga compensation summary UI
 Log entry 25: feat(frontend): design security FAQ accordion component
+Log entry 26: feat(frontend): add sandbox environment disclaimer to FAQ
