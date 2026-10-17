@@ -188,18 +188,38 @@ export default function Home({
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let pollTimer: NodeJS.Timeout;
+
+    const runPolling = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        pollTimer = setTimeout(runPolling, 10000);
+        return;
+      }
+      if (authStorage.getToken()) {
+        await loadData();
+      }
+      if (isMounted) {
+        pollTimer = setTimeout(runPolling, 10000);
+      }
+    };
+
     loadData();
     const initAuth = async () => {
       try {
         const session = await api.getSession();
-        if (session) {
+        if (session && isMounted) {
           setAuthSession(session);
         }
       } catch (err) {}
     };
     initAuth();
-    const interval = setInterval(loadData, 8000);
-    return () => clearInterval(interval);
+    pollTimer = setTimeout(runPolling, 10000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(pollTimer);
+    };
   }, []);
 
   useEffect(() => {
