@@ -147,6 +147,12 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 | **Testing** | **Jest & ts-jest** | Unit and integration test coverage for security guardrails, financial limit enforcement, and ranking logic. |
 | **Containerization** | **Docker & Docker Compose** | Reproducible, single-command environment spinning up frontend, backend, and PostgreSQL database. |
 
+### AI Agent Engine & Evaluator Offline Sandbox
+
+The agent defaults to `gemini-1.5-flash` (configurable via `GEMINI_MODEL`), Google's low-latency multimodal LLM. The system is designed to provide immediate evaluation without external network or API prerequisites:
+- **Offline Sandbox Fallback (`OfflineLlmClient`):** When `GEMINI_API_KEY` is omitted or set to the default mock key (`mock_key_offline_agent`), the system automatically activates a deterministic offline LLM client. This processes student queries, executes corridor ranking calculations, flags prompt injections, and generates drafts with 100% predictable fidelity and zero network latency.
+- **Live Google Gemini Engine (`GeminiLlmClient`):** When an evaluator supplies their own Gemini API key, the client connects to Google Generative AI using the configured model (`gemini-1.5-flash`). Calls are wrapped in defensive try/catch blocks with automatic fallback to the offline client on any rate limit, network timeout, or quota error.
+
 ---
 
 ## 5. Security & Permission Tier Design
