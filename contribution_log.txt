@@ -67,3 +67,4 @@ Log entry 66: style(frontend): unify typography scale across form field labels
 Log entry 67: ci(pipeline): add automated audit check for npm dependencies
 Log entry 68: ci(pipeline): configure test coverage threshold reporting
 Log entry 69: docs(security): update encryption standards in technical docs
+Log entry 70: docs(api): document error response formats for API endpoints
