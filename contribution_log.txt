@@ -83,3 +83,4 @@ Log entry 82: refactor(guardrails): consolidate transfer limit policies into sin
 Log entry 83: feat(agent): log corridor selection confidence scores for auditing
 Log entry 84: feat(saga): trace compensation execution time with high precision
 Log entry 85: test(database): assert uniqueness constraint on transaction IDs
+Log entry 86: feat(frontend): add interactive copy trigger for transaction hashes
