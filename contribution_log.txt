@@ -74,3 +74,4 @@ Log entry 73: test(agent): assert deterministic route evaluation under load
 Log entry 74: test(security): verify rate limiter block on brute-force attempts
 Log entry 75: test(security): test payload truncation for oversized user inputs
 Log entry 76: refactor(backend): separate routing modules from controller logic
+Log entry 77: fix(frontend): resolve missing key warning in dynamic list render
