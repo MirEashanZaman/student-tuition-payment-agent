@@ -637,10 +637,6 @@ export class AgentToolsService {
     };
   }
 
-  // Executes a Saga compensating transaction when downstream clearing fails or when
-  // an authorized rollback is requested. Releases reserved corridor liquidity in the bank gateway,
-  // increments student account balance, decrements daily spent tally, and marks transfer as ROLLED_BACK.
-  // TODO: integrate automated reconciliation webhook with university bursar offices to confirm credit notes.
   async compensateTransfer(
     transferId: string,
     reason = 'Bank execution failure',
@@ -710,8 +706,6 @@ export class AgentToolsService {
     }
   }
 
-  // Unified rollback entry point. For unconfirmed drafts, cancels safely without debiting.
-  // For confirmed/executed transfers, invokes compensating transaction to restore funds.
   async rollbackTransfer(
     transferId: string,
     reason = 'User requested transfer rollback',
