@@ -402,6 +402,22 @@ export class AgentController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
+  @Post('transfers/:id/rollback')
+  async rollbackTransfer(
+    @Param('id') id: string,
+    @Body() dto: CompensateTransferDto,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    await this.assertTransferOwner(id, request.user.studentId);
+    return await this.toolsService.rollbackTransfer(
+      id,
+      dto?.reason || 'User requested transfer rollback',
+      request.user.studentId,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
   @RequirePermissionTier(PermissionTier.DRAFT)
   @Post('transfers/:id/cancel')
   async cancelTransfer(
