@@ -43,12 +43,27 @@ apiClient.interceptors.request.use((config) => {
 
 function handleApiError(error: unknown, fallbackMessage: string): never {
   if (axios.isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Connection timed out. The server took too long to respond. Please try again.');
+    }
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Unable to connect to the Tuition Payment server. Please verify the backend is online at http://localhost:4568.');
+    }
     const serverMessage = error.response?.data?.message;
     if (typeof serverMessage === 'string' && serverMessage.length > 0) {
       throw new Error(serverMessage);
     }
     if (Array.isArray(serverMessage) && serverMessage.length > 0) {
       throw new Error(serverMessage.join(', '));
+    }
+    if (error.response?.status === 429) {
+      throw new Error('Too many requests. Rate limit active, please wait a moment and try again.');
+    }
+    if (error.response?.status === 403) {
+      throw new Error(error.response?.data?.message || 'Access Forbidden: Security policy blocked this request.');
+    }
+    if (error.response?.status === 404) {
+      throw new Error('Requested resource not found.');
     }
   }
   if (error instanceof Error) {
