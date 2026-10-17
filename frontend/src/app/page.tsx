@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { api, authStorage } from '../lib/api';
 import { Account, ChatMessage, RouteItem, RouteComparisonResult, TransferDraft, TransferRecord, AuditLog, AuthSession } from '../types';
 import confetti from 'canvas-confetti';
@@ -474,6 +475,27 @@ export default function Home({
             >
               <ShieldCheck className="w-4 h-4" /> Audit & Safety ({auditLogs.length})
             </button>
+            <Link
+              href="/rates"
+              className="tab font-semibold text-xs gap-1.5 text-purple-200 hover:text-white transition-all"
+              title="Incremental Static Regeneration (ISR) Corridor Exchange Rates"
+            >
+              Rates (ISR)
+            </Link>
+            <Link
+              href="/status"
+              className="tab font-semibold text-xs gap-1.5 text-amber-200 hover:text-white transition-all"
+              title="Server-Side Rendered (SSR) Real-Time System Liveness Verifier"
+            >
+              Status (SSR)
+            </Link>
+            <Link
+              href="/faq"
+              className="tab font-semibold text-xs gap-1.5 text-slate-200 hover:text-white transition-all"
+              title="Static Site Generation (SSG) Institutional Security FAQ"
+            >
+              FAQ (SSG)
+            </Link>
           </div>
         </div>
 
