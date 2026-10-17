@@ -37,3 +37,4 @@ Log entry 36: test(security): add integration test for multi-tenant isolation
 Log entry 37: refactor(backend): modularize agent decision controller methods
 Log entry 38: fix(frontend): resolve hydration mismatch in session header badge
 Log entry 39: fix(backend): correct type signature for database repository client
+Log entry 40: style(css): standardize border radius constants across UI components
