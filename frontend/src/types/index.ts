@@ -83,7 +83,7 @@ export interface RouteComparisonResult {
 
 export interface TransferDraft {
   transferId: string;
-  status: 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'PROCESSING' | 'SETTLED' | 'CANCELLED' | 'BLOCKED';
+  status: 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'PROCESSING' | 'SETTLED' | 'CANCELLED' | 'BLOCKED' | 'ROLLED_BACK' | 'EXECUTED' | 'FAILED';
   studentId: string;
   studentName: string;
   recipientUniversity: string;
@@ -113,7 +113,7 @@ export interface TransferRecord {
   fx_rate_applied: number;
   rate_id: string;
   provider_name: string;
-  status: 'DRAFT' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'PROCESSING' | 'SETTLED' | 'CANCELLED' | 'BLOCKED';
+  status: 'DRAFT' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'PROCESSING' | 'SETTLED' | 'CANCELLED' | 'BLOCKED' | 'ROLLED_BACK' | 'EXECUTED' | 'FAILED';
   tuition_deadline?: string;
   estimated_delivery?: string;
   deadline_warning: boolean;
