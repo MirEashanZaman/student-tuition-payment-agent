@@ -16,6 +16,10 @@ import {
   Key,
   ShieldCheck,
   User,
+  Home as HomeIcon,
+  Activity,
+  Layers,
+  Globe,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -50,122 +54,137 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1E3A8A] via-[#172554] to-[#0F172A] text-white flex flex-col justify-between p-6">
-      <header className="max-w-5xl w-full mx-auto flex justify-between items-center py-4">
-        <Link href="/" className="flex items-center gap-3 text-white">
-          <div className="w-10 h-10 rounded-xl bg-[#0D9488] flex items-center justify-center text-white font-extrabold shadow-sm">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-white leading-tight">FinTechathon 2026</h1>
-            <p className="text-[11px] text-teal-300">Student Tuition Payment Agent</p>
-          </div>
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="text-xs text-blue-200 hover:text-white font-medium transition-colors"
-          >
-            Overview
+    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col justify-between font-sans selection:bg-teal-500 selection:text-white">
+      <header className="sticky top-0 z-40 bg-slate-950/80 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-8 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                  Topic C
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Cross-Border Student Tuition Agent</p>
+            </div>
           </Link>
-          <Link
-            href="/registration"
-            className="text-xs text-teal-300 hover:text-teal-200 font-medium transition-colors"
-          >
-            Registration
-          </Link>
-          <Link
-            href="/chat"
-            className="btn btn-xs bg-[#0D9488] hover:bg-teal-700 text-white border-none font-semibold"
-          >
-            Agent Chat
-          </Link>
+
+          <nav className="flex items-center gap-2 text-xs">
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded-lg font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span>Overview</span>
+            </Link>
+            <Link
+              href="/registration"
+              className="px-3 py-1.5 rounded-lg font-semibold text-teal-300 hover:text-white hover:bg-teal-950/40 transition-colors flex items-center gap-1.5"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Registration</span>
+            </Link>
+            <Link
+              href="/chat"
+              className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <span>Agent Chat</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </nav>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center py-10">
-        <div className="card bg-white text-slate-900 border border-slate-200 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
-          <div className="bg-[#1E3A8A] text-white p-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold mb-3">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Zero-Trust Student Access</span>
+      <main className="flex-1 flex items-center justify-center p-4 py-12">
+        <div className="max-w-md w-full bg-slate-900/90 border border-slate-800/80 rounded-2xl shadow-2xl p-6 sm:p-8 backdrop-blur-md">
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight">Student Sign In</h1>
+                <p className="text-xs text-slate-400 font-medium">Zero-Trust Authentication Session</p>
+              </div>
             </div>
-            <h2 className="text-xl font-bold text-white">Student Sign In</h2>
-            <p className="text-xs text-blue-100/80 mt-1">
-              Authenticate your student profile to access permission-guarded tuition payments.
-            </p>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-[11px] font-semibold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>JWT Guarded</span>
+            </div>
           </div>
 
-          <div className="p-6 sm:p-8 space-y-5">
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-900 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-slate-900">Sandbox Demo Account</span>
-                <button
-                  type="button"
-                  className="btn btn-xs bg-[#1E3A8A] text-white border-none font-bold"
-                  onClick={handleDemoFill}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-300 space-y-2 mb-5">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-white">Sandbox Demo Account</span>
+              <button
+                type="button"
+                className="py-1 px-2.5 rounded-lg bg-teal-950 border border-teal-800 text-teal-300 hover:bg-teal-900 text-[11px] font-semibold transition-colors"
+                onClick={handleDemoFill}
+              >
+                Auto-Fill
+              </button>
+            </div>
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-slate-400">Student ID: <strong className="text-white">STU-2026-BDT01</strong></span>
+              <span className="text-slate-400">Password: <strong className="text-white">student123</strong></span>
+            </div>
+            <div className="flex justify-between text-[11px] pt-1 border-t border-slate-900">
+              <span className="text-slate-400">Tanvir Ahmed</span>
+              <span className="font-mono text-emerald-400 font-bold">850,000.00 BDT</span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {session ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-200 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-sm text-emerald-300">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <span>Authentication Successful!</span>
+                </div>
+                <p className="text-slate-300">
+                  Welcome back, <strong className="text-white">{session.user.studentName}</strong>. JWT session is authenticated.
+                </p>
+                <div className="p-2.5 bg-slate-950 text-teal-300 font-mono text-[10px] rounded-lg break-all border border-slate-800">
+                  {session.accessToken.substring(0, 90)}...
+                </div>
+              </div>
+
+              <div className="flex gap-2.5">
+                <Link
+                  href="/chat"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-teal-500/20"
                 >
-                  Auto-Fill
-                </button>
-              </div>
-              <div className="flex justify-between text-[11px] text-blue-800 font-mono">
-                <span>Student ID: <strong>STU-2026-BDT01</strong></span>
-                <span>Password: <strong>student123</strong></span>
-              </div>
-              <div className="flex justify-between text-[11px] text-slate-600">
-                <span>Name: Tanvir Ahmed</span>
-                <span>Balance: <strong className="text-emerald-700 font-mono">850,000 BDT</strong></span>
+                  <span>Launch Chat Assistant</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="py-2.5 px-4 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 font-semibold text-xs transition-colors"
+                >
+                  Dashboard
+                </Link>
               </div>
             </div>
-
-            {error && (
-              <div className="alert bg-red-50 border border-red-200 text-red-700 text-xs p-3.5 rounded-2xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {session ? (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-900 text-xs">
-                  <div className="flex items-center gap-2 font-bold text-sm mb-1 text-[#0D9488]">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>Authentication Successful!</span>
-                  </div>
-                  <p className="text-slate-600 mb-3">
-                    Welcome back, <strong>{session.user.studentName}</strong>. JWT token session is active.
-                  </p>
-                  <div className="p-2.5 bg-slate-900 text-teal-300 font-mono text-[10px] rounded-xl break-all">
-                    {session.accessToken.substring(0, 80)}...
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Link
-                    href="/chat"
-                    className="btn bg-[#0D9488] hover:bg-teal-700 text-white flex-1 border-none font-bold text-xs flex items-center justify-center gap-2"
-                  >
-                    <span>Launch Chat Assistant</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="btn btn-outline border-slate-300 text-slate-700 text-xs px-4"
-                  >
-                    Dashboard
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Student ID or University Email</span>
-                  </label>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Student ID or University Email
+                </label>
+                <div className="relative">
                   <input
                     type="text"
-                    className="input input-bordered w-full text-xs bg-slate-50 text-slate-900 border-slate-300 focus:bg-white focus:border-[#1E3A8A]"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 font-mono transition-colors"
                     value={loginInput.studentIdOrEmail}
                     onChange={(e) =>
                       setLoginInput((prev) => ({ ...prev, studentIdOrEmail: e.target.value }))
@@ -173,63 +192,69 @@ export default function LoginPage() {
                     placeholder="STU-2026-BDT01"
                     required
                   />
+                  <User className="w-4 h-4 text-slate-500 absolute right-3.5 top-2.5" />
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Account Password</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="input input-bordered w-full text-xs bg-slate-50 text-slate-900 border-slate-300 focus:bg-white focus:border-[#1E3A8A] pr-10"
-                      value={loginInput.password}
-                      onChange={(e) =>
-                        setLoginInput((prev) => ({ ...prev, password: e.target.value }))
-                      }
-                      placeholder="student123"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Account Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 pr-10 transition-colors"
+                    value={loginInput.password}
+                    onChange={(e) =>
+                      setLoginInput((prev) => ({ ...prev, password: e.target.value }))
+                    }
+                    placeholder="student123"
+                    required
+                  />
                   <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn bg-[#0D9488] hover:bg-teal-700 text-white w-full border-none font-bold text-xs shadow-md"
+                    type="button"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    {loading ? 'Authenticating...' : 'Sign In & Get JWT'}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
 
-                <div className="text-center pt-2">
-                  <p className="text-xs text-slate-500">
-                    Need a new account?{' '}
-                    <Link
-                      href="/registration"
-                      className="font-semibold text-[#0D9488] hover:underline"
-                    >
-                      Go to Student Registration
-                    </Link>
-                  </p>
-                </div>
-              </form>
-            )}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <span>{loading ? 'Authenticating...' : 'Sign In & Get JWT'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="text-center pt-2">
+                <p className="text-xs text-slate-400">
+                  Need a new account?{' '}
+                  <Link
+                    href="/registration"
+                    className="font-semibold text-teal-400 hover:text-teal-300 underline underline-offset-4 transition-colors"
+                  >
+                    Go to Student Registration
+                  </Link>
+                </p>
+              </div>
+            </form>
+          )}
+
+          <div className="mt-6 flex items-center justify-center gap-2 text-slate-500 text-xs pt-4 border-t border-slate-800">
+            <ShieldCheck className="w-4 h-4 text-teal-400" />
+            <span>Secured with Scrypt Password Hashing and JWT Sessions</span>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-blue-200/60 py-2">
-        FinTechathon 2026 - Cross-Border Student Tuition Payment Agent
+      <footer className="text-center text-xs text-slate-500 py-6 border-t border-slate-800/80">
+        FinTechathon 2026 • Cross-Border Student Tuition Payment Agent
       </footer>
     </div>
   );
