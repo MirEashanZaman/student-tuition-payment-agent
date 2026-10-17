@@ -510,6 +510,23 @@ export class AgentToolsService {
       throw new BadRequestException('Security token verification failed: Invalid confirmation token.');
     }
 
+    const tokenAgeMs = Date.now() - new Date(transfer.created_at).getTime();
+    if (tokenAgeMs > 15 * 60 * 1000) {
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'CONFIRM_REJECTED',
+        permission_tier: PermissionTier.EXECUTE,
+        account_id: transfer.account_id,
+        transfer_id: transfer.id,
+        action_summary: 'BLOCKED: Confirmation token expired',
+        details: 'Token exceeded 15 minute validity window',
+        status: 'BLOCKED',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
+      throw new BadRequestException('Security token verification failed: Confirmation token has expired. Please generate a new draft.');
+    }
+
     const account = await this.db.getAccountById(transfer.account_id);
     if (!account) {
       throw new NotFoundException('Associated student account not found.');
