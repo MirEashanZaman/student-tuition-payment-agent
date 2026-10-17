@@ -58,12 +58,17 @@
 │   ├── Dockerfile
 │   └── package.json
 │
-├── frontend/                  # Next.js 14 Interactive Web Application
+├── frontend/                  # Next.js 14 Interactive Web Application (Hybrid SSG/CSR)
 │   ├── src/
 │   │   ├── app/
+│   │   │   ├── chat/          # Agent Chat Studio (CSR)
+│   │   │   ├── dashboard/     # Financial Dashboard & Ledgers (CSR)
+│   │   │   ├── audit/         # Audit & Safety Log Inspector (CSR)
+│   │   │   ├── login/         # Student Authentication (CSR)
+│   │   │   ├── faq/           # How It Works & Security FAQ (SSG)
 │   │   │   ├── globals.css    # Custom dark fintech design system & glassmorphism
 │   │   │   ├── layout.tsx     # SEO metadata & viewport configuration
-│   │   │   └── page.tsx       # Agent Chat Studio, Financial Dashboard, & Audit Inspector
+│   │   │   └── page.tsx       # Home Overview & Interactive App Root (SSG)
 │   │   ├── lib/api.ts         # Type-safe API client
 │   │   └── types/             # TypeScript domain models
 │   ├── Dockerfile

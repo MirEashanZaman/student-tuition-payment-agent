@@ -287,5 +287,20 @@ The application provides a complete authentication, session management, and stud
 - **Demo Persona:** `STU-2026-BDT01` (Tanvir Ahmed), password: `student123`.
 - **Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.
 
+---
+
+## 11. Frontend Architecture & Rendering Strategy (SSG vs CSR)
+
+To optimize load latency for judges, provide instant first-contentful paint (FCP), and maintain real-time reactivity for financial operations, the Next.js 14 frontend implements a hybrid rendering strategy:
+
+| Page | Route | Best Fit | Architectural Rationale & Why |
+|---|---|---|---|
+| **Home Page** | `/` | **SSG** | Static content with project headline, one-line pitch, and 3 feature pillars that never change at runtime. Pre-rendered to static HTML at build time for instant first-contentful paint (<10ms). Judges see this first without cold-start latency. |
+| **FAQ / "How it works"** | `/faq`, `/#faq` | **SSG** | Static text and educational compliance explanations answering sandbox real-money rules, defense-in-depth protection, and Saga rollbacks. Pre-rendered as static content for instant searchability and zero client bundle penalty. |
+| **Chat** | `/chat` | **CSR** | Fully interactive natural language agent studio, authenticated per-student session, real-time message mutations, and dynamic route calculations. Operates behind login and data changes constantly; requires zero SEO. |
+| **Dashboard** | `/dashboard`, `/audit` | **CSR** | Private, per-user financial data that must be fresh. Real-time balance calculations, active transfer state machine status, and fresh audit logs polled on an 8-second interval. |
+| **Login** | `/login` | **CSR** | A simple interactive client form with client-side credential validation, demo account auto-fill, and immediate localStorage JWT token acquisition. |
+| **Registration** | `/registration` | **CSR** | Interactive registration form with instant client-side validation, demo persona auto-fill, and immediate post-registration token acquisition. |
+
 
 
