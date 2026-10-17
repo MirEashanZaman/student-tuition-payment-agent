@@ -41,6 +41,7 @@ import {
   Check,
   Globe,
   RotateCcw,
+  X,
 } from 'lucide-react';
 
 const renderFormattedText = (content: string) => {
@@ -250,7 +251,7 @@ export default function Home({
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
+    setTimeout(() => setNotification(null), 3500);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -390,6 +391,11 @@ export default function Home({
 
       setActiveDraft(null);
 
+      const transferStatus = res?.status || res?.transfer?.status || 'CONFIRMED';
+      const transferRefId = res?.transferId || res?.transfer?.id || transferId;
+      const deductedAmount = res?.deductedBdt ?? res?.transfer?.source_amount_bdt ?? activeDraft?.sourceAmountBdt ?? 0;
+      const updatedBalance = res?.newBalanceBdt ?? res?.account?.balance ?? (account ? account.balance - deductedAmount : 0);
+
       setMessages((prev) => [
         ...prev,
         {
@@ -397,16 +403,16 @@ export default function Home({
           sender: 'agent',
           text:
             `**Payment Successfully Authorized & Settled!**\n\n` +
-            `• **Status:** ${res.transfer.status}\n` +
-            `• **Transfer Reference:** \`${res.transfer.id}\`\n` +
-            `• **Deducted from Account:** **${res.transfer.source_amount_bdt.toLocaleString()} BDT**\n` +
-            `• **Updated Balance:** **${res.account.balance.toLocaleString()} BDT**\n` +
+            `• **Status:** ${transferStatus}\n` +
+            `• **Transfer Reference:** \`${transferRefId}\`\n` +
+            `• **Deducted from Account:** **${deductedAmount.toLocaleString()} BDT**\n` +
+            `• **Updated Balance:** **${updatedBalance.toLocaleString()} BDT**\n` +
             `• **Compliance Audit Log:** Tamper-evident record sealed in database.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
 
-      showNotification(`Payment ${transferId} confirmed! ${res.transfer.source_amount_bdt.toLocaleString()} BDT settled.`, 'success');
+      showNotification(`Payment ${transferRefId} confirmed! ${deductedAmount.toLocaleString()} BDT settled.`, 'success');
       await loadData();
     } catch (err: any) {
       showNotification(err.message, 'error');
@@ -538,20 +544,27 @@ export default function Home({
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans">
       {notification && (
-        <div className="fixed top-5 right-5 z-50">
+        <div className="fixed bottom-6 right-6 z-50 max-w-md pointer-events-auto">
           <div
-            className={`shadow-lg rounded-xl px-4 py-3 text-white text-xs sm:text-sm font-semibold flex items-center gap-3 ${
+            className={`shadow-xl rounded-xl px-4 py-3 text-white text-xs sm:text-sm font-semibold flex items-center gap-3 border ${
               notification.type === 'success'
-                ? 'bg-[#16A34A]'
+                ? 'bg-[#16A34A] border-green-600'
                 : notification.type === 'error'
-                ? 'bg-[#DC2626]'
-                : 'bg-[#1E3A8A]'
+                ? 'bg-[#DC2626] border-red-700'
+                : 'bg-[#1E3A8A] border-blue-900'
             }`}
           >
             {notification.type === 'success' && <CheckCircle2 className="w-4 h-4 text-white shrink-0" />}
             {notification.type === 'error' && <AlertTriangle className="w-4 h-4 text-white shrink-0" />}
             {notification.type === 'info' && <Info className="w-4 h-4 text-white shrink-0" />}
-            <span>{notification.message}</span>
+            <span className="flex-1 leading-snug">{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white transition-colors shrink-0"
+              title="Dismiss notification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       )}
