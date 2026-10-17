@@ -5,6 +5,8 @@ export interface InjectionCheckResult {
 }
 
 export class PromptInjectionFilter {
+  // Fast-path heuristic filter for known jailbreak phrases and prompt boundary overrides.
+  // Defense-in-depth relies on treatAsData passive encapsulation and JWT permission tiers.
   private static readonly SUSPICIOUS_PATTERNS = [
     /ignore\s+(all\s+)?(previous|prior|existing)\s+instructions?/i,
     /ignore\s+(this|the)\s+(system|security|safety|developer|policy)\s+prompt/i,
@@ -36,6 +38,8 @@ export class PromptInjectionFilter {
     /pretend\s+(you\s+are|to\s+be)\s+(an\s+)?unrestricted/i,
   ];
 
+  // NFKC normalization strips homoglyph evasions, zero-width joiners, and bidi control codes
+  // that attackers use to sneak past keyword matchers without altering visual text.
   private static normalizeUserText(userInput: string): string {
     if (!userInput) {
       return '';
@@ -70,11 +74,14 @@ export class PromptInjectionFilter {
     return this.escapeHtml(this.normalizeUserText(userInput));
   }
 
+  // Wraps user input into passive data boundaries so downstream LLM prompts
+  // process input strictly as text variables rather than actionable instructions.
   static treatAsData(userInput: string): string {
     const sanitized = this.sanitizeUserText(userInput);
     return `[DATA_PAYLOAD]\n${sanitized}\n[/DATA_PAYLOAD]`;
   }
 
+  // Intercepts conversational attempts to modify daily/per-transfer limits or elevate permission tiers.
   static isLimitOrTierTampering(userInput: string): boolean {
     const normalized = this.normalizeUserText(userInput);
     const tamperingPatterns = [
@@ -89,6 +96,8 @@ export class PromptInjectionFilter {
     return tamperingPatterns.some((pattern) => pattern.test(normalized));
   }
 
+  // Runs full pattern triage and returns matched signatures for compliance audit logging.
+  // TODO: evaluate moving to a vector-embedding similarity classifier if attackers start using multilingual paraphrases.
   static inspect(userInput: string): InjectionCheckResult {
     if (!userInput) {
       return { isSuspicious: false, flaggedPatterns: [], sanitizedText: '' };
