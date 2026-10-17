@@ -259,7 +259,7 @@ The repository incorporates an enterprise-grade automated CI/CD pipeline impleme
 
 | Stage | Trigger | Actions Executed | Purpose |
 |---|---|---|---|
-| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 35 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
+| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 46 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
 | **Frontend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm run build` | Validates Next.js SSR and client bundle compilation with static page optimization. |
 | **Docker Build Verification** | On CI success | `docker build` backend and frontend images | Ensures multi-stage container builds succeed reproducibly for production deployments. |
 | **Security & Cleanliness Scan** | Push & PR | Node.js automated repository audit | Enforces code cleanliness, verifies zero exposed secrets, and prevents unauthorized syntax patterns. |
