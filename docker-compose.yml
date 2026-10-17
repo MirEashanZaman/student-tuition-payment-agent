@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-fintech_agent}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -28,11 +28,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4568
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-fintech_agent}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-fintech_agent}?schema=public
       GEMINI_API_KEY: ${GEMINI_API_KEY:-mock_key_offline_agent}
       MAX_TRANSFER_LIMIT_BDT: 400000
       DAILY_TRANSFER_LIMIT_BDT: 1000000
-      JWT_SECRET: ${JWT_SECRET:?Set a strong JWT_SECRET in .env}
+      JWT_SECRET: ${JWT_SECRET:-fintechathon-2026-sandbox-secret-jwt-key-bdt}
+      ALLOW_DEMO_SEED: "${ALLOW_DEMO_SEED:-true}"
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4567}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4567}
     ports:

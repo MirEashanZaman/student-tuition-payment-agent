@@ -7,7 +7,7 @@
 
 The **Student Tuition Payment Agent** is an autonomous, security-first financial assistant engineered specifically for international students paying foreign university tuition from Bangladesh (BDT). 
 
-Traditional cross-border tuition remittances suffer from opaque exchange-rate markups, hidden wire intermediary fees, and delayed settlements that risk university enrollment holds. Our system addresses these pain points by pairing an **Autonomous LLM Agent (Google Gemini API with Offline Sandbox Fallback)** with a **strict NestJS Policy Engine**, a **Multi-Objective Corridors Scoring Engine**, and an **Immutable PostgreSQL Audit Trail**.
+Traditional cross-border tuition remittances suffer from opaque exchange-rate markups, hidden wire intermediary fees, and delayed settlements that risk university enrollment holds. Our system addresses these pain points by pairing an **Autonomous LLM Agent (Google Gemini API with Offline Sandbox Fallback)** with a **strict NestJS Policy Engine**, a **Multi-Objective Corridors Scoring Engine**, and an **Append-Only PostgreSQL Audit Trail**.
 
 ### Architecture Diagram
 
@@ -39,7 +39,7 @@ graph TD
         Accounts[("accounts Table")]
         Rates[("rates Table")]
         Transfers[("transfers Table")]
-        AuditLog[("audit_log Table (Immutable)")]
+        AuditLog[("audit_log Table (Append-Only)")]
         end
     end
 
@@ -142,7 +142,7 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 | **Backend Framework** | **NestJS (Node.js/TypeScript)** | Enterprise-grade modular architecture, dependency injection, strict validation pipes, built-in exception filters. |
 | **Frontend Framework** | **Next.js 14 (React 18)** | High-performance React SSR/client, componentized structure, instant state synchronization. |
 | **Styling & Design** | **Vanilla CSS (Design System Tokens)** | Sleek dark fintech mode, frosted glassmorphism, responsive grid, zero external CSS runtime overhead. |
-| **Database** | **PostgreSQL 14+ (pg driver)** | ACID-compliant relational storage for financial accounts, transactions, and immutable audit logs. |
+| **Database** | **PostgreSQL 14+ (pg driver)** | ACID-compliant relational storage for financial accounts, transactions, and append-only audit logs. |
 | **AI / Agent Engine** | **Google Gemini 1.5 Flash + Sandbox Engine** | Low-latency tool calling; deterministic offline sandbox fallback for instant judge testing without API keys. |
 | **Testing** | **Jest & ts-jest** | Unit and integration test coverage for security guardrails, financial limit enforcement, and ranking logic. |
 | **Containerization** | **Docker & Docker Compose** | Reproducible, single-command environment spinning up frontend, backend, and PostgreSQL database. |
@@ -166,7 +166,7 @@ The backend is engineered with production-grade software design patterns that is
 |---|---|---|
 | Route comparison and ranking | Strategy | Distinct scoring classes for Balanced, Cheapest, Fastest, and Reliable (`RouteScoringStrategy`). When a student indicates urgency (e.g., "prioritize speed"), the engine swaps strategy dynamically at runtime. |
 | Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Validated transitions include `PENDING_CONFIRMATION` -> `CONFIRMED` -> `EXECUTED` -> `SETTLED`. The authenticated owner can request compensation for `CONFIRMED`, `EXECUTED`, or `FAILED` transfers. Account restoration and the `ROLLED_BACK` status change occur atomically; pending, settled, cancelled, blocked, or already rolled-back transfers cannot be compensated. |
-| Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small, decoupled handlers run sequentially: `PromptInjectionCheckHandler`, `PermissionTierCheckHandler`, `AnomalyCheckHandler`, `FinancialLimitCheckHandler`, `ConfirmationCheckHandler`. Any check can short-circuit, reject execution, and emit an immutable security audit event. |
+| Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small, decoupled handlers run sequentially: `PromptInjectionCheckHandler`, `PermissionTierCheckHandler`, `AnomalyCheckHandler`, `FinancialLimitCheckHandler`, `ConfirmationCheckHandler`. Any check can short-circuit, reject execution, and emit an append-only security audit event. |
 | The 5 agent tools exposed to the LLM | Facade | `AgentToolsService` acts as a unified Facade that coordinates the bank gateway, rates engine, safety guardrails, state machine, and event emitter behind a clean tool interface for the AI assistant. |
 | LLM and mock bank | Dependency Inversion (the D in SOLID) | Business logic depends strictly on abstract interfaces (`ILlmClient`, `IBankGateway`). Production utilizes Gemini AI and direct banking rails, while automated test suites inject mock implementations without external network dependencies. |
 | Audit logging | Observer (NestJS events) | Operations emit decoupled domain events (`transfer.drafted`, `transfer.confirmed`, `transfer.compensated`, `route.compared`). An asynchronous `AuditLogListener` observer records events in the audit log, keeping core financial code clean of logging side-effects. |
@@ -199,11 +199,11 @@ The backend controller exposes full RESTful lifecycle operations incorporating `
 | POST | `/api/transfers/:id/confirm` | `@Param('id')`, `@Body()` | `id: string`, `ConfirmTransferDto` | Human-in-the-loop transfer execution (EXECUTE tier) |
 | POST | `/api/transfers/:id/compensate` | `@Param('id')`, `@Body()` | `id: string`, `CompensateTransferDto` | Saga compensating rollback transaction |
 | POST | `/api/transfers/:id/cancel` | `@Param('id')` | `id: string` | Cancel transfer draft |
-| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch immutable audit logs with multi-field filtering |
+| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch append-only audit logs with multi-field filtering |
 | GET | `/api/audit/:id` | `@Param('id')` | `id: string` | Fetch specific audit log by ID |
-| DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Delete specific audit log entry |
-| POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state |
-| GET | `/api/sandbox/export-logs` | None | None | Export audit log archive |
+| DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Sandbox development audit log pruning (AdminRoleGuard only) |
+| POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state (AdminRoleGuard & non-production only) |
+| GET | `/api/sandbox/export-logs` | None | None | Export audit log archive (AdminRoleGuard only) |
 
 ---
 
@@ -280,7 +280,7 @@ The application provides a complete authentication, session management, and stud
 - **API Endpoint:** `POST /api/auth/registration` (with `POST /api/auth/register` alias).
 - **Validation:** Enforces non-empty student ID, student name, RFC-compliant email, and minimum 6-character password via `class-validator` and `zod` schemas.
 - **Account Auto-Provisioning:** Newly registered accounts receive an initial sandbox allocation of 850,000.00 BDT balance and 1,000,000.00 BDT daily limit.
-- **Audit Trail:** Registration operations record an immutable `AUTH_REGISTRATION_SUCCESS` event in the audit log.
+- **Audit Trail:** Registration operations record an append-only `AUTH_REGISTRATION_SUCCESS` event in the audit log.
 - **Frontend Route:** Accessible at `/registration` with dark theme styling, demo persona auto-fill, and immediate redirection into the student dashboard upon completion.
 
 ### Evaluation Demo Account Showcase

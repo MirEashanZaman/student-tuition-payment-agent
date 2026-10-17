@@ -261,11 +261,14 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     if (!this.db) return;
     const ip = request.ip || request.socket.remoteAddress || '127.0.0.1';
     const path = request.originalUrl || request.url || 'unknown';
+    const user = (request as any).user;
+    const accountId = user?.accountId || 'acc-stu-2026-bdt';
     this.db
       .insertAuditLog({
         id: uuidv4(),
         event_type: 'PENETRATION_ATTACK_BLOCKED',
         permission_tier: 'READ_ONLY',
+        account_id: accountId,
         action_summary: `Security Armor blocked ${threat.threatType} on ${path}`,
         details: JSON.stringify({
           threatType: threat.threatType,
