@@ -1,0 +1,2 @@
+Log entry 1: 
+Log entry 2: feat(auth): set up JWT token generation and validation middleware
