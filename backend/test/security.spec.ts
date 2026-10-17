@@ -169,6 +169,40 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(rule.evaluate({ amountBdt: 10000000 }).passed).toBe(false);
       expect(rule.evaluate({ amountBdt: 100000 }).passed).toBe(true);
     });
+
+    it('should block transfers when account balance is insufficient', async () => {
+      const student = await db.getAccountByStudentId('STU-2026-BDT01');
+      await db.updateAccountBalance(student!.id, 1000, 0);
+
+      await expect(
+        toolsService.createTransferDraft(
+          'STU-2026-BDT01',
+          'route-edupay-prime',
+          1000,
+          'University of Oxford',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should block transfers with negative or zero amounts via schema validation', async () => {
+      await expect(
+        toolsService.createTransferDraft(
+          'STU-2026-BDT01',
+          'route-edupay-prime',
+          -100,
+          'University of Toronto',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        toolsService.createTransferDraft(
+          'STU-2026-BDT01',
+          'route-edupay-prime',
+          0,
+          'University of Toronto',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('2. Permission Tiers & Human Confirmation (Transfer without confirmation is blocked)', () => {
@@ -253,6 +287,24 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       } finally {
         nowSpy.mockRestore();
       }
+    });
+
+    it('should reject confirmation when token does not match the draft token', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        2000,
+        'University of Toronto',
+      );
+
+      await expect(
+        toolsService.confirmTransfer(
+          draft.transferId,
+          'CONFIRM-WRONGTOKEN',
+          true,
+          true,
+        ),
+      ).rejects.toThrow('Invalid confirmation token');
     });
 
     it('should evaluate ConfirmationRequirementRule across consent, token presence, and expiration', () => {
@@ -554,7 +606,44 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(encapsulated).toContain('&lt;script&gt;');
     });
 
-    it('should deny access to another student account', () => {
+    it('should sanitize advanced and polyglot XSS attack vectors', () => {
+      const vectors = [
+        '<script>document.cookie</script>',
+        '<img src="x" onerror="alert(document.cookie)">',
+        '"><svg/onload=alert(1)>',
+        '<iframe src="javascript:alert(1)"></iframe>',
+        '"><input onfocus=alert(1) autofocus>',
+      ];
+      for (const vector of vectors) {
+        const sanitized = PromptInjectionFilter.sanitizeUserText(vector);
+        expect(sanitized).not.toContain('<script');
+        expect(sanitized).not.toContain('<img');
+        expect(sanitized).not.toContain('<svg');
+        expect(sanitized).not.toContain('<iframe');
+        expect(sanitized).not.toContain('<input');
+      }
+    });
+
+    it('should sanitize XSS vectors in transfer draft university and registration fields', async () => {
+      const maliciousUni = '<script>alert("hack")</script>University of Oxford';
+      const maliciousReg = '"><img src=x onerror=alert(1)>REG-123';
+
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        500,
+        maliciousUni,
+        maliciousReg,
+      );
+
+      const stored = await db.getTransferById(draft.transferId);
+      expect(stored?.recipient_university).not.toContain('<script>');
+      expect(stored?.recipient_university).toContain('&lt;script&gt;');
+      expect(stored?.student_reg_number).not.toContain('<img');
+      expect(stored?.student_reg_number).toContain('&lt;img');
+    });
+
+    it('should deny access to another student account via StudentScopeGuard', () => {
       const guard = new StudentScopeGuard();
       const context = {
         switchToHttp: () => ({
@@ -566,6 +655,65 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       } as ExecutionContext;
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
+    it('should prevent a student from accessing another student account balance', async () => {
+      await expect(
+        toolsService.getBalance('STU-2026-BDT02', 'STU-2026-BDT01'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should prevent a student from confirming another student transfer draft', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        500,
+        'University of Oxford',
+      );
+
+      await expect(
+        toolsService.confirmTransfer(
+          draft.transferId,
+          draft.confirmationToken,
+          true,
+          true,
+          'STU-2026-BDT02',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should prevent a student from updating another student transfer draft', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        500,
+        'University of Oxford',
+      );
+
+      await expect(
+        toolsService.updateTransferDraft(
+          draft.transferId,
+          { recipient_university: 'Hacked University' },
+          'STU-2026-BDT02',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should prevent a student from cancelling or deleting another student transfer draft', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        500,
+        'University of Oxford',
+      );
+
+      await expect(
+        toolsService.cancelTransfer(draft.transferId, 'STU-2026-BDT02'),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        toolsService.deleteTransferDraft(draft.transferId, 'STU-2026-BDT02'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should handle invalid inputs and unexpected data formats gracefully', async () => {
