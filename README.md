@@ -202,8 +202,8 @@ npm test
 The database automatically seeds an initial student persona, authentication credentials, and 4 mock remittance corridors:
 
 - **Student ID:** `STU-2026-BDT01`
-- **Student Name:** Tanvir Ahmed
-- **Email:** `tanvir.student@fintechathon.org`
+- **Student Name:** Mir Eashan Zaman
+- **Email:** `eashan.student@fintechathon.org`
 - **Default Password:** `student123` (Hashed with Node.js scrypt)
 - **Role:** `STUDENT`
 - **Initial Balance:** `850,000.00 BDT` (~$7,112 USD)
