@@ -14,3 +14,4 @@ Log entry 13: feat(agent): add deadline buffer evaluation for cross-border route
 Log entry 14: feat(saga): implement rollback handlers for failed clearing transfers
 Log entry 15: feat(database): integrate PostgreSQL repository methods for transactions
 Log entry 16: test(database): add schema validation for immutable audit logs
+Log entry 17: feat(frontend): construct Home landing view layout
