@@ -21,3 +21,4 @@ Log entry 20: feat(frontend): implement skeletal loading states for payment hist
 Log entry 21: feat(frontend): add interactive tooltips to corridor scoring metrics
 Log entry 22: feat(frontend): enhance zero-trust architecture badge contrast
 Log entry 23: feat(frontend): structure FAQ accordion keyboard accessibility
+Log entry 24: feat(frontend): build copy-to-clipboard trigger for auth JWT debug panel
