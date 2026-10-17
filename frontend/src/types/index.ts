@@ -14,6 +14,7 @@ export interface AuthUser {
   studentName: string;
   email: string;
   role: string;
+  permissionTier?: 'READ_ONLY' | 'DRAFT' | 'EXECUTE';
   balance: number;
   currency: string;
   dailyLimit?: number;
@@ -30,6 +31,7 @@ export interface AuthSession {
 export interface LoginCredentials {
   studentIdOrEmail: string;
   password: string;
+  permissionTier?: 'READ_ONLY' | 'DRAFT' | 'EXECUTE';
 }
 
 export interface RegistrationData {
@@ -37,6 +39,7 @@ export interface RegistrationData {
   studentName: string;
   email: string;
   password: string;
+  permissionTier?: 'READ_ONLY' | 'DRAFT' | 'EXECUTE';
 }
 
 export interface RouteItem {
