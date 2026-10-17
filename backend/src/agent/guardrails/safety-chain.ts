@@ -160,6 +160,15 @@ export class AnomalyCheckHandler extends SafetyCheckHandler {
           reason: 'Transfer amount must be strictly greater than zero.',
         };
       }
+      const envCeiling = parseFloat(process.env.ANOMALY_CEILING_LIMIT || '');
+      const anomalyCeiling = !isNaN(envCeiling) && envCeiling > 0 ? envCeiling : 5000000;
+      if (context.amountBdt > anomalyCeiling) {
+        return {
+          passed: false,
+          blockedBy: 'AnomalyCheckHandler',
+          reason: `Flagged suspicious anomaly: Requested amount exceeds hard safety ceiling of ${anomalyCeiling.toLocaleString()} BDT.`,
+        };
+      }
     }
     return { passed: true };
   }
