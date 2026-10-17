@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api, authStorage } from '../../lib/api';
 import { AuthSession } from '../../types';
 import {
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loginInput, setLoginInput] = useState({
     studentIdOrEmail: 'STU-2026-BDT01',
     password: 'student123',
@@ -67,6 +69,12 @@ export default function LoginPage() {
             Overview
           </Link>
           <Link
+            href="/registration"
+            className="text-xs text-teal-300 hover:text-teal-200 font-medium transition-colors"
+          >
+            Registration
+          </Link>
+          <Link
             href="/chat"
             className="btn btn-xs bg-[#0D9488] hover:bg-teal-700 text-white border-none font-semibold"
           >
@@ -89,20 +97,25 @@ export default function LoginPage() {
           </div>
 
           <div className="p-6 sm:p-8 space-y-5">
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-900 flex justify-between items-center">
-              <div>
-                <div className="font-bold">Sandbox Demo Account</div>
-                <div className="text-[11px] text-blue-700 font-mono mt-0.5">
-                  ID: STU-2026-BDT01 | Pass: student123
-                </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-900 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-900">Sandbox Demo Account</span>
+                <button
+                  type="button"
+                  className="btn btn-xs bg-[#1E3A8A] text-white border-none font-bold"
+                  onClick={handleDemoFill}
+                >
+                  Auto-Fill
+                </button>
               </div>
-              <button
-                type="button"
-                className="btn btn-xs bg-[#1E3A8A] text-white border-none font-bold"
-                onClick={handleDemoFill}
-              >
-                Auto-Fill
-              </button>
+              <div className="flex justify-between text-[11px] text-blue-800 font-mono">
+                <span>Student ID: <strong>STU-2026-BDT01</strong></span>
+                <span>Password: <strong>student123</strong></span>
+              </div>
+              <div className="flex justify-between text-[11px] text-slate-600">
+                <span>Name: Tanvir Ahmed</span>
+                <span>Balance: <strong className="text-emerald-700 font-mono">850,000 BDT</strong></span>
+              </div>
             </div>
 
             {error && (
@@ -196,6 +209,18 @@ export default function LoginPage() {
                   >
                     {loading ? 'Authenticating...' : 'Sign In & Get JWT'}
                   </button>
+                </div>
+
+                <div className="text-center pt-2">
+                  <p className="text-xs text-slate-500">
+                    Need a new account?{' '}
+                    <Link
+                      href="/registration"
+                      className="font-semibold text-[#0D9488] hover:underline"
+                    >
+                      Go to Student Registration
+                    </Link>
+                  </p>
                 </div>
               </form>
             )}

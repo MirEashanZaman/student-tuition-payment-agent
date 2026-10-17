@@ -349,6 +349,32 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return this.memoryStore.accounts.get(id) || null;
   }
 
+  async insertAccount(account: AccountRecord): Promise<AccountRecord> {
+    if (!this.useMemoryStore && this.pool) {
+      const res = await this.pool.query(
+        `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+          account.id,
+          account.student_id,
+          account.student_name,
+          account.email,
+          account.currency,
+          account.balance,
+          account.daily_limit,
+          account.daily_spent,
+          account.password_hash,
+          account.role,
+        ],
+      );
+      return this.formatAccount(res.rows[0]);
+    }
+    this.memoryStore.accounts.set(account.student_id, { ...account });
+    this.memoryStore.accounts.set(account.id, { ...account });
+    return account;
+  }
+
   async updateAccountBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord> {
     if (!this.useMemoryStore && this.pool) {
       const res = await this.pool.query(

@@ -267,7 +267,29 @@ The repository incorporates an enterprise-grade automated CI/CD pipeline impleme
 
 ---
 
-## 10. Frontend Architecture & Rendering Strategy (SSG vs CSR)
+## 10. Authentication and Student Registration Architecture
+
+The application provides a complete authentication, session management, and student registration subsystem designed for both production security and seamless hackathon evaluation:
+
+### Cryptographic Security & Sessions
+- **Password Hashing:** Passwords are salted and hashed using Node.js `scrypt` with a 64-byte derived key and unique 16-byte cryptographically secure random salts.
+- **Stateless JWT Tokens:** Authentication returns HS256 signed JWT tokens containing student identity, email, role, and granted permission tier (`EXECUTE`).
+- **Session Verification:** `JwtAuthGuard` validates the `Authorization: Bearer <token>` header on protected routes and attaches the verified student context to incoming requests.
+
+### Student Registration Flow
+- **API Endpoint:** `POST /api/auth/registration` (with `POST /api/auth/register` alias).
+- **Validation:** Enforces non-empty student ID, student name, RFC-compliant email, and minimum 6-character password via `class-validator` and `zod` schemas.
+- **Account Auto-Provisioning:** Newly registered accounts receive an initial sandbox allocation of 850,000.00 BDT balance and 1,000,000.00 BDT daily limit.
+- **Audit Trail:** Registration operations record an immutable `AUTH_REGISTRATION_SUCCESS` event in the audit log.
+- **Frontend Route:** Accessible at `/registration` with dark theme styling, demo persona auto-fill, and immediate redirection into the student dashboard upon completion.
+
+### Evaluation Demo Account Showcase
+- **Demo Persona:** `STU-2026-BDT01` (Tanvir Ahmed), password: `student123`.
+- **Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.
+
+---
+
+## 11. Frontend Architecture & Rendering Strategy (SSG vs CSR)
 
 To optimize load latency for judges, provide instant first-contentful paint (FCP), and maintain real-time reactivity for financial operations, the Next.js 14 frontend implements a hybrid rendering strategy:
 
@@ -278,6 +300,7 @@ To optimize load latency for judges, provide instant first-contentful paint (FCP
 | **Chat** | `/chat` | **CSR** | Fully interactive natural language agent studio, authenticated per-student session, real-time message mutations, and dynamic route calculations. Operates behind login and data changes constantly; requires zero SEO. |
 | **Dashboard** | `/dashboard`, `/audit` | **CSR** | Private, per-user financial data that must be fresh. Real-time balance calculations, active transfer state machine status, and fresh audit logs polled on an 8-second interval. |
 | **Login** | `/login` | **CSR** | A simple interactive client form with client-side credential validation, demo account auto-fill, and immediate localStorage JWT token acquisition. |
+| **Registration** | `/registration` | **CSR** | Interactive registration form with instant client-side validation, demo persona auto-fill, and immediate post-registration token acquisition. |
 
 
 

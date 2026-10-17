@@ -39,3 +39,10 @@ export const LoginInputSchema = z.object({
   studentIdOrEmail: z.string().trim().min(1, 'Student ID or Email is required'),
   password: z.string().min(1, 'Password is required'),
 });
+
+export const RegistrationInputSchema = z.object({
+  studentId: z.string().trim().min(2, 'Student ID must be at least 2 characters').max(64),
+  studentName: z.string().trim().min(2, 'Student name must be at least 2 characters').max(128),
+  email: z.string().trim().email('Valid email address is required').max(254),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(128),
+});

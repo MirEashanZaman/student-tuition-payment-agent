@@ -27,7 +27,7 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: false, limit: '16kb' }));
 
   const allowedOrigins = new Set(
-    (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:4567')
+    (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:4567,http://127.0.0.1:4567')
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),

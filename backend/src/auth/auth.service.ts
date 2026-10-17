@@ -164,6 +164,87 @@ export class AuthService {
     };
   }
 
+  async registerStudent(
+    dto: {
+      studentId: string;
+      studentName: string;
+      email: string;
+      password: string;
+    },
+    ipAddress = '127.0.0.1',
+  ): Promise<AuthSessionResponse> {
+    if (!dto.studentId || !dto.studentName || !dto.email || !dto.password) {
+      throw new BadRequestException('Student ID, student name, email, and password are required.');
+    }
+
+    const existingById = await this.db.getAccountByStudentId(dto.studentId.trim());
+    if (existingById) {
+      throw new BadRequestException(`An account with Student ID "${dto.studentId.trim()}" already exists.`);
+    }
+
+    const existingByEmail = await this.db.getAccountByStudentIdOrEmail(dto.email.trim());
+    if (existingByEmail) {
+      throw new BadRequestException(`An account with email "${dto.email.trim()}" already exists.`);
+    }
+
+    const hashedPassword = PasswordHasher.hashPassword(dto.password);
+    const newAccount = await this.db.insertAccount({
+      id: `acc-${dto.studentId.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      student_id: dto.studentId.trim(),
+      student_name: dto.studentName.trim(),
+      email: dto.email.trim().toLowerCase(),
+      currency: 'BDT',
+      balance: 850000.00,
+      daily_limit: 1000000.00,
+      daily_spent: 0.00,
+      password_hash: hashedPassword,
+      role: 'STUDENT',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'AUTH_REGISTRATION_SUCCESS',
+      permission_tier: 'READ_ONLY',
+      account_id: newAccount.id,
+      action_summary: `Student registration completed for ${newAccount.student_id} (${newAccount.student_name})`,
+      status: 'SUCCESS',
+      ip_address: ipAddress,
+      created_at: new Date(),
+    });
+
+    const payload: JwtPayload = {
+      sub: newAccount.id,
+      studentId: newAccount.student_id,
+      studentName: newAccount.student_name,
+      email: newAccount.email,
+      role: newAccount.role || 'STUDENT',
+      permissionTier: PermissionTier.EXECUTE,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    this.logger.log(`Student ${newAccount.student_id} registered and authenticated successfully.`);
+
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: 86400,
+      user: {
+        studentId: newAccount.student_id,
+        studentName: newAccount.student_name,
+        email: newAccount.email,
+        role: newAccount.role || 'STUDENT',
+        permissionTier: PermissionTier.EXECUTE,
+        balance: newAccount.balance,
+        currency: newAccount.currency,
+        dailyLimit: newAccount.daily_limit,
+        dailySpent: newAccount.daily_spent,
+      },
+    };
+  }
+
   getDemoCredentials() {
     return {
       studentId: 'STU-2026-BDT01',

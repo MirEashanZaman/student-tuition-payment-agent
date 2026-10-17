@@ -69,8 +69,30 @@ export default function Home({
     },
   ]);
 
+  const isLoggingInRef = useRef(false);
+
+  const ensureAuth = async (): Promise<boolean> => {
+    if (authStorage.getToken()) {
+      return true;
+    }
+    if (isLoggingInRef.current) {
+      return false;
+    }
+    isLoggingInRef.current = true;
+    try {
+      const session = await api.login('STU-2026-BDT01', 'student123');
+      setAuthSession(session);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      isLoggingInRef.current = false;
+    }
+  };
+
   const loadData = async () => {
     try {
+      await ensureAuth();
       const [accData, txData, auditData] = await Promise.all([
         api.getAccount().catch(() => null),
         api.getTransfers().catch(() => []),
@@ -157,8 +179,19 @@ export default function Home({
     setLoading(true);
 
     try {
+      await ensureAuth();
       const activeStudentId = authSession?.user.studentId || account?.studentId || 'STU-2026-BDT01';
-      const res = await api.sendChatMessage(text, activeStudentId);
+      let res;
+      try {
+        res = await api.sendChatMessage(text, activeStudentId);
+      } catch (err: any) {
+        if (err.message && (err.message.includes('Authorization') || err.message.includes('token') || err.message.includes('401'))) {
+          await api.login('STU-2026-BDT01', 'student123');
+          res = await api.sendChatMessage(text, activeStudentId);
+        } else {
+          throw err;
+        }
+      }
       let comparisonData: RouteComparisonResult | undefined;
 
       if (res.toolCallsExecuted) {
@@ -482,6 +515,7 @@ export default function Home({
             <button
               className="btn btn-xs bg-amber-400 hover:bg-amber-500 text-blue-950 font-bold border-none flex items-center gap-1.5 shadow-sm"
               onClick={() => setShowLoginModal(true)}
+              id="login-modal-trigger"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>Sign In</span>
@@ -1374,6 +1408,16 @@ export default function Home({
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div className="text-center text-xs text-slate-500 pt-1">
+                Need a new account?{' '}
+                <a
+                  href="/registration"
+                  className="font-semibold text-[#0D9488] hover:underline"
+                >
+                  Go to Student Registration
+                </a>
               </div>
 
               <div className="pt-2 flex gap-3">
