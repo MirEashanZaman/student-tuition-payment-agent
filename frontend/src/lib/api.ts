@@ -31,9 +31,6 @@ const apiClient = axios.create({
   },
 });
 
-// Axios request interceptor injects the student's active JWT Bearer token on client-side requests.
-// SSR guard (typeof window !== 'undefined') prevents Next.js server-side build crashes.
-// TODO: evaluate moving to HttpOnly Secure cookies when deploying to production domains with HTTPS.
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('fintech_auth_token');
@@ -60,7 +57,6 @@ function handleApiError(error: unknown, fallbackMessage: string): never {
   throw new Error(fallbackMessage);
 }
 
-// Client-side authentication token persistence and default header synchronizer.
 export const authStorage = {
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
