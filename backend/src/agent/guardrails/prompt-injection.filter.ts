@@ -6,10 +6,10 @@ export interface InjectionCheckResult {
 
 export class PromptInjectionFilter {
   private static readonly SUSPICIOUS_PATTERNS = [
-    /ignore\s+(all\s+)?(previous|prior)\s+instructions?/i,
+    /ignore\s+(all\s+)?(previous|prior|existing)\s+instructions?/i,
     /ignore\s+(this|the)\s+(system|security|safety|developer|policy)\s+prompt/i,
     /override\s+(transfer|daily|security|financial|permission|tier)\s+(limit|policy|rule|guardrail)/i,
-    /bypass\s+(safety|guardrails|confirmation|verification|permission|tier|limit|policy)/i,
+    /bypass\s+(all\s+)?(safety|guardrails|confirmation|verification|permission|tier|limit|policy|checks?)/i,
     /execute\s+(immediately|now|without\s+confirmation|without\s+approval)/i,
     /you\s+are\s+now\s+in\s+developer\s+mode/i,
     /set\s+(your|the)\s+(permission|access|role|tier)\s+(to|=)\s*(execute|draft|read_only|read-only|draft|execute)/i,
@@ -20,7 +20,10 @@ export class PromptInjectionFilter {
     /transfer\s+all\s+funds/i,
     /set\s+balance\s*=/i,
     /new\s+system\s+prompt/i,
-    /act\s+as\s+(admin|developer|root|system)/i,
+    /act\s+as\s+(admin|developer|root|system|unrestricted)/i,
+    /dan\s+mode/i,
+    /jailbreak/i,
+    /developer\s+override/i,
   ];
 
   private static normalizeUserText(userInput: string): string {
@@ -29,6 +32,8 @@ export class PromptInjectionFilter {
     }
 
     const normalized = userInput
+      .normalize('NFKC')
+      .replace(/[\u200B-\u200D\u2060\uFEFF\u202A-\u202E\u2066-\u2069]/g, '')
       .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
