@@ -16,6 +16,10 @@ export class ApiRateLimitMiddleware {
   private readonly maxBuckets = 10000;
 
   use(request: Request, response: Response, next: NextFunction): void {
+    if (request.method === 'OPTIONS') {
+      next();
+      return;
+    }
     if (!request.path.startsWith('/api/')) {
       next();
       return;
