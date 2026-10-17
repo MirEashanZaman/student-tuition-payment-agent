@@ -11,8 +11,12 @@ interface RateLimitPolicy {
   windowMs: number;
 }
 
+// Lightweight in-memory sliding window rate limiter designed to guard against
+// credential brute-forcing, rapid registration floods, and LLM endpoint exhaustion.
+// TODO(perf): migrate in-memory Map to Redis cluster once deploying multi-node production instances.
 export class ApiRateLimitMiddleware {
   private readonly buckets = new Map<string, RateLimitBucket>();
+  // Memory guard: caps total trackable IP buckets to avoid heap exhaustion under spoofed-IP floods
   private readonly maxBuckets = 10000;
 
   use(request: Request, response: Response, next: NextFunction): void {
@@ -23,6 +27,7 @@ export class ApiRateLimitMiddleware {
 
     const policy = this.getPolicy(request.path);
     const rawAddress = request.ip || request.socket.remoteAddress || 'unknown';
+    // Normalize dual-stack IPv4-mapped IPv6 representations (e.g. ::ffff:192.0.2.1 -> 192.0.2.1)
     const address = rawAddress.replace(/^::ffff:/, '');
     const key = `${address}:${policy.name}`;
     const now = Date.now();
