@@ -42,6 +42,15 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
     grantLabel: '850,000.00 BDT (Active Sandbox Rail)',
   },
   {
+    code: 'CN',
+    name: 'China',
+    currencyCode: 'CNY',
+    currencyName: 'Chinese Yuan / RMB (¥)',
+    idPrefix: 'STU-2026-CNY',
+    isPrimaryRail: false,
+    grantLabel: '52,000.00 CNY Equiv (850k BDT Rail)',
+  },
+  {
     code: 'IN',
     name: 'India',
     currencyCode: 'INR',
@@ -80,6 +89,7 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
 ];
 
 const TARGET_CORRIDORS = [
+  { code: 'CNY', symbol: '¥', name: 'China (Host)', sample: 'Tsinghua, Peking, Fudan' },
   { code: 'USD', symbol: '$', name: 'United States', sample: 'Harvard, MIT, Stanford' },
   { code: 'GBP', symbol: '£', name: 'United Kingdom', sample: 'Oxford, Cambridge, UCL' },
   { code: 'EUR', symbol: '€', name: 'European Union', sample: 'TU Munich, ETH Zurich' },
@@ -261,7 +271,7 @@ export default function RegistrationPage() {
                   </span>
                   <span className="text-[10px] text-[#64748B]">Foreign University Endpoints</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5">
                   {TARGET_CORRIDORS.map((corridor) => (
                     <div
                       key={corridor.code}
@@ -356,7 +366,7 @@ export default function RegistrationPage() {
                   Sandbox Initial Grant: {activeCountry.grantLabel}
                 </div>
                 <div className="text-[11px] text-[#64748B] mt-0.5">
-                  Provides initial liquidity for testing tuition settlements to US, UK, and European universities through AI-optimized banking corridors.
+                  Provides initial liquidity for testing tuition settlements to China, US, UK, and European universities through AI-optimized banking corridors.
                 </div>
               </div>
             </div>
@@ -380,7 +390,7 @@ export default function RegistrationPage() {
               </span>
               <span className="text-[11px] text-[#64748B]">1-Click Auto-Fill</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() =>
@@ -396,6 +406,23 @@ export default function RegistrationPage() {
               >
                 <div className="text-xs font-bold text-[#0F172A] truncate">Ayesha Khan</div>
                 <div className="text-[10px] text-[#0D9488] font-mono">BD - BDT (STU-02)</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickDemoFill(
+                    'CN',
+                    'STU-2026-CNY01',
+                    'Li Wei',
+                    'liwei.student@fintechathon.org',
+                    'student123',
+                  )
+                }
+                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
+              >
+                <div className="text-xs font-bold text-[#0F172A] truncate">Li Wei</div>
+                <div className="text-[10px] text-[#0D9488] font-mono">CN - CNY (STU-01)</div>
               </button>
 
               <button
