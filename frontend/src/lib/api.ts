@@ -62,14 +62,22 @@ export const authStorage = {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('fintech_auth_token');
   },
-  setToken(token: string): void {
+  getStudentId(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('fintech_auth_student_id');
+  },
+  setToken(token: string, studentId?: string): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem('fintech_auth_token', token);
+    if (studentId) {
+      localStorage.setItem('fintech_auth_student_id', studentId);
+    }
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   },
   clearToken(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('fintech_auth_token');
+    localStorage.removeItem('fintech_auth_student_id');
     delete apiClient.defaults.headers.common['Authorization'];
   },
 };
@@ -95,7 +103,7 @@ export const api = {
       const validated = LoginInputSchema.parse(credentials);
       const response = await apiClient.post<AuthSession>('/auth/login', validated);
       if (response.data?.accessToken) {
-        authStorage.setToken(response.data.accessToken);
+        authStorage.setToken(response.data.accessToken, response.data.user?.studentId);
       }
       return response.data;
     } catch (error) {
@@ -108,16 +116,17 @@ export const api = {
       const validated = RegistrationInputSchema.parse(data);
       const response = await apiClient.post<AuthSession>('/auth/registration', validated);
       if (response.data?.accessToken) {
-        authStorage.setToken(response.data.accessToken);
+        authStorage.setToken(response.data.accessToken, response.data.user?.studentId);
       }
       return response.data;
     } catch (error) {
       handleApiError(error, 'Registration failed');
     }
   },
-  async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
+  async getAccount(studentId?: string): Promise<Account> {
     try {
-      const response = await apiClient.get<Account>(`/accounts/${studentId}`);
+      const targetId = studentId || authStorage.getStudentId() || 'me';
+      const response = await apiClient.get<Account>(`/accounts/${targetId}`);
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to fetch account balance');
@@ -270,9 +279,10 @@ export const api = {
     }
   },
 
-  async getTransfers(studentId = 'STU-2026-BDT01', status?: string): Promise<TransferRecord[]> {
+  async getTransfers(studentId?: string, status?: string): Promise<TransferRecord[]> {
     try {
-      const params: Record<string, string> = { studentId };
+      const params: Record<string, string> = {};
+      if (studentId) params.studentId = studentId;
       if (status) params.status = status;
       const response = await apiClient.get<TransferRecord[]>('/transfers', { params });
       return response.data;
