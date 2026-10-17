@@ -170,8 +170,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const defaultAccount: AccountRecord = {
       id: 'acc-stu-2026-bdt',
       student_id: 'STU-2026-BDT01',
-      student_name: 'Tanvir Ahmed',
-      email: 'tanvir.student@fintechathon.org',
+      student_name: 'Mir Eashan Zaman',
+      email: 'eashan.student@fintechathon.org',
       currency: process.env.DEFAULT_SOURCE_CURRENCY || 'BDT',
       balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
       daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,

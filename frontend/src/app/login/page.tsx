@@ -52,6 +52,9 @@ export default function LoginPage() {
         permissionTier: loginInput.permissionTier,
       });
       setSession(res);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('fintech_logged_out');
+      }
       authStorage.setToken(res.accessToken, res.user.studentId);
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please check credentials.');
@@ -139,7 +142,7 @@ export default function LoginPage() {
               <span className="text-[#64748B]">Password: <strong className="text-[#0F172A]">student123</strong></span>
             </div>
             <div className="flex justify-between text-[11px] pt-1 border-t border-[#E2E8F0]">
-              <span className="text-[#64748B]">Tanvir Ahmed</span>
+              <span className="text-[#64748B]">Mir Eashan Zaman</span>
               <span className="font-mono text-[#16A34A] font-bold">850,000.00 BDT</span>
             </div>
           </div>

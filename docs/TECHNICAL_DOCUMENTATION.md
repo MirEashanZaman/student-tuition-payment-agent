@@ -284,7 +284,7 @@ The application provides a complete authentication, session management, and stud
 - **Frontend Route:** Accessible at `/registration` with dark theme styling, demo persona auto-fill, and immediate redirection into the student dashboard upon completion.
 
 ### Evaluation Demo Account Showcase
-- **Demo Persona:** `STU-2026-BDT01` (Tanvir Ahmed), password: `student123`.
+- **Demo Persona:** `STU-2026-BDT01` (Mir Eashan Zaman), password: `student123`.
 - **Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.
 
 ---

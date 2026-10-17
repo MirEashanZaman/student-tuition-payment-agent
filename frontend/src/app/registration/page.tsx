@@ -133,6 +133,9 @@ export default function RegistrationPage() {
         password,
         permissionTier,
       });
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('fintech_logged_out');
+      }
       setSuccess(true);
       setTimeout(() => {
         router.push('/');
