@@ -32,7 +32,7 @@
 ---
 
 ### Slide 4: Live Architecture & Tech Stack
-- **Frontend:** Next.js 14 with custom dark fintech design system (glassmorphism, micro-animations, real-time KPI syncing).
+- **Frontend:** Next.js 14 hybrid SSG/CSR architecture (instant SSG Home & FAQ landing for evaluators, dynamic CSR Chat, Dashboard, and Login) with custom dark fintech design system.
 - **Backend:** NestJS enterprise architecture with modular policy guards and dependency injection.
 - **Data Layer:** PostgreSQL schema with 4 core tables (`accounts`, `rates`, `transfers`, `audit_log`).
 - **AI Engine:** Google Gemini 1.5 Flash with tool calling + high-fidelity offline sandbox fallback for reliable evaluation.
