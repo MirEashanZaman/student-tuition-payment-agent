@@ -415,6 +415,17 @@ export default function Home({
       setShowLoginModal(true);
       return;
     }
+    if (authSession?.user?.permissionTier && authSession.user.permissionTier !== 'EXECUTE') {
+      showNotification('Human-in-the-Loop Safety: Transfer execution requires EXECUTE tier.', 'info');
+      setLoginInput((prev) => ({
+        ...prev,
+        studentIdOrEmail: authSession.user.studentId || 'STU-2026-BDT01',
+        password: 'student123',
+        permissionTier: 'EXECUTE',
+      }));
+      setShowLoginModal(true);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.confirmTransfer(transferId, confirmationToken, true);
@@ -1173,6 +1184,30 @@ export default function Home({
                                 </strong>
                               </div>
                             </div>
+
+                            {authSession?.user?.permissionTier && authSession.user.permissionTier !== 'EXECUTE' && (
+                              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                                <div className="flex items-center gap-1.5">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                  <span>Current Tier: <strong>{authSession.user.permissionTier}</strong>. Execution requires <strong>EXECUTE</strong>.</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setLoginInput((prev) => ({
+                                      ...prev,
+                                      studentIdOrEmail: authSession.user.studentId || 'STU-2026-BDT01',
+                                      password: 'student123',
+                                      permissionTier: 'EXECUTE',
+                                    }));
+                                    setShowLoginModal(true);
+                                  }}
+                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] whitespace-nowrap transition-colors shadow-xs"
+                                >
+                                  Step-Up to EXECUTE
+                                </button>
+                              </div>
+                            )}
 
                             <div className="flex gap-2.5">
                               <button
