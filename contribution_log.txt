@@ -34,3 +34,4 @@ Log entry 33: feat(frontend): build Token Inspector drawer to display decoded cl
 Log entry 34: feat(frontend): add dynamic Navbar student status badge
 Log entry 35: feat(frontend): implement single-click session sign-out handler
 Log entry 36: style(frontend): adjust Tailwind spacing and responsive layout grids
+Log entry 37: ci(pipeline): add regex scan rule for disallowed comments
