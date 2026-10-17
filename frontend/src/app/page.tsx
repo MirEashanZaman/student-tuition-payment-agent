@@ -82,7 +82,7 @@ export default function Home() {
     loadData();
     const initAuth = async () => {
       try {
-        const session = await api.validateSession();
+        const session = await api.getSession();
         if (session) {
           setAuthSession(session);
         }

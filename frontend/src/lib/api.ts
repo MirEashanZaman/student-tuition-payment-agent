@@ -339,6 +339,10 @@ export const api = {
     }
   },
 
+  async validateSession(): Promise<any> {
+    return this.getSession();
+  },
+
   async logout(studentId?: string): Promise<any> {
     try {
       const token = this.getAuthToken();
