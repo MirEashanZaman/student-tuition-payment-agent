@@ -251,7 +251,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (!this.useMemoryStore && this.pool) {
       try {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true') {
           await this.pool.query(
             `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -731,7 +731,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (!this.useMemoryStore && this.pool) {
       const result = await this.pool.query(
         `SELECT * FROM audit_log
-         WHERE account_id = $1
+         WHERE (account_id = $1 OR account_id IS NULL)
            AND ($2::text IS NULL OR permission_tier::text = $2)
            AND ($3::text IS NULL OR audit_log.status::text = $3)
          ORDER BY created_at DESC
@@ -741,7 +741,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       return result.rows.map(this.formatAudit);
     }
 
-    let logs = this.memoryStore.audit_log.filter((log) => log.account_id === accountId);
+    let logs = this.memoryStore.audit_log.filter((log) => !log.account_id || log.account_id === accountId);
     if (tier) {
       logs = logs.filter((log) => log.permission_tier === tier);
     }
