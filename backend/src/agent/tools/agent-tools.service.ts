@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { FinancialLimitsGuard } from '../guardrails/financial-limits.guard';
+import { PromptInjectionFilter } from '../guardrails/prompt-injection.filter';
 import { PermissionTierValidator, PermissionTier, PermissionPolicyException } from '../guardrails/permission-tier.guard';
 import {
   RouteComparisonResult,
@@ -91,7 +92,10 @@ export class AgentToolsService {
     return this.auditRepository || this.auditRepo || (this.db as any);
   }
 
-  async getBalance(studentId: string) {
+  async getBalance(studentId: string, requestingStudentId?: string) {
+    if (requestingStudentId && studentId !== requestingStudentId) {
+      throw new ForbiddenException(`Access denied: Cannot access account for student ${studentId}.`);
+    }
     const account = await this.accountStore.findByStudentId(studentId);
     if (!account) {
       throw new NotFoundException(`Student account ${studentId} not found`);
@@ -373,12 +377,15 @@ export class AgentToolsService {
     const confirmationToken = `CONFIRM-${uuidv4().substring(0, 8).toUpperCase()}`;
     const transferId = `TRX-${uuidv4().substring(0, 8).toUpperCase()}`;
 
+    const sanitizedUniversity = PromptInjectionFilter.sanitizeUserText(recipientUniversity);
+    const sanitizedRegNumber = PromptInjectionFilter.sanitizeUserText(studentRegNumber);
+
     const transfer = await this.db.createTransfer({
       id: transferId,
       account_id: account.id,
       student_id: account.student_id,
-      recipient_university: recipientUniversity,
-      student_reg_number: studentRegNumber,
+      recipient_university: sanitizedUniversity,
+      student_reg_number: sanitizedRegNumber,
       source_currency: 'BDT',
       target_currency: 'USD',
       target_amount_usd: amountUsd,
@@ -452,6 +459,7 @@ export class AgentToolsService {
     confirmationToken: string,
     userConsent: boolean,
     isUserInitiated = true,
+    requestingStudentId?: string,
   ): Promise<ConfirmedTransferResult> {
     const validation = PermissionTierValidator.validateToolExecution('confirmTransfer', isUserInitiated);
     if (!validation.allowed) {
@@ -487,6 +495,10 @@ export class AgentToolsService {
       : await this.db.getTransferById(transferId);
     if (!transfer) {
       throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${transferId} does not belong to requesting student.`);
     }
 
     if (this.stateMachine) {
@@ -721,15 +733,23 @@ export class AgentToolsService {
   async updateTransferDraft(
     id: string,
     updates: { recipient_university?: string; student_reg_number?: string },
+    requestingStudentId?: string,
   ) {
     const existing = await this.db.getTransferById(id);
     if (!existing) {
       throw new NotFoundException(`Transfer ${id} not found`);
     }
+    if (requestingStudentId && existing.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${id} does not belong to requesting student.`);
+    }
     if (existing.status !== 'PENDING_CONFIRMATION') {
       throw new BadRequestException(`Cannot update transfer with status "${existing.status}". Only draft transfers can be modified.`);
     }
-    const updated = await this.db.updateTransferDraft(id, updates);
+    const sanitizedUpdates: { recipient_university?: string; student_reg_number?: string } = {
+      ...(updates.recipient_university ? { recipient_university: PromptInjectionFilter.sanitizeUserText(updates.recipient_university) } : {}),
+      ...(updates.student_reg_number ? { student_reg_number: PromptInjectionFilter.sanitizeUserText(updates.student_reg_number) } : {}),
+    };
+    const updated = await this.db.updateTransferDraft(id, sanitizedUpdates);
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: 'DRAFT_UPDATED',
@@ -745,10 +765,13 @@ export class AgentToolsService {
     return updated;
   }
 
-  async deleteTransferDraft(id: string) {
+  async deleteTransferDraft(id: string, requestingStudentId?: string) {
     const existing = await this.db.getTransferById(id);
     if (!existing) {
       throw new NotFoundException(`Transfer ${id} not found`);
+    }
+    if (requestingStudentId && existing.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${id} does not belong to requesting student.`);
     }
     if (existing.status !== 'PENDING_CONFIRMATION' && existing.status !== 'BLOCKED') {
       throw new BadRequestException(`Cannot delete transfer with status "${existing.status}".`);
