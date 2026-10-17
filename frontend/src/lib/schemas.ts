@@ -43,6 +43,7 @@ export const DepositFundsInputSchema = z.object({
 export const LoginInputSchema = z.object({
   studentIdOrEmail: z.string().trim().min(1, 'Student ID or Email is required'),
   password: z.string().min(1, 'Password is required'),
+  permissionTier: z.enum(['READ_ONLY', 'DRAFT', 'EXECUTE']).optional(),
 });
 
 export const RegistrationInputSchema = z.object({
@@ -60,4 +61,5 @@ export const RegistrationInputSchema = z.object({
     .regex(/^[^\u0000-\u001F<>]+$/, 'Student name must not contain HTML or control characters'),
   email: z.string().trim().email('Valid email address is required').max(254),
   password: z.string().min(6, 'Password must be at least 6 characters').max(128),
+  permissionTier: z.enum(['READ_ONLY', 'DRAFT', 'EXECUTE']).optional(),
 });
