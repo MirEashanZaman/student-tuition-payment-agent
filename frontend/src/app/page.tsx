@@ -267,11 +267,25 @@ export default function Home({
 
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
+
+    if (!authSession && !authStorage.getToken()) {
+      const loginPromptMsg: ChatMessage = {
+        id: `agent-${Date.now()}`,
+        sender: 'agent',
+        text:
+          'You need to log in first to chat with the Tuition Payment Agent and execute tuition remittances.\n\n' +
+          'Please click **Sign In** at the top right to access your student account.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, loginPromptMsg]);
+      setShowLoginModal(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await ensureAuth();
-      const activeStudentId = authSession?.user.studentId || account?.studentId || 'STU-2026-BDT01';
+      const activeStudentId = authSession?.user.studentId || authStorage.getStudentId() || 'STU-2026-BDT01';
       let res;
       try {
         res = await api.sendChatMessage(text, activeStudentId);
@@ -280,13 +294,24 @@ export default function Home({
           err.message &&
           (err.message.includes('Authorization') ||
             err.message.includes('token') ||
-            err.message.includes('401'))
+            err.message.includes('401') ||
+            err.message.includes('Unauthorized'))
         ) {
-          await api.login('STU-2026-BDT01', 'student123');
-          res = await api.sendChatMessage(text, activeStudentId);
-        } else {
-          throw err;
+          authStorage.clearToken();
+          setAuthSession(null);
+          setAccount(null);
+          const authExpiredMsg: ChatMessage = {
+            id: `agent-${Date.now()}`,
+            sender: 'agent',
+            text:
+              'Your session has expired or requires authentication. Please click **Sign In** to log into your student account.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages((prev) => [...prev, authExpiredMsg]);
+          setShowLoginModal(true);
+          return;
         }
+        throw err;
       }
       let comparisonData: RouteComparisonResult | undefined;
 
@@ -330,6 +355,11 @@ export default function Home({
     recipientUniversity = 'University of Toronto (Tuition Office)',
     tuitionDeadline?: string,
   ) => {
+    if (!authSession && !authStorage.getToken()) {
+      showNotification('You need to log in first to draft tuition transfers.', 'error');
+      setShowLoginModal(true);
+      return;
+    }
     setLoading(true);
     try {
       const draft = await api.createDraft({
@@ -379,6 +409,11 @@ export default function Home({
   };
 
   const handleConfirmTransfer = async (transferId: string, confirmationToken: string) => {
+    if (!authSession && !authStorage.getToken()) {
+      showNotification('You need to log in first to confirm tuition transfers.', 'error');
+      setShowLoginModal(true);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.confirmTransfer(transferId, confirmationToken, true);
@@ -671,7 +706,7 @@ export default function Home({
                 {account ? account.studentName.split(' ')[0] : 'Student'}:
               </span>
               <span className="font-mono font-bold text-[#0D9488]">
-                {account ? `${account.balance.toLocaleString()} BDT` : 'Connecting...'}
+                {account ? `${account.balance.toLocaleString()} BDT` : authSession ? 'Connecting...' : 'Not Logged In'}
               </span>
             </div>
 
@@ -1264,7 +1299,21 @@ export default function Home({
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs text-slate-400">Loading student account...</div>
+                  <div className="text-xs text-slate-500 py-1">
+                    {authSession ? (
+                      'Loading student account...'
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-slate-600">Please sign in to view your account details and balance.</p>
+                        <button
+                          onClick={() => setShowLoginModal(true)}
+                          className="px-3 py-1.5 rounded-lg bg-[#1E3A8A] text-white font-medium hover:bg-blue-800 transition-colors text-xs"
+                        >
+                          Sign In
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
