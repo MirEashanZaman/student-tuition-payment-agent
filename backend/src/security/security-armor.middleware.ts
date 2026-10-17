@@ -44,6 +44,10 @@ export class SecurityArmorMiddleware implements NestMiddleware {
   ];
 
   use(request: Request, response: Response, next: NextFunction): void {
+    if (request.method === 'OPTIONS') {
+      next();
+      return;
+    }
     const threat = this.scanRequest(request);
     if (threat.detected) {
       this.recordThreat(request, threat);
@@ -89,8 +93,29 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     }
 
     if (request.headers && typeof request.headers === 'object') {
+      const safeHeaders = new Set([
+        'authorization',
+        'host',
+        'origin',
+        'referer',
+        'user-agent',
+        'accept',
+        'accept-encoding',
+        'accept-language',
+        'connection',
+        'content-type',
+        'content-length',
+        'sec-ch-ua',
+        'sec-ch-ua-mobile',
+        'sec-ch-ua-platform',
+        'sec-fetch-dest',
+        'sec-fetch-mode',
+        'sec-fetch-site',
+        'if-none-match',
+        'cookie',
+      ]);
       for (const [key, value] of Object.entries(request.headers)) {
-        if (key.toLowerCase() === 'authorization' && typeof value === 'string' && value.startsWith('Bearer ')) {
+        if (safeHeaders.has(key.toLowerCase())) {
           continue;
         }
         const headerCheck = this.inspect(value);

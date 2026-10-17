@@ -22,10 +22,6 @@ async function bootstrap() {
     response.setHeader('Cache-Control', 'no-store');
     next();
   });
-  app.use(apiRateLimiter.use.bind(apiRateLimiter));
-  app.use(express.json({ limit: '16kb' }));
-  app.use(express.urlencoded({ extended: false, limit: '16kb' }));
-
   const allowedOrigins = new Set(
     (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:4567,http://127.0.0.1:4567')
       .split(',')
@@ -37,6 +33,10 @@ async function bootstrap() {
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
+
+  app.use(apiRateLimiter.use.bind(apiRateLimiter));
+  app.use(express.json({ limit: '16kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '16kb' }));
 
   app.useGlobalPipes(
     new ValidationPipe({
