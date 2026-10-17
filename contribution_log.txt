@@ -87,3 +87,4 @@ Log entry 86: feat(frontend): add interactive copy trigger for transaction hashe
 Log entry 87: ci(pipeline): run static security analysis scan on pull request
 Log entry 88: docs(api): add response example schemas for tuition payment routes
 Log entry 89: refactor(cleanliness): replace magic numbers with named constants
+Log entry 90: fix(frontend): adjust button layout alignment on smaller screens
