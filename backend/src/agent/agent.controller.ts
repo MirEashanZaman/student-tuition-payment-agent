@@ -466,7 +466,7 @@ export class AgentController {
     return await this.toolsService.deleteAuditLog(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Post('sandbox/reset')
   async resetSandbox() {
     this.assertSandboxEnvironment();
@@ -478,7 +478,7 @@ export class AgentController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Get('sandbox/export-logs')
   async exportLogs() {
     this.assertSandboxEnvironment();
