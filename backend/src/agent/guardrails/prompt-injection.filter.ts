@@ -8,11 +8,11 @@ export class PromptInjectionFilter {
   private static readonly SUSPICIOUS_PATTERNS = [
     /ignore\s+(all\s+)?(previous|prior|existing)\s+instructions?/i,
     /ignore\s+(this|the)\s+(system|security|safety|developer|policy)\s+prompt/i,
-    /override\s+(transfer|daily|security|financial|permission|tier)\s+(limit|policy|rule|guardrail)/i,
+    /override\s+(transfer|daily|security|financial|permission|tier|safety|all)?\s*(limit|policy|rule|guardrail)s?/i,
     /bypass\s+(all\s+)?(safety|guardrails|confirmation|verification|permission|tier|limit|policy|checks?)/i,
     /execute\s+(immediately|now|without\s+confirmation|without\s+approval)/i,
     /you\s+are\s+now\s+in\s+developer\s+mode/i,
-    /set\s+(your|the)\s+(permission|access|role|tier)\s+(to|=)\s*(execute|draft|read_only|read-only|draft|execute)/i,
+    /set\s+(your|the|my|account)?\s*(permission|access|role|tier)\s*(to|=|\:)\s*(execute|draft|read_only|read-only|admin|root|superuser)/i,
     /disregard\s+(the\s+)?(safety|security|financial|permission|tier)\s+(rules?|guardrails?|policies?)/i,
     /system\s+override/i,
     /drop\s+table/i,
@@ -24,6 +24,16 @@ export class PromptInjectionFilter {
     /dan\s+mode/i,
     /jailbreak/i,
     /developer\s+override/i,
+    /(set|change|raise|increase|update|modify|lift|remove|disable)\s+(the\s+|my\s+|account\s+|transfer\s+|daily\s+)?(transfer|daily|financial|safety)?\s*limits?/i,
+    /limit\s*(=|:|\s+to)\s*[0-9]+/i,
+    /unlimited\s+(transfer|spending|balance|funds|allowance)/i,
+    /(elevate|escalate|promote|grant|upgrade)\s+(my\s+|your\s+|user\s+)?(permission|tier|role|privilege|access|rights)/i,
+    /grant\s+(me\s+)?(execute|admin|root|full)\s*(access|permission|tier|rights)?/i,
+    /switch\s+(to|=)?\s*(execute|admin|root|superuser)\s*(tier|mode|role)?/i,
+    /\[(system|instruction|developer|admin)\]/i,
+    /<\s*(system|instruction|admin|override)\s*>/i,
+    /###\s*instruction/i,
+    /pretend\s+(you\s+are|to\s+be)\s+(an\s+)?unrestricted/i,
   ];
 
   private static normalizeUserText(userInput: string): string {
@@ -58,6 +68,25 @@ export class PromptInjectionFilter {
 
   static sanitizeUserText(userInput: string): string {
     return this.escapeHtml(this.normalizeUserText(userInput));
+  }
+
+  static treatAsData(userInput: string): string {
+    const sanitized = this.sanitizeUserText(userInput);
+    return `[DATA_PAYLOAD]\n${sanitized}\n[/DATA_PAYLOAD]`;
+  }
+
+  static isLimitOrTierTampering(userInput: string): boolean {
+    const normalized = this.normalizeUserText(userInput);
+    const tamperingPatterns = [
+      /(set|change|raise|increase|update|modify|lift|remove|disable|override)\s+(the\s+|my\s+|account\s+|transfer\s+|daily\s+)?(transfer|daily|financial|safety)?\s*limits?/i,
+      /limit\s*(=|:|\s+to)\s*[0-9]+/i,
+      /unlimited\s+(transfer|spending|balance|funds|allowance)/i,
+      /(elevate|escalate|promote|grant|upgrade|set|change)\s+(my\s+|your\s+|user\s+)?(permission|tier|role|privilege|access|rights)/i,
+      /grant\s+(me\s+)?(execute|admin|root|full)\s*(access|permission|tier|rights)?/i,
+      /switch\s+(to|=)?\s*(execute|admin|root|superuser)\s*(tier|mode|role)?/i,
+      /set\s+(your|the|my|account)?\s*(permission|access|role|tier)\s*(to|=|\:)\s*(execute|draft|read_only|read-only|admin|root|superuser)/i,
+    ];
+    return tamperingPatterns.some((pattern) => pattern.test(normalized));
   }
 
   static inspect(userInput: string): InjectionCheckResult {
