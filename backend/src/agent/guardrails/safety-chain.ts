@@ -50,12 +50,13 @@ export class PromptInjectionCheckHandler extends SafetyCheckHandler {
     if (!context.userPrompt) {
       return { passed: true };
     }
+    const isTampering = PromptInjectionFilter.isLimitOrTierTampering(context.userPrompt);
     const result = PromptInjectionFilter.inspect(context.userPrompt);
-    if (result.isSuspicious) {
+    if (result.isSuspicious || isTampering) {
       return {
         passed: false,
         blockedBy: 'PromptInjectionCheckHandler',
-        reason: 'Prompt injection pattern flagged: ' + result.flaggedPatterns.join(', '),
+        reason: 'Prompt injection pattern flagged: ' + (result.flaggedPatterns.length > 0 ? result.flaggedPatterns.join(', ') : 'Limit or tier tampering attempt detected'),
       };
     }
     return { passed: true };
