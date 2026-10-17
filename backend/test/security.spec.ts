@@ -51,6 +51,8 @@ import {
   PerTransferLimitRule,
   DailyLimitRule,
   AccountBalanceRule,
+  AnomalyCheckRule,
+  ConfirmationRequirementRule,
 } from '../src/agent/guardrails/rules/safety-rule.engine';
 import { ISafetyRule } from '../src/agent/guardrails/rules/safety-rule.interface';
 
@@ -80,6 +82,8 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
         PerTransferLimitRule,
         DailyLimitRule,
         AccountBalanceRule,
+        AnomalyCheckRule,
+        ConfirmationRequirementRule,
         SafetyRuleEngine,
         AgentToolsService,
         AgentService,
@@ -150,6 +154,21 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
         ),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('should flag and block transfers that exceed the anomaly ceiling limit (5,000,000 BDT)', async () => {
+      const anomalyCheck = FinancialLimitsGuard.validateAnomaly(6000000, 10000000);
+      expect(anomalyCheck.isValid).toBe(false);
+      expect(anomalyCheck.code).toBe('ANOMALOUS_AMOUNT');
+      expect(anomalyCheck.reason).toContain('exceeds hard safety ceiling');
+    });
+
+    it('should evaluate AnomalyCheckRule and reject non-finite or over-ceiling amounts', () => {
+      const rule = new AnomalyCheckRule();
+      expect(rule.evaluate({ amountBdt: -500 }).passed).toBe(false);
+      expect(rule.evaluate({ amountBdt: Infinity }).passed).toBe(false);
+      expect(rule.evaluate({ amountBdt: 10000000 }).passed).toBe(false);
+      expect(rule.evaluate({ amountBdt: 100000 }).passed).toBe(true);
+    });
   });
 
   describe('2. Permission Tiers & Human Confirmation (Transfer without confirmation is blocked)', () => {
@@ -211,6 +230,66 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       const transferAfter = await db.getTransferById(draft.transferId);
       expect(accountAfter?.balance).toBe(accountBefore?.balance);
       expect(transferAfter?.status).toBe('PENDING_CONFIRMATION');
+    });
+
+    it('should reject confirmation when the confirmation token has expired past 15 minutes', async () => {
+      const draft = await toolsService.createTransferDraft(
+        'STU-2026-BDT01',
+        'route-edupay-prime',
+        2000,
+        'University of Toronto',
+      );
+
+      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 16 * 60 * 1000);
+      try {
+        await expect(
+          toolsService.confirmTransfer(
+            draft.transferId,
+            draft.confirmationToken,
+            true,
+            true,
+          ),
+        ).rejects.toThrow('expired');
+      } finally {
+        nowSpy.mockRestore();
+      }
+    });
+
+    it('should evaluate ConfirmationRequirementRule across consent, token presence, and expiration', () => {
+      const rule = new ConfirmationRequirementRule();
+      expect(
+        rule.evaluate({
+          isConfirmationStep: true,
+          userConsent: false,
+          confirmationToken: 'CONFIRM-12345678',
+        }).passed,
+      ).toBe(false);
+
+      expect(
+        rule.evaluate({
+          isConfirmationStep: true,
+          userConsent: true,
+          confirmationToken: '',
+        }).passed,
+      ).toBe(false);
+
+      expect(
+        rule.evaluate({
+          isConfirmationStep: true,
+          userConsent: true,
+          confirmationToken: 'CONFIRM-12345678',
+          tokenCreatedAt: new Date(Date.now() - 20 * 60 * 1000),
+        }).passed,
+      ).toBe(false);
+
+      expect(
+        rule.evaluate({
+          isConfirmationStep: true,
+          userConsent: true,
+          confirmationToken: 'CONFIRM-12345678',
+          tokenCreatedAt: new Date(),
+        }).passed,
+      ).toBe(true);
     });
 
     it('should successfully execute transfer when valid token and explicit user consent are provided', async () => {
