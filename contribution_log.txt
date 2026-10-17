@@ -43,3 +43,4 @@ Log entry 42: refactor(cleanliness): sanitize string constants for CI scan
 Log entry 43: test(agent): verify prompt injection resistance on limit updates
 Log entry 44: test(security): add test suite for unauthorized cross-account reads
 Log entry 45: test(security): assert transaction block without explicit confirmation
+Log entry 46: refactor(backend): streamline agent service controller endpoints
