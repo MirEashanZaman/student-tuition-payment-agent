@@ -60,6 +60,7 @@ To prevent autonomous agent hallucination or malicious client abuse from executi
 | `/api/transfers/:id/cancel`| `POST` | `DRAFT` | `assertTransferOwner` | Cancels draft and logs `TRANSFER_CANCELLED` |
 | `/api/transfers/:id/confirm`| `POST` | `EXECUTE` | `assertTransferOwner` | Debits balance, updates daily spent, advances state |
 | `/api/transfers/:id/compensate`| `POST` | `EXECUTE` | `assertTransferOwner` | Saga rollback restoring reserved funds upon rail failure |
+| `/api/transfers/:id/rollback`| `POST` | `EXECUTE` | `assertTransferOwner` | Saga rollback restoring student balance and unreserving gateway funds |
 | `/api/accounts/:id/limits`| `PUT` | `EXECUTE` | `AdminRoleGuard` | Administrative limit adjustment |
 | `/api/accounts/:id/deposit`| `POST` | `EXECUTE` | `AdminRoleGuard` | Administrative account funding |
 | `/api/rates/:id` | `PUT/DELETE`| `EXECUTE` | `AdminRoleGuard` | Administrative corridor rate configuration |
@@ -85,6 +86,7 @@ To prevent autonomous agent hallucination or malicious client abuse from executi
 
 ## 3. Input, Abuse, and Runtime Controls
 
+- **Security Armor WAF Middleware (`SecurityArmorMiddleware`)**: Protects application endpoints by recursively inspecting paths, parameters, query strings, headers, and parsed JSON request bodies. Neutralizes bash fork bombs (`:(){ :|:& };:`), command execution (`rm -rf`, `cat /etc/passwd`, `$(whoami)`, `` `whoami` ``, `powershell`, `cmd.exe /c`), path traversal (`../`, `..\`, `%2e%2e`), SQL injection (`UNION ALL SELECT`, `; DROP TABLE`, `; TRUNCATE TABLE`), prototype pollution (`__proto__`, `constructor.prototype`), null byte poisoning (`%00`, `\0`), and deep payload nesting bombs (>10 levels). Blocked requests trigger immediate HTTP 403 Forbidden responses and immutable audit logs under `PENETRATION_ATTACK_BLOCKED`.
 - **Payload Sanitization (XSS Protection)**: `PromptInjectionFilter.sanitizeUserText` sanitizes HTML entities (`&`, `<`, `>`, `"`, `'`) across user prompts, university names, and student registration numbers, neutralizing script injection, polyglot payloads, SVG onload triggers, and attribute escapes.
 - **Data Boundary Encapsulation**: User inputs are treated strictly as passive data payloads enclosed in `[DATA_PAYLOAD]` markers, preventing language models from misinterpreting text as instructions.
 - **Request Body Quotas**: Express body parsers enforce a strict 16 KB payload ceiling. DTO validation pipes reject non-whitelisted fields, negative numbers, and out-of-range amounts.
@@ -108,12 +110,13 @@ The following risk register categorizes known vulnerabilities, structural limita
 | **SEC-06** | **Audit Immutability** | Audit records are stored in PostgreSQL / in-memory table where a compromised database superuser could theoretically alter records. | **Medium** | Application-level audit deletion is restricted to verified `ADMIN` roles; all 18 agent and security lifecycle events are automatically recorded with status and metadata. | Export audit logs in real-time to append-only, write-once-read-many (WORM) storage (e.g. AWS CloudTrail, Amazon QLDB, or dedicated SIEM syslog). |
 | **SEC-07** | **Regulatory Compliance** | Sandbox operates without formal Bangladesh Bank Form A2 foreign exchange declaration integration or National Tax Identification (TIN) validation. | **Medium** | System models foreign tuition remittance limits (400,000 BDT per transfer, 1,000,000 BDT daily) matching statutory guidelines. | Implement regulatory reporting pipelines to the Bangladesh Bank Foreign Exchange Operation Department and student student-visa / admission letter validation. |
 | **SEC-08** | **Infrastructure Isolation** | Container limits protect individual pods from runaway memory exhaustion, but do not provide full multi-tenant kernel isolation. | **Low** | Docker containers enforce non-root user execution (`node:node`), read-only root filesystems, `no-new-privileges`, CPU/memory limits, and tmpfs volume mounts. | Deploy on hardened Kubernetes clusters with gVisor / Kata Containers runtime isolation and network security policies restricting pod egress. |
+| **SEC-09** | **Exploit Surface & Shell Bombs** | Automated penetration tools or shell bombs targeting Node.js child process spawning, command injection, or path traversal. | **High** | `SecurityArmorMiddleware` actively intercepts shell bombs (`:(){ :|:& };:`), command execution, prototype pollution (`__proto__`), path traversal (`../`), and SQLi vectors. | Offload high-throughput WAF inspection to ingress Envoy filters, Coraza WAF, or Cloudflare Magic Transit in production environments. |
 
 ---
 
 ## 5. Security Verification & Test Coverage Summary
 
-The system is validated through comprehensive automated test suites encompassing 70 test cases across two core specifications:
+The system is validated through comprehensive automated test suites encompassing 80 test cases across two core specifications:
 
 1. **[security.spec.ts](backend/test/security.spec.ts) (61 tests)**:
    - Financial limits enforcement (per-transfer, daily, anomaly ceiling, non-finite values).
@@ -125,13 +128,23 @@ The system is validated through comprehensive automated test suites encompassing
    - Cross-student scoping and IDOR prevention on account balances, transfer drafts, updates, confirmations, and cancellations.
    - RESTful parameter filtering, Zod schema validation, and scrypt password hashing.
 
-2. **[security-hardening.spec.ts](backend/test/security-hardening.spec.ts) (9 tests)**:
+2. **[security-hardening.spec.ts](backend/test/security-hardening.spec.ts) (19 tests)**:
    - IP-based rate limiting on authentication and conversational endpoints.
    - JWT authentication requirements and unauthorized 401 rejections.
    - Cross-student account read blocking (403 Forbidden).
    - Administrative endpoint role gating (403 Forbidden for student tokens).
    - Production startup assertions requiring 32-character secrets and database connections.
    - Sandbox reset and demo credential route disablement in production.
+   - Shell bombing and bash fork bomb defense (403 Forbidden).
+   - Command injection and process execution defenses (`; rm -rf`, `$(whoami)`, `powershell`).
+   - Path traversal and local file inclusion defenses (`../../etc/passwd`).
+   - SQL injection attack vector neutralization.
+   - Prototype pollution payload interception (`__proto__`).
+   - Null byte poisoning rejection (`%00`).
+   - End-to-end Saga rollback on confirmed transfers (balance and quota restoration).
+   - Draft transfer safe cancellation and rollback.
+   - Cross-student unauthorized rollback rejection (403 Forbidden).
+   - Duplicate rollback prevention (400 Bad Request).
 
 ---
 
