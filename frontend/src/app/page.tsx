@@ -605,30 +605,30 @@ export default function Home({
         </div>
       )}
 
-      <header className="sticky top-0 z-40 bg-[#1E3A8A] text-white px-4 sm:px-6 lg:px-8 py-2.5 shadow-md border-b border-blue-950">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
+      <header className="sticky top-0 z-40 bg-[#1E3A8A] text-white px-3 sm:px-6 py-2.5 shadow-md border-b border-blue-950">
+        <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <button
             onClick={() => setActiveTab('home')}
-            className="flex items-center gap-2.5 sm:gap-3 text-left focus:outline-none shrink-0 group"
+            className="flex items-center gap-2.5 text-left focus:outline-none shrink-0 group"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold group-hover:bg-teal-600 transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold group-hover:bg-teal-600 transition-colors shrink-0">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
-                <span className="hidden sm:inline-block text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-blue-950 text-teal-300 border border-teal-500/30">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-base font-bold text-white tracking-tight whitespace-nowrap">FinTechathon 2026</span>
+                <span className="hidden sm:inline-block text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-blue-950 text-teal-300 border border-teal-500/30 whitespace-nowrap">
                   Topic C
                 </span>
               </div>
-              <p className="text-[11px] text-teal-200 font-medium">Cross-Border Student Tuition Agent</p>
+              <p className="text-[11px] text-teal-200 font-medium whitespace-nowrap hidden 2xl:block">Cross-Border Student Tuition Agent</p>
             </div>
           </button>
 
-          <nav className="hidden lg:flex items-center gap-1 bg-blue-950/80 p-1 rounded-xl border border-blue-900/70 shadow-xs">
+          <nav className="hidden lg:flex items-center gap-0.5 sm:gap-1 bg-blue-950/80 p-1 rounded-xl border border-blue-900/70 shadow-xs shrink-0">
             <button
               onClick={() => setActiveTab('home')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'home'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
@@ -639,68 +639,70 @@ export default function Home({
             </button>
             <button
               onClick={() => setActiveTab('chat')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'chat'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <Activity className="w-3.5 h-3.5" />
-              <span>Agent Chat Studio</span>
+              <span>Agent Chat</span>
             </button>
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Financial Dashboard</span>
+              <span>Dashboard</span>
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'audit'
                   ? 'bg-white text-[#1E3A8A] shadow-xs'
                   : 'text-blue-100 hover:text-white hover:bg-blue-900/50'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Audit Trail ({auditLogs.length})</span>
+              <span>Audit ({auditLogs.length})</span>
             </button>
 
-            <span className="w-px h-4 bg-blue-800/80 my-auto mx-1 shrink-0"></span>
+            <div className="hidden xl:flex items-center gap-0.5 sm:gap-1">
+              <span className="w-px h-4 bg-blue-800/80 my-auto mx-1 shrink-0"></span>
 
-            <Link
-              href="/rates"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1"
-              title="Incremental Static Regeneration (ISR) Live FX Corridors"
-            >
-              <span>Rates</span>
-              <span className="text-[10px] font-mono text-teal-300 font-semibold">(ISR)</span>
-            </Link>
-            <Link
-              href="/status"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1"
-              title="Server-Side Rendered (SSR) Real-Time Liveness Verifier"
-            >
-              <span>Status</span>
-              <span className="text-[10px] font-mono text-teal-300 font-semibold">(SSR)</span>
-            </Link>
-            <Link
-              href="/faq"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1"
-              title="Static Site Generation (SSG) Institutional Security FAQ"
-            >
-              <span>FAQ</span>
-              <span className="text-[10px] font-mono text-teal-300 font-semibold">(SSG)</span>
-            </Link>
+              <Link
+                href="/rates"
+                className="px-2 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                title="Incremental Static Regeneration (ISR) Live FX Corridors"
+              >
+                <span>Rates</span>
+                <span className="hidden 2xl:inline text-[10px] font-mono text-teal-300 font-semibold">(ISR)</span>
+              </Link>
+              <Link
+                href="/status"
+                className="px-2 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                title="Server-Side Rendered (SSR) Real-Time Liveness Verifier"
+              >
+                <span>Status</span>
+                <span className="hidden 2xl:inline text-[10px] font-mono text-teal-300 font-semibold">(SSR)</span>
+              </Link>
+              <Link
+                href="/faq"
+                className="px-2 py-1.5 rounded-lg text-xs font-medium text-blue-200 hover:text-white hover:bg-blue-900/50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                title="Static Site Generation (SSG) Institutional Security FAQ"
+              >
+                <span>FAQ</span>
+                <span className="hidden 2xl:inline text-[10px] font-mono text-teal-300 font-semibold">(SSG)</span>
+              </Link>
+            </div>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-950/70 border border-teal-500/30 text-teal-200 text-xs font-medium shadow-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-950/70 border border-teal-500/30 text-teal-200 text-xs font-medium shadow-xs whitespace-nowrap shrink-0">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0D9488]"></span>
@@ -708,8 +710,8 @@ export default function Home({
               <span>Sandbox Active</span>
             </div>
 
-            <div className="bg-blue-950/80 text-white border border-blue-800/80 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs shadow-xs">
-              <span className="text-blue-300 hidden sm:inline font-medium">
+            <div className="bg-blue-950/80 text-white border border-blue-800/80 rounded-xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5 text-xs shadow-xs shrink-0 whitespace-nowrap">
+              <span className="text-blue-300 hidden xl:inline font-medium">
                 {account ? account.studentName.split(' ')[0] : 'Student'}:
               </span>
               <span className="font-mono font-bold text-teal-300">
@@ -718,34 +720,35 @@ export default function Home({
             </div>
 
             {authSession ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={() => setShowTokenInspector(true)}
-                  className="px-3 py-1.5 rounded-xl bg-blue-950/90 border border-blue-800/80 text-teal-200 text-xs font-mono font-semibold flex items-center gap-2 hover:bg-blue-900 transition-colors shadow-xs whitespace-nowrap"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-blue-950/90 border border-blue-800/80 text-teal-200 text-xs font-mono font-semibold flex items-center gap-1.5 hover:bg-blue-900 transition-colors shadow-xs whitespace-nowrap shrink-0"
                   title="Inspect JWT Token Session"
                 >
                   <User className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                  <span className="hidden md:inline font-mono">{authSession.user.studentId}</span>
+                  <span className="font-mono hidden md:inline">{authSession.user.studentId}</span>
                   <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0D9488]/30 text-teal-300 border border-teal-500/40 font-bold uppercase tracking-wider">
                     {authSession.user.permissionTier || 'EXECUTE'}
                   </span>
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/70 border border-rose-800/40 hover:border-rose-600/60 transition-all flex items-center gap-1.5 shadow-xs"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/70 border border-rose-800/40 hover:border-rose-600/60 transition-all flex items-center gap-1.5 shadow-xs shrink-0 whitespace-nowrap"
+                  title="Sign Out of Session"
                 >
                   <LogOut className="w-3.5 h-3.5 text-rose-300 shrink-0" />
-                  <span>Sign Out</span>
+                  <span className="hidden sm:inline">Sign Out</span>
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-1.5 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
                 id="login-modal-trigger"
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Sign In</span>
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Sign In</span>
               </button>
             )}
           </div>
