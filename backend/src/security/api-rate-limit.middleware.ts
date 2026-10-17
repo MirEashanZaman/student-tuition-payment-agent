@@ -14,22 +14,30 @@ interface RateLimitPolicy {
 export class ApiRateLimitMiddleware {
   private readonly buckets = new Map<string, RateLimitBucket>();
   private readonly maxBuckets = 10000;
+  private lastCleanup = Date.now();
 
   use(request: Request, response: Response, next: NextFunction): void {
     if (request.method === 'OPTIONS') {
       next();
       return;
     }
-    if (!request.path.startsWith('/api/')) {
+    const cleanPath = request.path ? request.path.replace(/\/+$/, '') : '';
+    if (!cleanPath.startsWith('/api')) {
       next();
       return;
     }
 
-    const policy = this.getPolicy(request.path);
+    const policy = this.getPolicy(cleanPath);
     const rawAddress = request.ip || request.socket.remoteAddress || 'unknown';
     const address = rawAddress.replace(/^::ffff:/, '');
     const key = `${address}:${policy.name}`;
     const now = Date.now();
+
+    if (now - this.lastCleanup > 60000) {
+      this.removeExpiredBuckets(now);
+      this.lastCleanup = now;
+    }
+
     let bucket = this.buckets.get(key);
 
     if (!bucket || now >= bucket.resetAt) {
