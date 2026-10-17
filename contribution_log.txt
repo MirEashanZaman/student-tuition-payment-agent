@@ -30,3 +30,4 @@ Log entry 29: ci(pipeline): enforce TypeScript no-implicit-any compiler flag
 Log entry 30: docs(security): clarify threat models in self-assessment guide
 Log entry 31: docs(api): document websocket payload format for live FX rates
 Log entry 32: refactor(cleanliness): strip redundant console statements
+Log entry 33: refactor(cleanliness): format JSON schema properties neatly
