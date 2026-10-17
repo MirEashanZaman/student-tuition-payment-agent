@@ -14,7 +14,7 @@ The assessment covers:
 - Human-in-the-loop confirmation controls and token lifecycles.
 - Financial safety guardrails (per-transfer limit, daily limit, anomaly ceiling).
 - Prompt-injection defenses and input sanitization (XSS and script neutralization).
-- Immutable audit trail recording and event schema.
+- Append-only audit trail recording and event schema.
 - Comprehensive Known-Risk List (Risk Register).
 
 ## 2. Permission Tiers Architecture
@@ -52,7 +52,7 @@ To prevent autonomous agent hallucination or malicious client abuse from executi
 | `/api/chat` | `POST` | `READ_ONLY` | `StudentScopeGuard` | Conversational assistant with prompt injection filter |
 | `/api/transfers` | `GET` | `READ_ONLY` | `StudentScopeGuard` | Authenticated student transfer history |
 | `/api/transfers/:id` | `GET` | `READ_ONLY` | `assertTransferOwner` | Specific transfer status and corridor details |
-| `/api/audit` | `GET` | `READ_ONLY` | Account Scoped | Authenticated student immutable audit log |
+| `/api/audit` | `GET` | `READ_ONLY` | Account Scoped | Authenticated student append-only audit log |
 | `/api/audit/:id` | `GET` | `READ_ONLY` | Account Scoped | Specific audit record entry |
 | `/api/transfers/draft` | `POST` | `DRAFT` | `StudentScopeGuard` | Pre-transaction reservation draft with single-use token |
 | `/api/transfers/:id` | `PUT/PATCH` | `DRAFT` | `assertTransferOwner` | Modifies university or registration number |
@@ -86,7 +86,7 @@ To prevent autonomous agent hallucination or malicious client abuse from executi
 
 ## 3. Input, Abuse, and Runtime Controls
 
-- **Security Armor WAF Middleware (`SecurityArmorMiddleware`)**: Protects application endpoints by recursively inspecting paths, parameters, query strings, headers, and parsed JSON request bodies. Neutralizes bash fork bombs (`:(){ :|:& };:`), command execution (`rm -rf`, `cat /etc/passwd`, `$(whoami)`, `` `whoami` ``, `powershell`, `cmd.exe /c`), path traversal (`../`, `..\`, `%2e%2e`), SQL injection (`UNION ALL SELECT`, `; DROP TABLE`, `; TRUNCATE TABLE`), prototype pollution (`__proto__`, `constructor.prototype`), null byte poisoning (`%00`, `\0`), and deep payload nesting bombs (>10 levels). Blocked requests trigger immediate HTTP 403 Forbidden responses and immutable audit logs under `PENETRATION_ATTACK_BLOCKED`.
+- **Security Armor WAF Middleware (`SecurityArmorMiddleware`)**: Protects application endpoints by recursively inspecting paths, parameters, query strings, headers, and parsed JSON request bodies. Neutralizes bash fork bombs (`:(){ :|:& };:`), command execution (`rm -rf`, `cat /etc/passwd`, `$(whoami)`, `` `whoami` ``, `powershell`, `cmd.exe /c`), path traversal (`../`, `..\`, `%2e%2e`), SQL injection (`UNION ALL SELECT`, `; DROP TABLE`, `; TRUNCATE TABLE`), prototype pollution (`__proto__`, `constructor.prototype`), null byte poisoning (`%00`, `\0`), and deep payload nesting bombs (>10 levels). Blocked requests trigger immediate HTTP 403 Forbidden responses and append-only audit logs under `PENETRATION_ATTACK_BLOCKED`.
 - **Payload Sanitization (XSS Protection)**: `PromptInjectionFilter.sanitizeUserText` sanitizes HTML entities (`&`, `<`, `>`, `"`, `'`) across user prompts, university names, and student registration numbers, neutralizing script injection, polyglot payloads, SVG onload triggers, and attribute escapes.
 - **Data Boundary Encapsulation**: User inputs are treated strictly as passive data payloads enclosed in `[DATA_PAYLOAD]` markers, preventing language models from misinterpreting text as instructions.
 - **Request Body Quotas**: Express body parsers enforce a strict 16 KB payload ceiling. DTO validation pipes reject non-whitelisted fields, negative numbers, and out-of-range amounts.
