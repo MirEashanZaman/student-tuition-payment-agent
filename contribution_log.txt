@@ -14,3 +14,4 @@ Log entry 13: feat(saga): add state persistence layer for pending tuition payout
 Log entry 14: feat(database): index transaction ledger for high-concurrency reads
 Log entry 15: test(database): verify ACID compliance during simulated rollbacks
 Log entry 16: feat(frontend): polish responsive typography across landing views
+Log entry 17: feat(frontend): refine hero section CTA button hover animations
