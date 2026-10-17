@@ -11,6 +11,8 @@ import {
   Home as HomeIcon,
 } from 'lucide-react';
 
+export const dynamic = 'force-static';
+
 export default function FaqPage() {
   const faqItems = [
     {
@@ -90,9 +92,14 @@ export default function FaqPage() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-10 space-y-8">
         <div className="bg-gradient-to-br from-[#1E3A8A] via-[#172554] to-[#0F172A] text-white rounded-3xl p-8 sm:p-10 shadow-xl border border-blue-900/50">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold mb-4">
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Institutional Compliance &amp; Architectural Answers</span>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Institutional Compliance &amp; Architectural Answers</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold font-mono">
+              <span>SSG: Pre-rendered Build-Time Static Page</span>
+            </div>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
             How It Works &amp; Security FAQ
