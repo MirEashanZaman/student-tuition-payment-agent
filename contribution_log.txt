@@ -1,3 +1,4 @@
 Log entry 1: 
 Log entry 2: feat(auth): enforce strict JWT claims checking for tuition routes
 Log entry 3: refactor(auth): simplify Bearer token extraction logic in guard
+Log entry 4: test(auth): add unit test coverage for invalid signature handling
