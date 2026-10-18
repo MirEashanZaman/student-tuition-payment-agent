@@ -202,6 +202,11 @@ export class DepositDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(64)
+  studentId?: string;
+
+  @IsString()
+  @IsOptional()
   @MaxLength(24)
   @Matches(/^[\d\s-]*$/, { message: 'Card number must only contain digits, spaces, and hyphens' })
   cardNumber?: string;
@@ -229,6 +234,11 @@ export class UpdateDailyLimitDto {
   @IsNumber()
   @Min(1)
   dailyLimitBdt: number;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(64)
+  studentId?: string;
 }
 
 export class UpdateRateDto {
