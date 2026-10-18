@@ -109,9 +109,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const dbUrl = process.env.DATABASE_URL;
     if (dbUrl && !process.env.FORCE_MEMORY_DB) {
       try {
+        const poolMax = parseInt(process.env.DB_POOL_MAX || '', 10) || 20;
+        const idleTimeout = parseInt(process.env.DB_IDLE_TIMEOUT_MS || '', 10) || 30000;
+        const connTimeout = parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '', 10) || 3000;
         this.pool = new Pool({
           connectionString: dbUrl,
-          connectionTimeoutMillis: 3000,
+          max: poolMax,
+          idleTimeoutMillis: idleTimeout,
+          connectionTimeoutMillis: connTimeout,
+        });
+        this.pool.on('error', (err) => {
+          this.logger.error(`Unexpected idle PostgreSQL client error: ${err.message}`);
         });
         const client = await this.pool.connect();
         client.release();
