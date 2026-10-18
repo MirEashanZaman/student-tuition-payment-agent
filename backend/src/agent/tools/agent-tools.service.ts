@@ -171,6 +171,7 @@ export class AgentToolsService {
     else if (sanitized.match(/\b(eur|euro?|€)\b/i)) targetCurrency = 'EUR';
     else if (sanitized.match(/\b(cad|canadian)\b/i)) targetCurrency = 'CAD';
     else if (sanitized.match(/\b(aud|australian)\b/i)) targetCurrency = 'AUD';
+    else if (sanitized.match(/\b(cny|rmb|yuan|renminbi|¥)\b/i) || sanitized.match(/(tsinghua|peking|fudan|zhejiang|shanghai|china)/i)) targetCurrency = 'CNY';
 
     await this.db.insertAuditLog({
       id: uuidv4(),
@@ -238,6 +239,7 @@ export class AgentToolsService {
     amountUsd: number,
     tuitionDeadline?: string,
     preference?: string,
+    targetCurrency?: string,
   ): Promise<RouteComparisonResult> {
     const schemaValidation = RouteComparisonZodSchema.safeParse({
       studentId,
@@ -254,7 +256,7 @@ export class AgentToolsService {
       throw new NotFoundException('No active remittance routes available');
     }
 
-    const normalizedTarget = (process.env.DEFAULT_TARGET_CURRENCY || 'USD').toUpperCase();
+    const normalizedTarget = (targetCurrency || process.env.DEFAULT_TARGET_CURRENCY || 'USD').toUpperCase();
     const matchingRates = allActiveRates.filter((r) => r.target_currency.toUpperCase() === normalizedTarget);
     const rates = matchingRates.length > 0 ? matchingRates : allActiveRates;
 
