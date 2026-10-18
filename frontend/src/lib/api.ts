@@ -459,4 +459,31 @@ export const api = {
       };
     }
   },
+
+  async extractInvoice(invoiceText: string, fileName?: string): Promise<any> {
+    try {
+      const response = await apiClient.post('/invoice/extract', { invoiceText, fileName });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to extract invoice data');
+    }
+  },
+
+  async getLiveRateFeed(): Promise<any> {
+    try {
+      const response = await apiClient.get('/rates/live-feed');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch live corridor rate feed');
+    }
+  },
+
+  async requestStepUpOtp(): Promise<{ otp: string; expiresInSeconds: number }> {
+    try {
+      const response = await apiClient.post('/auth/step-up-otp');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to issue step-up OTP');
+    }
+  },
 };
