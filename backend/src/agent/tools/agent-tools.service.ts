@@ -42,7 +42,9 @@ import { IAuditRepository } from '../../database/repositories/interfaces/audit.i
 import {
   ITuitionCalculator,
   TUITION_CALCULATOR_TOKEN,
+  InstallmentPlan,
 } from '../services/tuition-calculation.interface';
+import { TuitionCalculationService } from '../services/tuition-calculation.service';
 import {
   TransferDraftedEvent,
   TransferConfirmedEvent,
@@ -680,6 +682,31 @@ export class AgentToolsService {
       txHash,
       verificationUrl: `https://fintechathon2026.we-bank.com/verify/${transfer.id}`,
     };
+  }
+
+  async planInstallment(
+    totalAmountUsd: number,
+    numInstallments = 2,
+    tuitionDeadline?: string,
+    preferredRouteId?: string,
+  ): Promise<InstallmentPlan> {
+    const rates = await this.rateStore.findAllActive();
+
+    let route = rates.find((r) => r.id === preferredRouteId);
+    if (!route) {
+      route = rates.find((r) => r.id === 'route-edupay-prime') || rates[0];
+    }
+    if (!route) {
+      throw new NotFoundException('No active remittance corridors available for installment planning.');
+    }
+
+    const calculator = this.tuitionCalculator || new TuitionCalculationService();
+    return calculator.calculateInstallmentPlan(
+      totalAmountUsd,
+      numInstallments,
+      route,
+      tuitionDeadline,
+    );
   }
 
   async compensateTransfer(
