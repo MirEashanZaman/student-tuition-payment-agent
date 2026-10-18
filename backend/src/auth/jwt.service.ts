@@ -21,7 +21,7 @@ export interface DecodedToken {
 @Injectable()
 export class JwtService {
   private readonly defaultSecret = this.getSigningSecret();
-  private readonly defaultExpiresInSeconds = 86400;
+  private readonly defaultExpiresInSeconds = parseInt(process.env.JWT_EXPIRES_IN_SECONDS || '', 10) || 86400;
 
   private getSigningSecret(): string {
     const secret = process.env.JWT_SECRET;
