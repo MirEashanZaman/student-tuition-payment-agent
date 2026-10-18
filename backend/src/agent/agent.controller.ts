@@ -140,6 +140,29 @@ export class ConfirmTransferDto {
 
   @IsBoolean()
   userConsent: boolean;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(6)
+  twoFactorPin?: string;
+}
+
+export class ClearingWebhookDto {
+  @IsString()
+  @IsNotEmpty()
+  transferId: string;
+
+  @IsString()
+  @IsIn(['SETTLED', 'FAILED'])
+  status: 'SETTLED' | 'FAILED';
+
+  @IsString()
+  @IsOptional()
+  clearingReference?: string;
+
+  @IsString()
+  @IsOptional()
+  reason?: string;
 }
 
 export class CompensateTransferDto {
@@ -463,6 +486,24 @@ export class AgentController {
       dto.userConsent,
       true,
       request.user.studentId,
+      dto.twoFactorPin,
+    );
+  }
+
+  @Post('webhooks/bank-clearing')
+  async handleBankClearingWebhook(
+    @Body() dto: ClearingWebhookDto,
+    @Headers('x-webhook-secret') webhookSecret?: string,
+  ) {
+    const expectedSecret = process.env.WEBHOOK_SECRET || 'sandbox_webhook_secret';
+    if (webhookSecret && webhookSecret !== expectedSecret) {
+      throw new ForbiddenException('Invalid webhook signature');
+    }
+    return await this.toolsService.processClearingWebhook(
+      dto.transferId,
+      dto.status,
+      dto.clearingReference,
+      dto.reason,
     );
   }
 
