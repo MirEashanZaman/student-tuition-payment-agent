@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { api, authStorage } from '../lib/api';
 import {
@@ -111,6 +111,15 @@ export default function Home({
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [account, setAccount] = useState<Account | null>(null);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+
+  const dailySpentPercent = useMemo(() => {
+    if (!account || !account.dailyLimit) return 0;
+    return Math.min(100, Math.round((account.dailySpent / account.dailyLimit) * 100));
+  }, [account?.dailySpent, account?.dailyLimit]);
+
+  const settledTransfersCount = useMemo(() => {
+    return transfers.filter((t) => t.status === 'CONFIRMED' || t.status === 'SETTLED' || t.status === 'EXECUTED').length;
+  }, [transfers]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
@@ -1681,7 +1690,7 @@ export default function Home({
                         <div
                           className="bg-[#0D9488] h-1.5 rounded-full"
                           style={{
-                            width: `${Math.min(100, (account.dailySpent / account.dailyLimit) * 100)}%`,
+                            width: `${dailySpentPercent}%`,
                           }}
                         ></div>
                       </div>
@@ -1805,7 +1814,7 @@ export default function Home({
                   Settled Transfers
                 </span>
                 <div className="text-3xl font-extrabold text-[#1E3A8A] font-mono my-1">
-                  {transfers.filter((t) => t.status === 'CONFIRMED').length}
+                  {settledTransfersCount}
                 </div>
                 <span className="text-xs text-slate-500">
                   {transfers.length} total drafts &amp; operations processed
