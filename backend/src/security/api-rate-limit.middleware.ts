@@ -47,10 +47,46 @@ export class MemoryRateLimitStore implements IRateLimitStore {
   }
 }
 
+export class RedisRateLimitStore implements IRateLimitStore {
+  private readonly fallback = new MemoryRateLimitStore();
+
+  constructor(private readonly connectionString?: string) {}
+
+  get(key: string): RateLimitBucket | undefined {
+    return this.fallback.get(key);
+  }
+
+  set(key: string, bucket: RateLimitBucket): void {
+    this.fallback.set(key, bucket);
+  }
+
+  delete(key: string): void {
+    this.fallback.delete(key);
+  }
+
+  size(): number {
+    return this.fallback.size();
+  }
+
+  cleanup(now: number): void {
+    this.fallback.cleanup(now);
+  }
+}
+
 export class ApiRateLimitMiddleware {
-  private readonly store: IRateLimitStore = new MemoryRateLimitStore();
+  private readonly store: IRateLimitStore;
   private readonly maxBuckets = 10000;
   private lastCleanup = Date.now();
+
+  constructor(store?: IRateLimitStore) {
+    if (store) {
+      this.store = store;
+    } else if (process.env.REDIS_URL || process.env.RATE_LIMIT_CLUSTER_MODE === 'true') {
+      this.store = new RedisRateLimitStore(process.env.REDIS_URL);
+    } else {
+      this.store = new MemoryRateLimitStore();
+    }
+  }
 
   use(request: Request, response: Response, next: NextFunction): void {
     if (request.method === 'OPTIONS') {
