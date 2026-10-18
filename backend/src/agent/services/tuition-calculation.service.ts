@@ -35,6 +35,12 @@ export class TuitionCalculationService implements ITuitionCalculator {
         ? 87.5
         : route.target_currency === 'AUD'
         ? 78.0
+        : route.target_currency === 'JPY'
+        ? 0.78
+        : route.target_currency === 'SGD'
+        ? 89.5
+        : route.target_currency === 'HKD'
+        ? 15.3
         : benchmarkRateBdt;
 
     const fxMarkupLossBdt = +(
@@ -144,6 +150,9 @@ export class TuitionCalculationService implements ITuitionCalculator {
     tuitionDeadline?: string,
     benchmarkRateBdt = parseFloat(process.env.BENCHMARK_RATE_BDT || '') || 119.0,
   ): InstallmentPlan {
+    const safeTotalAmount = !isNaN(totalAmountUsd) && Number.isFinite(totalAmountUsd) && totalAmountUsd > 0
+      ? +Number(totalAmountUsd).toFixed(2)
+      : 0;
     const validCount = numInstallments === 3 ? 3 : 2;
     const percentages = validCount === 3 ? [0.4, 0.3, 0.3] : [0.5, 0.5];
     const now = new Date();
@@ -156,7 +165,7 @@ export class TuitionCalculationService implements ITuitionCalculator {
     let allWithinTransferCap = true;
 
     const milestones: InstallmentMilestone[] = percentages.map((pct, idx) => {
-      const amountUsd = +(totalAmountUsd * pct).toFixed(2);
+      const amountUsd = +(safeTotalAmount * pct).toFixed(2);
       const cost = this.calculateRouteCost(amountUsd, route, benchmarkRateBdt);
       const totalCostBdt = +(cost.sourceAmountBdt + cost.totalFeeBdt).toFixed(2);
       totalBdtWithFees = +(totalBdtWithFees + totalCostBdt).toFixed(2);
@@ -191,7 +200,7 @@ export class TuitionCalculationService implements ITuitionCalculator {
     });
 
     return {
-      totalAmountUsd,
+      totalAmountUsd: safeTotalAmount,
       numInstallments: validCount,
       providerName: route.provider_name,
       routeId: route.id,
