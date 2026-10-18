@@ -16,6 +16,8 @@ async function bootstrap() {
   app.use((_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
+    response.setHeader('X-XSS-Protection', '1; mode=block');
+    response.setHeader('X-Download-Options', 'noopen');
     response.setHeader('Referrer-Policy', 'no-referrer');
     response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     response.setHeader(
