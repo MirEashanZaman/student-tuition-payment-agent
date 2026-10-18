@@ -158,7 +158,7 @@ export class AgentToolsService {
     }
 
     const now = new Date();
-    const benchmarkRateBdt = 119.00;
+    const benchmarkRateBdt = parseFloat(process.env.BENCHMARK_RATE_BDT || '') || 119.00;
     const activeStrategy = this.strategyFactory?.getStrategy(preference);
     const weights = activeStrategy
       ? activeStrategy.getWeights()
@@ -390,8 +390,8 @@ export class AgentToolsService {
       student_id: account.student_id,
       recipient_university: sanitizedUniversity,
       student_reg_number: sanitizedRegNumber,
-      source_currency: 'BDT',
-      target_currency: 'USD',
+      source_currency: process.env.DEFAULT_SOURCE_CURRENCY || 'BDT',
+      target_currency: process.env.DEFAULT_TARGET_CURRENCY || 'USD',
       target_amount_usd: amountUsd,
       source_amount_bdt: totalRequiredBdt,
       fee_total_bdt: feeBdt,
@@ -940,12 +940,13 @@ export class AgentToolsService {
       maskedCard = `**** **** **** ${last4}`;
     }
 
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: maskedCard ? 'CARD_DEPOSIT_SUCCESS' : 'FUNDS_DEPOSITED',
       permission_tier: PermissionTier.EXECUTE,
       account_id: account.id,
-      action_summary: `Deposited ${amountBdt.toLocaleString()} BDT to student account ${studentId}${maskedCard ? ` via Sandbox Card (${maskedCard})` : ''}`,
+      action_summary: `Deposited ${amountBdt.toLocaleString()} ${currency} to student account ${studentId}${maskedCard ? ` via Sandbox Card (${maskedCard})` : ''}`,
       details: JSON.stringify({
         amountBdt,
         newBalance: account.balance,
@@ -965,12 +966,13 @@ export class AgentToolsService {
       throw new BadRequestException('Daily limit must be greater than 0');
     }
     const account = await this.db.updateDailyLimit(studentId, newLimitBdt);
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: 'DAILY_LIMIT_UPDATED',
       permission_tier: PermissionTier.EXECUTE,
       account_id: account.id,
-      action_summary: `Updated daily limit for student ${studentId} to ${newLimitBdt.toLocaleString()} BDT`,
+      action_summary: `Updated daily limit for student ${studentId} to ${newLimitBdt.toLocaleString()} ${currency}`,
       details: JSON.stringify({ newDailyLimit: newLimitBdt }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
