@@ -1100,7 +1100,18 @@ export class AgentToolsService {
       ip_address: '127.0.0.1',
       created_at: new Date(),
     });
-    return account;
+    const remainingDailyLimit = +Math.max(0, account.daily_limit - account.daily_spent).toFixed(2);
+    return {
+      ...account,
+      studentId: account.student_id,
+      studentName: account.student_name,
+      dailyLimit: account.daily_limit,
+      dailySpent: account.daily_spent,
+      annualLimit: account.annual_limit || 1500000.00,
+      annualSpent: account.annual_spent || 0.00,
+      remainingDailyLimit,
+      approximateUsdEquivalent: +(account.balance / 119.5).toFixed(2),
+    };
   }
 
   async updateDailyLimit(studentId: string, newLimitBdt: number) {
@@ -1120,7 +1131,18 @@ export class AgentToolsService {
       ip_address: '127.0.0.1',
       created_at: new Date(),
     });
-    return account;
+    const remainingDailyLimit = +Math.max(0, account.daily_limit - account.daily_spent).toFixed(2);
+    return {
+      ...account,
+      studentId: account.student_id,
+      studentName: account.student_name,
+      dailyLimit: account.daily_limit,
+      dailySpent: account.daily_spent,
+      annualLimit: account.annual_limit || 1500000.00,
+      annualSpent: account.annual_spent || 0.00,
+      remainingDailyLimit,
+      approximateUsdEquivalent: +(account.balance / 119.5).toFixed(2),
+    };
   }
 
   async getRateById(id: string) {
