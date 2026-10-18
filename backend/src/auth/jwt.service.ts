@@ -92,6 +92,16 @@ export class JwtService {
       throw new UnauthorizedException('Invalid JWT signature.');
     }
 
+    let header: { alg?: string; typ?: string };
+    try {
+      header = JSON.parse(this.base64UrlDecode(encodedHeader));
+    } catch {
+      throw new UnauthorizedException('Failed to decode JWT header.');
+    }
+    if (header.alg !== 'HS256') {
+      throw new UnauthorizedException('Unsupported JWT algorithm.');
+    }
+
     let payload: JwtPayload;
     try {
       payload = JSON.parse(this.base64UrlDecode(encodedPayload));
