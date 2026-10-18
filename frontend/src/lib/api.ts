@@ -324,6 +324,15 @@ export const api = {
     }
   },
 
+  async getTransferReceipt(transferId: string): Promise<any> {
+    try {
+      const response = await apiClient.get(`/transfers/${transferId}/receipt`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch transfer receipt');
+    }
+  },
+
   async getAuditLogs(limit = 50, tier?: string, status?: string): Promise<AuditLog[]> {
     try {
       const params: Record<string, string> = { limit: limit.toString() };
