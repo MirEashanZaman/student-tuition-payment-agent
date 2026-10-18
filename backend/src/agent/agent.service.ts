@@ -395,6 +395,61 @@ Your duties:
       }
     }
 
+    if (lower.includes('installment') || lower.includes('split') || lower.includes('milestone')) {
+      const parts = lower.includes('3') ? 3 : 2;
+      let tuitionDeadline: string | undefined;
+      if (lower.includes('urgent') || lower.includes('tomorrow') || lower.includes('24h')) {
+        const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+        tuitionDeadline = tomorrow.toISOString();
+      }
+
+      const installmentPlan = await this.toolsService.planInstallment(
+        amountUsd,
+        parts,
+        tuitionDeadline,
+      );
+
+      await this.logAgentAction(
+        'AGENT_INSTALLMENT_PLAN',
+        `Installment payment plan created for student ${studentId}`,
+        { studentId, amountUsd, numInstallments: parts },
+        studentId,
+        'READ_ONLY',
+      );
+
+      executedCalls.push({
+        toolName: 'planInstallment',
+        params: { studentId, totalAmountUsd: amountUsd, numInstallments: parts },
+        result: installmentPlan,
+      });
+
+      replyText =
+        `I have structured a smart **${parts}-part milestone installment plan** for your tuition of **$${amountUsd.toLocaleString()} USD**.\n\n` +
+        `• **Settlement Provider:** ${installmentPlan.providerName}\n` +
+        `• **Total Source Cost:** ${installmentPlan.totalBdtWithFees.toLocaleString()} BDT\n` +
+        `• **Transfer Cap Status:** ${installmentPlan.allWithinTransferCap ? 'All milestones are within the 400,000 BDT per-transfer limit' : 'Requires adjustment'}\n\n` +
+        `Each milestone is scheduled to ensure your university course registration remains active while staying within safety limits.`;
+
+      for (const ms of installmentPlan.milestones) {
+        suggestedActions.push({
+          label: `Draft Milestone ${ms.installmentNumber} ($${ms.amountUsd.toLocaleString()} USD)`,
+          actionType: 'PLAN_INSTALLMENT',
+          payload: {
+            amountUsd: ms.amountUsd,
+            milestone: ms.installmentNumber,
+            routeId: installmentPlan.routeId,
+          },
+        });
+      }
+
+      return {
+        message: replyText,
+        toolCallsExecuted: executedCalls,
+        suggestedActions,
+        securityFlags: { isSuspicious: false, flaggedPatterns: [] },
+      };
+    }
+
     if (
       lower.includes('pay') ||
       lower.includes('tuition') ||
