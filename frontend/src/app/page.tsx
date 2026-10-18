@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { api, authStorage } from '../lib/api';
 import {
@@ -163,8 +163,9 @@ export default function Home({
   ]);
 
   const isLoggingInRef = useRef(false);
+  const notificationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const ensureAuth = async (): Promise<boolean> => {
+  const ensureAuth = useCallback(async (): Promise<boolean> => {
     if (authStorage.getToken()) {
       return true;
     }
@@ -176,7 +177,9 @@ export default function Home({
     }
     isLoggingInRef.current = true;
     try {
-      const session = await api.login('STU-2026-BDT01', 'student123');
+      const defaultDemoUser = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID || 'STU-2026-BDT01';
+      const defaultDemoPass = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_PASSWORD || 'student123';
+      const session = await api.login(defaultDemoUser, defaultDemoPass);
       setAuthSession(session);
       return true;
     } catch {
@@ -184,9 +187,9 @@ export default function Home({
     } finally {
       isLoggingInRef.current = false;
     }
-  };
+  }, []);
 
-  const loadData = async (targetStudentId?: string) => {
+  const loadData = useCallback(async (targetStudentId?: string) => {
     try {
       const hasAuth = await ensureAuth();
       if (!hasAuth && !authStorage.getToken()) {
@@ -206,7 +209,7 @@ export default function Home({
     } catch (err) {
       console.error('Error fetching data:', err);
     }
-  };
+  }, [ensureAuth, authSession?.user.studentId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -240,8 +243,11 @@ export default function Home({
     return () => {
       isMounted = false;
       clearTimeout(pollTimer);
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
     };
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -287,14 +293,22 @@ export default function Home({
   };
 
   const handleDemoFill = () => {
-    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123', permissionTier: 'EXECUTE' });
+    const defaultDemoUser = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID || 'STU-2026-BDT01';
+    const defaultDemoPass = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_PASSWORD || 'student123';
+    setLoginInput({ studentIdOrEmail: defaultDemoUser, password: defaultDemoPass, permissionTier: 'EXECUTE' });
     setLoginError(null);
   };
 
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3500);
-  };
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimerRef.current = null;
+    }, 3500);
+  }, []);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputMessage;
