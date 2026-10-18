@@ -519,20 +519,27 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return account;
   }
 
-  async updateAccountBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord> {
+  async updateAccountBalance(id: string, newBalance: number, newDailySpent: number, newAnnualSpent?: number): Promise<AccountRecord> {
     const safeBalance = !isNaN(newBalance) && Number.isFinite(newBalance) ? +Number(newBalance).toFixed(2) : 0;
     const safeDailySpent = !isNaN(newDailySpent) && Number.isFinite(newDailySpent) ? +Number(newDailySpent).toFixed(2) : 0;
+    const safeAnnualSpent = newAnnualSpent !== undefined && !isNaN(newAnnualSpent) && Number.isFinite(newAnnualSpent) ? +Number(newAnnualSpent).toFixed(2) : undefined;
     if (!this.useMemoryStore && this.pool) {
-      const res = await this.pool.query(
-        'UPDATE accounts SET balance = $1, daily_spent = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
-        [safeBalance, safeDailySpent, id],
-      );
+      const query = safeAnnualSpent !== undefined
+        ? 'UPDATE accounts SET balance = $1, daily_spent = $2, annual_spent = $3, updated_at = NOW() WHERE id = $4 RETURNING *'
+        : 'UPDATE accounts SET balance = $1, daily_spent = $2, updated_at = NOW() WHERE id = $3 RETURNING *';
+      const params = safeAnnualSpent !== undefined
+        ? [safeBalance, safeDailySpent, safeAnnualSpent, id]
+        : [safeBalance, safeDailySpent, id];
+      const res = await this.pool.query(query, params);
       return this.formatAccount(res.rows[0]);
     }
     const acc = this.memoryStore.accounts.get(id);
     if (!acc) throw new Error(`Account ${id} not found`);
     acc.balance = safeBalance;
     acc.daily_spent = safeDailySpent;
+    if (safeAnnualSpent !== undefined) {
+      acc.annual_spent = safeAnnualSpent;
+    }
     acc.updated_at = new Date();
     this.memoryStore.accounts.set(id, acc);
     this.memoryStore.accounts.set(acc.student_id, acc);
@@ -650,6 +657,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           `UPDATE accounts
            SET balance = balance + $1,
                daily_spent = GREATEST(0, daily_spent - $1),
+               annual_spent = GREATEST(0, COALESCE(annual_spent, 0) - $1),
                updated_at = NOW()
            WHERE id = $2
            RETURNING *`,
@@ -691,6 +699,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     account.balance = +(account.balance + transfer.source_amount_bdt).toFixed(2);
     account.daily_spent = +Math.max(0, account.daily_spent - transfer.source_amount_bdt).toFixed(2);
+    account.annual_spent = +Math.max(0, (account.annual_spent || 0) - transfer.source_amount_bdt).toFixed(2);
     account.updated_at = new Date();
     transfer.status = 'ROLLED_BACK';
     transfer.updated_at = new Date();
