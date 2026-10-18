@@ -21,6 +21,8 @@ export interface AccountRecord {
   balance: number;
   daily_limit: number;
   daily_spent: number;
+  annual_limit?: number;
+  annual_spent?: number;
   password_hash?: string;
   role?: string;
   created_at: Date;
@@ -184,6 +186,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
       daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
       daily_spent: 0.00,
+      annual_limit: 1500000.00,
+      annual_spent: 0.00,
       password_hash: PasswordHasher.hashPassword('student123'),
       role: 'STUDENT',
       created_at: new Date(),
@@ -199,6 +203,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
       daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
       daily_spent: 0.00,
+      annual_limit: 1500000.00,
+      annual_spent: 0.00,
       password_hash: PasswordHasher.hashPassword('student123'),
       role: 'STUDENT',
       created_at: new Date(),
@@ -909,6 +915,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: parseFloat(row.balance),
       daily_limit: parseFloat(row.daily_limit),
       daily_spent: parseFloat(row.daily_spent),
+      annual_limit: row.annual_limit ? parseFloat(row.annual_limit) : 1500000.00,
+      annual_spent: row.annual_spent ? parseFloat(row.annual_spent) : 0.00,
       password_hash: row.password_hash,
       role: row.role || 'STUDENT',
     };
