@@ -75,8 +75,8 @@
 │   └── package.json
 │
 ├── docs/                      # FinTechathon 2026 Official Deliverables
-│   ├── TECHNICAL_DOCUMENTATION.md   # Architecture diagram, scoring math, lifecycle flow
-│   ├── TECHNICAL_DOCUMENTATION.pdf  # Compiled technical documentation with rendered diagrams & formulas
+│   ├── TECHNICAL_DOCUMENTATION.pdf  # Primary official submission technical documentation (rendered PDF)
+│   ├── TECHNICAL_DOCUMENTATION.md   # Markdown source: architecture, scoring math, lifecycle flow
 │   ├── SECURITY_REPORT.md           # Permission tiers, limit enforcement, risk matrix
 │   ├── PRESENTATION_DECK.md         # 10-minute pitch deck slides & speaker notes
 │   ├── FINTECHATHON_2026_PRESENTATION.pptx # Primary official presentation slide deck
@@ -259,7 +259,7 @@ The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) trig
 ## Submission Deliverables Index
 
 All official FinTechathon submission documents are prepared in the repository:
-1. **Technical Documentation:** [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) & [docs/TECHNICAL_DOCUMENTATION.pdf](docs/TECHNICAL_DOCUMENTATION.pdf)
+1. **Technical Documentation:** [docs/TECHNICAL_DOCUMENTATION.pdf](docs/TECHNICAL_DOCUMENTATION.pdf) (primary official submission document with rendered formulas and architecture diagrams; markdown source: [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md))
 2. **Security Self-Assessment:** [docs/SECURITY_REPORT.md](docs/SECURITY_REPORT.md)
 3. **Presentation Deck:** [docs/FINTECHATHON_2026_PRESENTATION.pptx](docs/FINTECHATHON_2026_PRESENTATION.pptx) (primary official PowerPoint deck) & [docs/PRESENTATION_DECK.md](docs/PRESENTATION_DECK.md)
 4. **Demo Video Script:** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
