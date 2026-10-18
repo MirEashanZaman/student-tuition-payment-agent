@@ -12,6 +12,8 @@ import {
   TransferRecord,
   AuditLog,
   AuthSession,
+  InstallmentPlan,
+  InstallmentMilestone,
 } from '../types';
 import confetti from 'canvas-confetti';
 import {
@@ -46,6 +48,7 @@ import {
   FileText,
   Printer,
   Copy,
+  Calendar,
 } from 'lucide-react';
 import { downloadTuitionReceiptPdf, ReceiptData } from '../lib/pdf-generator';
 
@@ -343,11 +346,16 @@ export default function Home({
         throw err;
       }
       let comparisonData: RouteComparisonResult | undefined;
+      let installmentData: InstallmentPlan | undefined;
 
       if (res.toolCallsExecuted) {
         const compTool = res.toolCallsExecuted.find((tc: any) => tc.toolName === 'compareRoutes');
         if (compTool) {
           comparisonData = compTool.result;
+        }
+        const instTool = res.toolCallsExecuted.find((tc: any) => tc.toolName === 'planInstallment');
+        if (instTool) {
+          installmentData = instTool.result;
         }
       }
 
@@ -357,6 +365,7 @@ export default function Home({
         text: res.message,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         comparisonData,
+        installmentData,
         suggestedActions: res.suggestedActions,
         securityFlags: res.securityFlags,
       };
@@ -420,6 +429,62 @@ export default function Home({
       ]);
 
       showNotification(`Transfer Draft ${draft.transferId} created. Awaiting your authorization.`, 'info');
+      await loadData();
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          sender: 'system',
+          text: `**Security Guardrail Blocked Transfer:** ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDraftMilestone = async (
+    amountUsd: number,
+    routeId: string,
+    milestoneNum: number,
+  ) => {
+    if (!authSession && !authStorage.getToken()) {
+      showNotification('You need to log in first to draft tuition transfers.', 'error');
+      setShowLoginModal(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const draft = await api.createDraft({
+        studentId: account?.studentId || 'STU-2026-BDT01',
+        routeId: routeId || 'route-edupay-prime',
+        amountUsd,
+        recipientUniversity: `University of Toronto (Tuition Office - Milestone ${milestoneNum})`,
+      });
+
+      setActiveDraft(draft);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `draft-msg-${Date.now()}`,
+          sender: 'agent',
+          text:
+            `### Installment Milestone ${milestoneNum} Draft Created: \`${draft.transferId}\`\n\n` +
+            `• **Installment Portion:** $${draft.targetAmountUsd.toLocaleString()} USD\n` +
+            `• **Settlement Corridor:** ${draft.providerName}\n` +
+            `• **Landed Cost:** **${draft.sourceAmountBdt.toLocaleString()} BDT** (Within 400,000 BDT limit)\n` +
+            `• **Recipient:** ${draft.recipientUniversity}\n\n` +
+            `**Human Confirmation Required:** Verify details below and authorize payment:`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          draftData: draft,
+        },
+      ]);
+
+      showNotification(`Milestone ${milestoneNum} draft created for $${amountUsd.toLocaleString()} USD.`, 'info');
       await loadData();
     } catch (err: any) {
       showNotification(err.message, 'error');
@@ -1317,6 +1382,96 @@ export default function Home({
                             </button>
                           </div>
                         )}
+
+                        {msg.installmentData && (
+                          <div className="bg-white border-2 border-[#0D9488]/30 rounded-xl p-4 shadow-sm mt-3 text-slate-800">
+                            <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-[#0D9488]" />
+                                  <h4 className="font-bold text-sm text-[#1E3A8A]">
+                                    Smart Tuition Installment Schedule ({msg.installmentData.numInstallments} Milestones)
+                                  </h4>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  Corridor: <strong className="text-slate-700">{msg.installmentData.providerName}</strong> • Total:{' '}
+                                  <strong className="text-[#0D9488] font-mono">${msg.installmentData.totalAmountUsd.toLocaleString()} USD</strong> (
+                                  {msg.installmentData.totalBdtWithFees.toLocaleString()} BDT)
+                                </p>
+                              </div>
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Registration Safe
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                              {msg.installmentData.milestones.map((m) => (
+                                <div
+                                  key={m.installmentNumber}
+                                  className="p-3 rounded-lg border border-slate-200 bg-slate-50 flex flex-col justify-between"
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-bold text-xs text-[#1E3A8A]">
+                                        Milestone {m.installmentNumber} ({m.portionPercentage}%)
+                                      </span>
+                                      <span className="text-xs font-mono font-bold text-slate-900">
+                                        ${m.amountUsd.toLocaleString()} USD
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 mb-2">
+                                      Landed: <span className="font-mono font-semibold text-slate-800">{m.totalCostBdt.toLocaleString()} BDT</span>
+                                      {' • '}
+                                      Due: <span className="text-slate-700">{new Date(m.scheduledDate).toLocaleDateString()}</span>
+                                    </div>
+                                    {m.transferLimitExceeded ? (
+                                      <div className="text-[11px] text-red-600 bg-red-50 p-1.5 rounded mb-2 border border-red-200">
+                                        Exceeds 400,000 BDT per-transfer limit
+                                      </div>
+                                    ) : (
+                                      <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1 rounded mb-2 border border-emerald-100 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                        <span>Within 400,000 BDT limit</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDraftMilestone(m.amountUsd, msg.installmentData!.routeId, m.installmentNumber)}
+                                    className="w-full mt-1 py-1.5 px-3 rounded-md bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                                  >
+                                    <span>Draft Milestone {m.installmentNumber} (${m.amountUsd.toLocaleString()})</span>
+                                    <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {msg.suggestedActions && msg.suggestedActions.length > 0 && !msg.draftData && !msg.installmentData && (
+                          <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-slate-100">
+                            {msg.suggestedActions.map((action, aIdx) => (
+                              <button
+                                key={aIdx}
+                                type="button"
+                                onClick={() => {
+                                  if (action.actionType === 'PLAN_INSTALLMENT') {
+                                    handleDraftMilestone(action.payload.amountUsd, action.payload.routeId, action.payload.milestone);
+                                  } else if (action.actionType === 'SELECT_ROUTE') {
+                                    handleSendMessage(`Select route ${action.payload.providerName}`);
+                                  } else if (action.actionType === 'CHECK_BALANCE') {
+                                    handleSendMessage('What is my current account balance?');
+                                  }
+                                }}
+                                className="py-1 px-2.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#0D9488] border border-teal-200 text-xs font-semibold transition-colors"
+                              >
+                                {action.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1337,6 +1492,12 @@ export default function Home({
                     onClick={() => handleSendMessage('Pay my $3,000 tuition from BDT')}
                   >
                     Pay $3,000 tuition from BDT
+                  </button>
+                  <button
+                    className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
+                    onClick={() => handleSendMessage('Plan a 2-part installment payment for $3,000 tuition')}
+                  >
+                    Plan 2-part installment for $3,000
                   </button>
                   <button
                     className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
