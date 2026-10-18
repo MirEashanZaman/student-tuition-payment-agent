@@ -48,7 +48,7 @@ function handleApiError(error: unknown, fallbackMessage: string): never {
       throw new Error('Connection timed out. The server took too long to respond. Please try again.');
     }
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      throw new Error('Unable to connect to the Tuition Payment server. Please verify the backend is online at http://localhost:4568.');
+      throw new Error(`Unable to connect to the Tuition Payment server. Please verify the backend is online at ${API_BASE}.`);
     }
     const serverMessage = error.response?.data?.message;
     if (typeof serverMessage === 'string' && serverMessage.length > 0) {
