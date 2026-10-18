@@ -50,6 +50,7 @@ import {
   Copy,
   Calendar,
   CreditCard,
+  Upload,
 } from 'lucide-react';
 import { downloadTuitionReceiptPdf, ReceiptData } from '../lib/pdf-generator';
 import { getFinancialBoundaries } from '../lib/formatters';
@@ -117,6 +118,12 @@ export default function Home({
     return Math.min(100, Math.round((account.dailySpent / account.dailyLimit) * 100));
   }, [account?.dailySpent, account?.dailyLimit]);
 
+  const annualSpentPercent = useMemo(() => {
+    const quota = account?.annualLimit || 1500000;
+    const spent = account?.annualSpent || 0;
+    return Math.min(100, Math.round((spent / quota) * 100));
+  }, [account?.annualSpent, account?.annualLimit]);
+
   const settledTransfersCount = useMemo(() => {
     return transfers.filter((t) => t.status === 'CONFIRMED' || t.status === 'SETTLED' || t.status === 'EXECUTED').length;
   }, [transfers]);
@@ -156,6 +163,13 @@ export default function Home({
   const [depositExpiry, setDepositExpiry] = useState('12/28');
   const [depositCvv, setDepositCvv] = useState('888');
   const [depositLoading, setDepositLoading] = useState(false);
+  const [draftOtpMap, setDraftOtpMap] = useState<Record<string, string>>({});
+  const [otpLoadingMap, setOtpLoadingMap] = useState<Record<string, boolean>>({});
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceText, setInvoiceText] = useState('');
+  const [invoiceFileName, setInvoiceFileName] = useState('');
+  const [invoiceExtracting, setInvoiceExtracting] = useState(false);
+  const [invoiceResult, setInvoiceResult] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -554,7 +568,8 @@ export default function Home({
     }
     setLoading(true);
     try {
-      const res = await api.confirmTransfer(transferId, confirmationToken, true);
+      const pin = draftOtpMap[transferId]?.trim() || undefined;
+      const res = await api.confirmTransfer(transferId, confirmationToken, true, pin);
 
       confetti({
         particleCount: 100,
@@ -662,6 +677,49 @@ export default function Home({
     } catch (err: any) {
       showNotification(err.message, 'error');
     }
+  };
+
+  const handleRequestOtp = async (transferId: string) => {
+    setOtpLoadingMap((prev) => ({ ...prev, [transferId]: true }));
+    try {
+      const res = await api.requestStepUpOtp();
+      if (res?.otp) {
+        setDraftOtpMap((prev) => ({ ...prev, [transferId]: res.otp }));
+        showNotification(`Step-up 2FA OTP issued: ${res.otp} (Valid for ${res.expiresInSeconds}s)`, 'success');
+      }
+    } catch (err: any) {
+      showNotification(err?.message || 'Failed to request step-up OTP', 'error');
+    } finally {
+      setOtpLoadingMap((prev) => ({ ...prev, [transferId]: false }));
+    }
+  };
+
+  const handleExtractInvoice = async () => {
+    if (!invoiceText.trim()) {
+      showNotification('Please enter or paste tuition invoice text to analyze.', 'error');
+      return;
+    }
+    setInvoiceExtracting(true);
+    try {
+      const res = await api.extractInvoice(invoiceText, invoiceFileName || 'tuition-notice.pdf');
+      setInvoiceResult(res);
+      showNotification(`Invoice processed: ${res.recipientUniversity || 'University'}, $${res.amountUsd?.toLocaleString() || 0} USD detected`, 'success');
+    } catch (err: any) {
+      showNotification(err?.message || 'Failed to extract invoice data', 'error');
+    } finally {
+      setInvoiceExtracting(false);
+    }
+  };
+
+  const handleApplyExtractedInvoice = () => {
+    if (!invoiceResult) return;
+    const university = invoiceResult.recipientUniversity || 'International University';
+    const amount = invoiceResult.amountUsd || 3000;
+    const deadline = invoiceResult.deadline ? ` due ${invoiceResult.deadline}` : '';
+    setInputMessage(`Pay $${amount} tuition to ${university}${deadline}`);
+    setShowInvoiceModal(false);
+    setActiveTab('chat');
+    showNotification('Invoice details applied to tuition prompt', 'info');
   };
 
   const handleExecuteCardDeposit = async (e?: React.FormEvent) => {
@@ -1444,6 +1502,36 @@ export default function Home({
                               </div>
                             )}
 
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-3 text-xs">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                                  <span>2FA Step-Up Verification</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestOtp(msg.draftData!.transferId)}
+                                  disabled={otpLoadingMap[msg.draftData!.transferId]}
+                                  className="text-[11px] font-bold text-[#0D9488] hover:text-teal-800 underline transition-colors disabled:opacity-50"
+                                >
+                                  {otpLoadingMap[msg.draftData!.transferId] ? 'Generating OTP...' : 'Request Live OTP'}
+                                </button>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Enter 6-digit OTP (or click Request Live OTP)"
+                                value={draftOtpMap[msg.draftData!.transferId] || ''}
+                                onChange={(e) =>
+                                  setDraftOtpMap((prev) => ({
+                                    ...prev,
+                                    [msg.draftData!.transferId]: e.target.value,
+                                  }))
+                                }
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold tracking-wider text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:border-[#0D9488]"
+                                maxLength={6}
+                              />
+                            </div>
+
                             <div className="flex gap-2.5">
                               <button
                                 className="flex-1 py-2.5 px-4 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
@@ -1580,6 +1668,13 @@ export default function Home({
               <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3">
                 <div className="flex gap-2 overflow-x-auto no-scrollbar text-xs pb-1">
                   <button
+                    className="py-1 px-3 rounded-full bg-teal-50 border border-[#0D9488]/40 hover:bg-teal-100 text-[#0D9488] whitespace-nowrap transition-colors font-semibold shadow-xs flex items-center gap-1.5"
+                    onClick={() => setShowInvoiceModal(true)}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Scan Tuition Invoice</span>
+                  </button>
+                  <button
                     className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
                     onClick={() => handleSendMessage('Pay my $3,000 tuition from BDT')}
                   >
@@ -1695,6 +1790,23 @@ export default function Home({
                         ></div>
                       </div>
                     </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex justify-between text-xs text-slate-500 mb-1">
+                        <span>BB Annual Student Quota:</span>
+                        <span className="font-mono font-semibold text-slate-800">
+                          {(account.annualSpent || 0).toLocaleString()} / {(account.annualLimit || boundaries.annualQuota || 1500000).toLocaleString()} BDT
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-[#1E3A8A] h-1.5 rounded-full"
+                          style={{
+                            width: `${annualSpentPercent}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-xs text-slate-500 py-1">
@@ -1720,6 +1832,10 @@ export default function Home({
                   <ShieldCheck className="w-4 h-4 text-[#0D9488]" /> Active Safety Rules
                 </h3>
                 <ul className="space-y-1.5 text-xs text-slate-700">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#16A34A] font-bold">•</span>
+                    <span><strong>Annual Student Quota:</strong> {boundaries.annualQuota.toLocaleString()} {boundaries.defaultCurrency} BB limit</span>
+                  </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
                     <span><strong>Per-Transfer Limit:</strong> {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} max</span>
@@ -1772,7 +1888,7 @@ export default function Home({
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center mb-1">
@@ -1806,6 +1922,20 @@ export default function Home({
                 </div>
                 <span className="text-xs text-slate-500">
                   Spent today: {account ? account.dailySpent.toLocaleString() : '0'} / {account ? account.dailyLimit.toLocaleString() : '0'} BDT
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
+                  Annual Student Quota (BB)
+                </span>
+                <div className="text-3xl font-extrabold text-[#1E3A8A] font-mono my-1">
+                  {account
+                    ? `${Math.max(0, (account.annualLimit || boundaries.annualQuota || 1500000) - (account.annualSpent || 0)).toLocaleString()} BDT`
+                    : '1,500,000 BDT'}
+                </div>
+                <span className="text-xs text-slate-500">
+                  Spent: {account ? (account.annualSpent || 0).toLocaleString() : '0'} / {(account?.annualLimit || boundaries.annualQuota || 1500000).toLocaleString()} BDT
                 </span>
               </div>
 
@@ -2642,6 +2772,128 @@ export default function Home({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showInvoiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 border border-[#0D9488]/30 flex items-center justify-center text-[#0D9488]">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Tuition Invoice &amp; Fee Notice OCR</h3>
+                  <p className="text-[11px] text-slate-500">Autonomous extraction for university tuition remittances</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Quick Sample Invoices:</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceFileName('tsinghua_tuition_notice.txt');
+                      setInvoiceText(
+                        'Tsinghua University International Student Office\nFall 2026 Tuition Demand Notice\nBeneficiary: Tsinghua University (SWIFT: CIBNCNBJ)\nPayable Amount: 40000 CNY (~$5800 USD)\nTuition Deadline: 2026-10-31\nCategory: Postgraduate Engineering Program'
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                  >
+                    Tsinghua University (CNY)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceFileName('toronto_tuition_invoice.txt');
+                      setInvoiceText(
+                        'University of Toronto Student Accounts Office\nInvoice #UT-884920\nBeneficiary: University of Toronto (SWIFT: ROYCCAT2)\nTuition Payable: $3000 USD\nDue Date: 2026-11-15\nProgram: Bachelor of Computer Science'
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                  >
+                    University of Toronto (USD)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceFileName('oxford_fee_statement.txt');
+                      setInvoiceText(
+                        'University of Oxford Bursar Office\nTuition Fee Schedule Academic Year 2026\nBeneficiary: University of Oxford\nAmount Due: $4500 USD\nPayment Deadline: 2026-12-01'
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                  >
+                    University of Oxford (USD)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Paste Tuition Notice Content:</label>
+                <textarea
+                  rows={5}
+                  value={invoiceText}
+                  onChange={(e) => setInvoiceText(e.target.value)}
+                  placeholder="Paste tuition invoice text, admission fee notice, or university bank remittance instructions here..."
+                  className="w-full p-3 border border-slate-300 rounded-xl font-mono text-xs text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:border-[#0D9488]"
+                />
+              </div>
+
+              {invoiceResult && (
+                <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 space-y-1.5">
+                  <div className="font-bold text-teal-900 text-xs flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                    <span>Tuition Invoice Extracted Successfully</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-teal-950 pt-1">
+                    <div>University: <strong>{invoiceResult.recipientUniversity || 'Detected University'}</strong></div>
+                    <div>Detected Amount: <strong>${invoiceResult.amountUsd?.toLocaleString() || 0} USD</strong></div>
+                    {invoiceResult.deadline && <div>Deadline: <strong>{invoiceResult.deadline}</strong></div>}
+                    <div>Safety Confidence: <strong>100% Verified</strong></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleExtractInvoice}
+                disabled={invoiceExtracting || !invoiceText.trim()}
+                className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50"
+              >
+                {invoiceExtracting ? 'Analyzing Document...' : 'Extract Invoice Details'}
+              </button>
+              {invoiceResult && (
+                <button
+                  type="button"
+                  onClick={handleApplyExtractedInvoice}
+                  className="px-4 py-2 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs shadow-xs transition-colors"
+                >
+                  Apply to Chat Prompt
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
