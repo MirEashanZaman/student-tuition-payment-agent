@@ -6,7 +6,7 @@ export interface IAccountReader {
 }
 
 export interface IAccountWriter {
-  updateBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord>;
+  updateBalance(id: string, newBalance: number, newDailySpent: number, newAnnualSpent?: number): Promise<AccountRecord>;
   updateDailyLimit(studentId: string, newLimit: number): Promise<AccountRecord>;
   depositFunds(studentId: string, amountBdt: number): Promise<AccountRecord>;
 }
