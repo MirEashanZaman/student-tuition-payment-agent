@@ -22,7 +22,7 @@ graph TD
         UI_Consent["Human-in-the-Loop Confirmation Modal"]
     end
 
-    subgraph Backend["NestJS Enterprise Backend API"]
+    subgraph Backend["NestJS Hardened Backend API"]
         Controller["Agent & Transfer Controller"]
         
         subgraph Guardrails["Security & Policy Guardrails"]
@@ -54,7 +54,7 @@ graph TD
     LimitGuard --> Storage
     Tools --> Scoring
     Scoring --> Rates
-    UI_Consent -->|"Cryptographic Token & Consent"| Controller
+    UI_Consent -->|"One-Time Token & Human Consent"| Controller
 ```
 
 ---
@@ -141,7 +141,7 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| **Backend Framework** | **NestJS (Node.js/TypeScript)** | Enterprise-grade modular architecture, dependency injection, strict validation pipes, built-in exception filters. |
+| **Backend Framework** | **NestJS (Node.js/TypeScript)** | Modular architecture, dependency injection, strict validation pipes, built-in exception filters. |
 | **Frontend Framework** | **Next.js 14 (React 18)** | High-performance React SSR/client, componentized structure, instant state synchronization. |
 | **Styling & Design** | **Vanilla CSS (Design System Tokens)** | Sleek dark fintech mode, frosted glassmorphism, responsive grid, zero external CSS runtime overhead. |
 | **Database** | **PostgreSQL 14+ (pg driver)** | ACID-compliant relational storage for financial accounts, transactions, and append-only audit logs. |
@@ -152,8 +152,11 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 ### AI Agent Engine & Evaluator Offline Sandbox
 
 The agent defaults to `gemini-1.5-flash` (configurable via `GEMINI_MODEL`), Google's low-latency multimodal LLM. The system is designed to provide immediate evaluation without external network or API prerequisites:
-- **Offline Sandbox Fallback (`OfflineLlmClient`):** When `GEMINI_API_KEY` is omitted or set to the default mock key (`mock_key_offline_agent`), the system automatically activates a deterministic offline LLM client. This processes student queries, executes corridor ranking calculations, flags prompt injections, and generates drafts with 100% predictable fidelity and zero network latency.
+- **Offline Sandbox Fallback (`OfflineLlmClient`):** When `GEMINI_API_KEY` is omitted or set to the default mock key (`mock_key_offline_agent`), the system automatically activates a deterministic offline LLM client. This processes student queries, executes corridor ranking calculations, flags prompt injections, and generates drafts with high-fidelity deterministic simulation and zero network latency.
 - **Live Google Gemini Engine (`GeminiLlmClient`):** When an evaluator supplies their own Gemini API key, the client connects to Google Generative AI using the configured model (`gemini-1.5-flash`). Calls are wrapped in defensive try/catch blocks with automatic fallback to the offline client on any rate limit, network timeout, or quota error.
+
+> [!NOTE]
+> **Sandbox Environment Notice:** All remittance corridors, exchange rates, bank clearing gateways, and account balances run in a simulated sandbox environment for demonstration and algorithmic evaluation (not connected to live production SWIFT or banking rails).
 
 ---
 
@@ -161,14 +164,20 @@ The agent defaults to `gemini-1.5-flash` (configurable via `GEMINI_MODEL`), Goog
 
 To comply with the FinTechathon 30% Security & Compliance criterion:
 - **READ_ONLY Tier**: Executable without risk (`getBalance`, `compareRoutes`, `getAuditLog`).
-- **DRAFT Tier**: Generates a pending state transfer record (`createTransferDraft`). No funds are moved. Produces a single-use `confirmationToken`.
-- **EXECUTE Tier**: Fund settlement (`confirmTransfer`). **Strictly blocked from autonomous LLM execution.** Must originate from a human user confirmation action supplying the matching cryptographic token.
+- **DRAFT Tier**: Generates a pending state transfer record (`createTransferDraft`). No funds are moved. Produces a single-use one-time `confirmationToken` (15-minute expiration).
+- **EXECUTE Tier**: Fund settlement (`confirmTransfer`). **Strictly blocked from autonomous LLM execution.** Must originate from a human user confirmation action supplying the matching one-time confirmation token.
+
+### Defense-in-Depth vs Heuristics
+Prompt injection filters (`PromptInjectionFilter`) and perimeter WAF rules (`SecurityArmorMiddleware`) operate as first-line heuristic pattern matchers. The true, foundational financial guarantee is enforced in compiled NestJS code via `PermissionTierGuard`, `StudentScopeGuard`, and `FinancialLimitsGuard`. Even if an adversarial prompt bypasses regex keyword heuristics, the autonomous agent is physically prevented by code from executing settlements or raising transaction thresholds.
+
+### Audit Ledger & Admin Endpoints
+The audit trail operates strictly as an append-only ledger during standard student and agent workflows. Students and AI tools have zero capability to mutate or delete logs. The restricted `DELETE /api/audit/:id` endpoint requires the `AdminRoleGuard` and is reserved strictly for sandbox environment resets, automated Jest test suite teardown, and regulatory right-to-erasure compliance testing.
 
 ---
 
-## 6. Enterprise Architectural Design Patterns
+## 6. Architectural Design Patterns
 
-The backend is engineered with production-grade software design patterns that isolate responsibilities and enforce financial safety:
+The backend is engineered with software design patterns that isolate responsibilities and enforce financial safety:
 
 | Feature | Pattern | Implementation Details |
 |---|---|---|
@@ -261,7 +270,7 @@ The codebase adheres strictly to all five Object-Oriented SOLID design principle
 
 ## 9. CI/CD Pipeline Architecture
 
-The repository incorporates an enterprise-grade automated CI/CD pipeline implemented via GitHub Actions (`.github/workflows/ci.yml`):
+The repository incorporates an automated CI/CD pipeline implemented via GitHub Actions (`.github/workflows/ci.yml`):
 
 ### Pipeline Stages
 
@@ -299,7 +308,7 @@ The application provides a complete authentication, session management, and stud
 
 ## 11. Next.js 14 Hybrid Rendering Architecture: SSG, ISR, SSR, and CSR
 
-The frontend implements an enterprise-grade hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:
+The frontend implements a hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:
 
 | Route | Strategy | Config / Implementation | Architectural Rationale & Why |
 |---|---|---|---|
