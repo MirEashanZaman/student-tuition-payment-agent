@@ -135,6 +135,30 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface InstallmentMilestone {
+  installmentNumber: number;
+  portionPercentage: number;
+  amountUsd: number;
+  sourceAmountBdt: number;
+  totalFeeBdt: number;
+  totalCostBdt: number;
+  scheduledDate: string;
+  isDeadlineSafe: boolean;
+  deadlineNotice?: string;
+  transferLimitExceeded: boolean;
+}
+
+export interface InstallmentPlan {
+  totalAmountUsd: number;
+  numInstallments: number;
+  providerName: string;
+  routeId: string;
+  totalBdtWithFees: number;
+  perTransferCapBdt: number;
+  allWithinTransferCap: boolean;
+  milestones: InstallmentMilestone[];
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'agent' | 'system';
@@ -142,9 +166,10 @@ export interface ChatMessage {
   timestamp: string;
   comparisonData?: RouteComparisonResult;
   draftData?: TransferDraft;
+  installmentData?: InstallmentPlan;
   suggestedActions?: Array<{
     label: string;
-    actionType: 'CONFIRM_DRAFT' | 'SELECT_ROUTE' | 'CHECK_BALANCE';
+    actionType: 'CONFIRM_DRAFT' | 'SELECT_ROUTE' | 'CHECK_BALANCE' | 'PLAN_INSTALLMENT';
     payload: any;
   }>;
   securityFlags?: {
