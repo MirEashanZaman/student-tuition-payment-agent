@@ -163,11 +163,12 @@ export class AnomalyCheckHandler extends SafetyCheckHandler {
       }
       const envCeiling = parseFloat(process.env.ANOMALY_CEILING_LIMIT || '');
       const anomalyCeiling = !isNaN(envCeiling) && envCeiling > 0 ? envCeiling : 5000000;
+      const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
       if (context.amountBdt > anomalyCeiling) {
         return {
           passed: false,
           blockedBy: 'AnomalyCheckHandler',
-          reason: `Flagged suspicious anomaly: Requested amount exceeds hard safety ceiling of ${anomalyCeiling.toLocaleString()} BDT.`,
+          reason: `Flagged suspicious anomaly: Requested amount exceeds hard safety ceiling of ${anomalyCeiling.toLocaleString()} ${currency}.`,
         };
       }
     }
