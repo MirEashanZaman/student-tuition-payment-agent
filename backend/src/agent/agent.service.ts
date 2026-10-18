@@ -357,7 +357,26 @@ Your duties:
       };
     }
 
-    if (lower.includes('balance') || lower.includes('how much money') || lower.includes('account status')) {
+    if (lower.includes('invoice') || lower.includes('tuition bill') || lower.includes('fee statement') || lower.includes('extract invoice')) {
+      const extracted = await this.toolsService.parseInvoiceDocument(userMessage);
+      executedCalls.push({
+        toolName: 'parseInvoiceDocument',
+        params: { invoiceText: userMessage },
+        result: extracted,
+      });
+      replyText =
+        `Successfully extracted tuition invoice details:\n\n` +
+        `• **University:** ${extracted.recipientUniversity}\n` +
+        `• **Tuition Amount:** $${extracted.amountUsd.toLocaleString()} ${extracted.targetCurrency}\n` +
+        `• **Registration Number:** ${extracted.studentRegNumber}\n` +
+        `• **Due Date:** ${extracted.tuitionDeadline}\n\n` +
+        `Would you like me to compare available remittance corridors for this tuition payment?`;
+      suggestedActions.push({
+        label: `Compare Corridors for $${extracted.amountUsd.toLocaleString()} ${extracted.targetCurrency}`,
+        actionType: 'SELECT_ROUTE',
+        payload: { amountUsd: extracted.amountUsd, recipientUniversity: extracted.recipientUniversity, targetCurrency: extracted.targetCurrency },
+      });
+    } else if (lower.includes('balance') || lower.includes('how much money') || lower.includes('account status')) {
       const balanceData = await this.toolsService.getBalance(studentId);
       await this.logAgentAction(
         'AGENT_BALANCE_CHECK',
