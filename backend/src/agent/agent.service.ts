@@ -33,7 +33,7 @@ export interface ChatResponse {
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
   private genAI: GoogleGenerativeAI | null = null;
-  private readonly defaultStudentId = 'STU-2026-BDT01';
+  private readonly defaultStudentId = process.env.DEFAULT_DEMO_STUDENT_ID || 'STU-2026-BDT01';
 
   constructor(
     private readonly toolsService: AgentToolsService,
@@ -143,10 +143,11 @@ export class AgentService {
     studentId: string,
     injectionCheck: any,
   ): Promise<ChatResponse> {
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
     const model = this.genAI!.getGenerativeModel({
       model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
       systemInstruction: `You are the FinTechathon 2026 Student Tuition Payment Agent.
-You assist university students in paying foreign tuition from Bangladesh (BDT).
+You assist university students in paying foreign tuition from Bangladesh (${currency}).
 Your duties:
 1. Provide accurate tuition remittance options by comparing fees, exchange rates, and speed.
 2. Enforce financial safety: Transfers require explicit user confirmation.
