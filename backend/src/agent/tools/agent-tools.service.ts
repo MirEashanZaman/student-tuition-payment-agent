@@ -111,9 +111,12 @@ export class AgentToolsService {
   }
 
   verifyStepUpPin(twoFactorPin: string): boolean {
-    const staticPin = process.env.MFA_STEP_UP_PIN || '123456';
-    if (twoFactorPin === staticPin || twoFactorPin === '000000') {
-      return true;
+    const isSandbox = process.env.NODE_ENV !== 'production' || process.env.ALLOW_SANDBOX_MFA_BYPASS === 'true';
+    if (isSandbox) {
+      const staticPin = process.env.MFA_STEP_UP_PIN || '123456';
+      if (twoFactorPin === staticPin || twoFactorPin === '000000') {
+        return true;
+      }
     }
     const secret = process.env.TOTP_SECRET || 'FINTECHATHON_2026_TOTP_KEY';
     const currentCode = this.computeTotpCode(secret, 0);
@@ -126,10 +129,7 @@ export class AgentToolsService {
     const secret = process.env.TOTP_SECRET || 'FINTECHATHON_2026_TOTP_KEY';
     const otp = this.computeTotpCode(secret, 0);
     const ttl = parseInt(process.env.STEP_UP_OTP_TTL_SECONDS || '300', 10);
-    const epochSeconds = Math.floor(Date.now() / 1000);
-    const remaining = ttl - (epochSeconds % ttl);
-    const expiresInSeconds = remaining > 15 ? remaining : ttl;
-    return { otp, expiresInSeconds };
+    return { otp, expiresInSeconds: ttl };
   }
 
   async parseInvoiceDocument(invoiceText: string, fileName?: string) {
