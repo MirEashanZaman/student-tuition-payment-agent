@@ -229,6 +229,8 @@ export class AgentToolsService {
       balance: account.balance,
       dailyLimit: account.daily_limit,
       dailySpent: account.daily_spent,
+      annualLimit: account.annual_limit || 1500000.00,
+      annualSpent: account.annual_spent || 0.00,
       remainingDailyLimit,
       approximateUsdEquivalent: +(account.balance / 119.5).toFixed(2),
     };
@@ -471,6 +473,7 @@ export class AgentToolsService {
       totalRequiredBdt,
       account.balance,
       account.daily_spent,
+      account.annual_spent,
     );
 
     if (!limitCheck.isValid) {
