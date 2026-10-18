@@ -15,7 +15,7 @@ export class TuitionCalculationService implements ITuitionCalculator {
   calculateRouteCost(
     amountUsd: number,
     route: RateRecord,
-    benchmarkRateBdt = 119.0,
+    benchmarkRateBdt = parseFloat(process.env.BENCHMARK_RATE_BDT || '') || 119.0,
   ): RouteCostBreakdown {
     const sourceAmountBdt = +(amountUsd * route.inverse_rate).toFixed(2);
     const flatFeeBdt = route.transfer_fee_flat_bdt;
@@ -127,7 +127,7 @@ export class TuitionCalculationService implements ITuitionCalculator {
     numInstallments: number,
     route: RateRecord,
     tuitionDeadline?: string,
-    benchmarkRateBdt = 119.0,
+    benchmarkRateBdt = parseFloat(process.env.BENCHMARK_RATE_BDT || '') || 119.0,
   ): InstallmentPlan {
     const validCount = numInstallments === 3 ? 3 : 2;
     const percentages = validCount === 3 ? [0.4, 0.3, 0.3] : [0.5, 0.5];
@@ -136,7 +136,8 @@ export class TuitionCalculationService implements ITuitionCalculator {
     const totalTimeSpanMs = Math.max(86400 * 1000, finalDeadline.getTime() - now.getTime());
 
     let totalBdtWithFees = 0;
-    const perTransferCapBdt = 400000;
+    const perTransferCapBdt =
+      parseFloat(process.env.MAX_TRANSFER_LIMIT_BDT || process.env.PER_TRANSFER_LIMIT || '') || 400000;
     let allWithinTransferCap = true;
 
     const milestones: InstallmentMilestone[] = percentages.map((pct, idx) => {
