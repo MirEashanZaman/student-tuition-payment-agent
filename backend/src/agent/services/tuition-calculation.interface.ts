@@ -17,10 +17,41 @@ export interface DeadlineEvaluation {
   deadlineNotice?: string;
 }
 
+export interface InstallmentMilestone {
+  installmentNumber: number;
+  portionPercentage: number;
+  amountUsd: number;
+  sourceAmountBdt: number;
+  totalFeeBdt: number;
+  totalCostBdt: number;
+  scheduledDate: string;
+  isDeadlineSafe: boolean;
+  deadlineNotice?: string;
+  transferLimitExceeded: boolean;
+}
+
+export interface InstallmentPlan {
+  totalAmountUsd: number;
+  numInstallments: number;
+  providerName: string;
+  routeId: string;
+  totalBdtWithFees: number;
+  perTransferCapBdt: number;
+  allWithinTransferCap: boolean;
+  milestones: InstallmentMilestone[];
+}
+
 export interface ITuitionCalculator {
   calculateRouteCost(amountUsd: number, route: RateRecord, benchmarkRateBdt?: number): RouteCostBreakdown;
   evaluateDeadline(routeSpeedHours: number, tuitionDeadline?: string, fromDate?: Date): DeadlineEvaluation;
   rankRoutes(routes: RouteComparisonItem[], strategy?: RouteScoringStrategy): RouteComparisonItem[];
+  calculateInstallmentPlan(
+    totalAmountUsd: number,
+    numInstallments: number,
+    route: RateRecord,
+    tuitionDeadline?: string,
+    benchmarkRateBdt?: number,
+  ): InstallmentPlan;
 }
 
 export const TUITION_CALCULATOR_TOKEN = Symbol('ITuitionCalculator');
