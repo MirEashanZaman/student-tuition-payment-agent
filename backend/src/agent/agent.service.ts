@@ -638,7 +638,7 @@ Your duties:
         `1. *"Pay my $3,000 tuition from BDT"* (Compares all remittance routes)\n` +
         `2. *"What is my account balance?"* (Checks BDT balance and daily limit)\n` +
         `3. *"Compare routes with an urgent 24-hour deadline"* (Demonstrates deadline safety warnings)\n` +
-        `4. *"Show recent audit logs"* (Examines tamper-evident security records)`,
+        `4. *"Show recent audit logs"* (Examines append-only security records)`,
       securityFlags: { isSuspicious: false, flaggedPatterns: [] },
     };
   }

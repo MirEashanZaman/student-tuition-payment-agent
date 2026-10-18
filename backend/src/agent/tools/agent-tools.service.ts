@@ -97,7 +97,7 @@ export class AgentToolsService {
   }
 
   private computeTotpCode(secret: string, offsetStep = 0): string {
-    const epoch = Math.floor(Date.now() / 30000) + offsetStep;
+    const epoch = Math.floor(Date.now() / 300000) + offsetStep;
     const buf = Buffer.alloc(8);
     buf.writeBigInt64BE(BigInt(epoch));
     const hmac = crypto.createHmac('sha256', secret).update(buf).digest();
@@ -125,8 +125,10 @@ export class AgentToolsService {
   generateStepUpOtp(): { otp: string; expiresInSeconds: number } {
     const secret = process.env.TOTP_SECRET || 'FINTECHATHON_2026_TOTP_KEY';
     const otp = this.computeTotpCode(secret, 0);
+    const ttl = parseInt(process.env.STEP_UP_OTP_TTL_SECONDS || '300', 10);
     const epochSeconds = Math.floor(Date.now() / 1000);
-    const expiresInSeconds = 30 - (epochSeconds % 30);
+    const remaining = ttl - (epochSeconds % ttl);
+    const expiresInSeconds = remaining > 15 ? remaining : ttl;
     return { otp, expiresInSeconds };
   }
 

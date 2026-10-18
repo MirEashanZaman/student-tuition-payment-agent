@@ -120,7 +120,7 @@ export class ConfirmationRequirementRule implements ISafetyRule {
         return {
           passed: false,
           code: 'CONFIRMATION_TOKEN_INVALID',
-          reason: 'A valid cryptographic confirmation token is required for execution.',
+          reason: 'A valid one-time confirmation token is required for execution.',
         };
       }
       if (context.tokenCreatedAt) {
