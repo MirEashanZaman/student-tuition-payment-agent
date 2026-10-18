@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { PromptInjectionFilter } from './prompt-injection.filter';
 import { FinancialLimitsGuard } from './financial-limits.guard';
 import { PermissionTierValidator } from './permission-tier.guard';
@@ -14,6 +14,8 @@ export interface SafetyCheckContext {
   expectedToken?: string;
   tokenExpiresAt?: Date;
   userPrompt?: string;
+  recipientUniversity?: string;
+  studentId?: string;
 }
 
 export interface SafetyCheckResult {
@@ -177,6 +179,31 @@ export class AnomalyCheckHandler extends SafetyCheckHandler {
 }
 
 @Injectable()
+export class AmlSanctionsCheckHandler extends SafetyCheckHandler {
+  private readonly prohibitedEntities = [
+    'SANCTIONED_ENTITY',
+    'BLOCKED_TERRORIST_ORGANIZATION',
+    'PROHIBITED_ACADEMIC_SYNDICATE',
+  ];
+
+  protected async check(context: SafetyCheckContext): Promise<SafetyCheckResult> {
+    if (context.recipientUniversity) {
+      const normalized = context.recipientUniversity.toUpperCase();
+      for (const entity of this.prohibitedEntities) {
+        if (normalized.includes(entity)) {
+          return {
+            passed: false,
+            blockedBy: 'AmlSanctionsCheckHandler',
+            reason: `Transfer blocked by AML / Sanctions screening: Prohibited entity match (${entity})`,
+          };
+        }
+      }
+    }
+    return { passed: true };
+  }
+}
+
+@Injectable()
 export class SafetyChainCoordinator {
   private chain: SafetyCheckHandler;
 
@@ -186,10 +213,13 @@ export class SafetyChainCoordinator {
     financialLimit: FinancialLimitCheckHandler,
     confirmationCheck: ConfirmationCheckHandler,
     anomalyCheck: AnomalyCheckHandler,
+    @Optional() amlSanctions?: AmlSanctionsCheckHandler,
   ) {
+    const amlHandler = amlSanctions || new AmlSanctionsCheckHandler();
     promptInjection
       .setNext(permissionTier)
       .setNext(anomalyCheck)
+      .setNext(amlHandler)
       .setNext(financialLimit)
       .setNext(confirmationCheck);
 
