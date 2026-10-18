@@ -190,6 +190,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       updated_at: new Date(),
     };
 
+    const cnyAccount: AccountRecord = {
+      id: 'acc-stu-2026-cny',
+      student_id: 'STU-2026-CNY01',
+      student_name: 'Li Wei',
+      email: 'liwei.student@fintechathon.org',
+      currency: 'BDT',
+      balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
+      daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
+      daily_spent: 0.00,
+      password_hash: PasswordHasher.hashPassword('student123'),
+      role: 'STUDENT',
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
     const defaultRates: RateRecord[] = [
       {
         id: 'route-edupay-prime',
@@ -319,6 +334,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         is_active: true,
         created_at: new Date(),
       },
+      {
+        id: 'route-cips-china-direct',
+        provider_name: 'China UnionPay & CIPS Direct (Cross-Border Clearing)',
+        source_currency: 'BDT',
+        target_currency: 'CNY',
+        exchange_rate: 0.059347,
+        inverse_rate: 16.8500,
+        transfer_fee_flat_bdt: 280.00,
+        transfer_fee_percent: 0.0012,
+        speed_hours: 12,
+        speed_description: '12 Hours (CIPS Real-Time Clearing / PBOC Regulated)',
+        reliability_score: 0.99,
+        compliance_rating: 'PBOC & SAFE Regulated Corridor',
+        is_active: true,
+        created_at: new Date(),
+      },
+      {
+        id: 'route-alipay-cny-express',
+        provider_name: 'Alipay Global Education Remit (Ant International Rail)',
+        source_currency: 'BDT',
+        target_currency: 'CNY',
+        exchange_rate: 0.059171,
+        inverse_rate: 16.9000,
+        transfer_fee_flat_bdt: 350.00,
+        transfer_fee_percent: 0.0015,
+        speed_hours: 2,
+        speed_description: '2 Hours (Alipay / WeChat Pay Campus Direct)',
+        reliability_score: 0.98,
+        compliance_rating: 'SAFE Tier-1 Authorized MTO',
+        is_active: true,
+        created_at: new Date(),
+      },
     ];
 
     if (!this.useMemoryStore && this.pool) {
@@ -339,6 +386,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               defaultAccount.daily_spent,
               defaultAccount.password_hash,
               defaultAccount.role,
+            ],
+          );
+          await this.pool.query(
+            `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (student_id) DO UPDATE SET balance = $6, daily_spent = $8, password_hash = $9, role = $10;`,
+            [
+              cnyAccount.id,
+              cnyAccount.student_id,
+              cnyAccount.student_name,
+              cnyAccount.email,
+              cnyAccount.currency,
+              cnyAccount.balance,
+              cnyAccount.daily_limit,
+              cnyAccount.daily_spent,
+              cnyAccount.password_hash,
+              cnyAccount.role,
             ],
           );
         }
@@ -379,6 +443,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (process.env.NODE_ENV !== 'production') {
       this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
       this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+      this.memoryStore.accounts.set(cnyAccount.student_id, { ...cnyAccount });
+      this.memoryStore.accounts.set(cnyAccount.id, { ...cnyAccount });
     }
     defaultRates.forEach((r) => this.memoryStore.rates.set(r.id, { ...r }));
     this.logger.log(`In-memory database initialized with ${defaultRates.length} remittance routes.`);
