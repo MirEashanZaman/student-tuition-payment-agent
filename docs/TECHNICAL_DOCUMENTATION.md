@@ -1,6 +1,8 @@
 # Technical Documentation: Cross-Border Student Tuition Payment Agent
 **FinTechathon 2026 | International Track — Topic C: Cross-Border & Student Finance Assistant**
 
+> **Official Submission Document:** The official technical documentation deliverable is [docs/TECHNICAL_DOCUMENTATION.pdf](TECHNICAL_DOCUMENTATION.pdf) with rendered formulas and architecture diagrams. This Markdown file serves as the version-controlled source.
+
 ---
 
 ## 1. Executive Summary & Architecture Overview
