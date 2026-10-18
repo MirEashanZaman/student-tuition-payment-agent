@@ -14,7 +14,7 @@
 
 ---
 
-### Segment 2: Happy Path Flow — AI Agent Route Comparison & Payment (0:45 – 2:00)
+### Segment 2: Happy Path Flow — AI Agent Route Comparison, Direct Drafting & 2FA Step-Up Payment (0:45 – 2:00)
 - **Visual:** In the Agent Chat Studio (`/chat`), highlight the conversational stream and real-time tool execution telemetry. Click the suggestion chip: `"Pay my $3,000 tuition from BDT"`.
 - **Action:**
   - Show the AI Agent actively reasoning and visibly triggering tool calls in the chat interface:
@@ -24,10 +24,13 @@
     - **EduPay Prime (Rank #1):** Lowest total cost (Fee + FX spread loss), 24h speed, 99% reliability score.
     - **SwiftWire Express:** Urgent 4h priority rail.
   - Click **"Select & Prepare Transfer Draft"** on EduPay Prime.
-  - The AI Agent executes `createTransferDraft` tool and dynamically renders the **Transfer Draft Confirmation Card** with status `PENDING_CONFIRMATION` and the single-use one-time `confirmationToken`.
+  - The UI triggers direct route draft creation (`POST /api/transfers/draft`) without repetitive conversational loops, generating the **Transfer Draft Confirmation Card** with status `PENDING_CONFIRMATION` and the single-use `confirmationToken`.
 - **Narration:**
-  > *"Notice how the AI agent autonomously queries corridors, evaluates cost trade-offs, and prepares the transfer draft. Yet, under our Tri-Tier Permission Model, the AI is bounded in the DRAFT tier and cannot unilaterally deduct funds. Fund movement requires explicit human authorization."*
-- **Action:** Click **[Authorize & Confirm Payment]**. Confetti animation triggers, the transaction receipt displays with SHA-256 fingerprint and printable PDF tuition certificate, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 491,545.15 BDT!
+  > *"Notice how the AI agent autonomously queries corridors, evaluates cost trade-offs, and prepares the transfer draft directly. Yet, under our Tri-Tier Permission Model, the AI is bounded in the DRAFT tier and cannot unilaterally deduct funds. Fund movement requires dual-layer human authorization: explicit consent and step-up two-factor authentication."*
+- **Action:**
+  - The UI presents the **Step-Up 2FA Verification** challenge. The student requests their dynamic time-sensitive OTP code (`POST /api/auth/step-up-otp`) and inputs the 6-digit PIN.
+  - The student checks the consent confirmation and clicks **[Authorize & Confirm Payment]** (`POST /api/transfers/:id/confirm`).
+  - Confetti animation triggers, the transaction receipt displays with SHA-256 fingerprint and printable PDF tuition certificate, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 491,545.15 BDT!
 
 ---
 
