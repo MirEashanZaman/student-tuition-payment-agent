@@ -60,6 +60,9 @@ export class FinancialLimitsGuard {
     }
 
     const limits = this.getLimits();
+    const safeBalance = !isNaN(currentBalance) && Number.isFinite(currentBalance) ? currentBalance : 0;
+    const safeDailySpent = !isNaN(dailySpent) && Number.isFinite(dailySpent) ? dailySpent : 0;
+    const projectedDailySpent = +(safeDailySpent + amountBdt).toFixed(2);
 
     if (amountBdt > limits.perTransferLimit) {
       return {
@@ -69,19 +72,19 @@ export class FinancialLimitsGuard {
       };
     }
 
-    if (dailySpent + amountBdt > limits.dailyLimit) {
+    if (projectedDailySpent > limits.dailyLimit) {
       return {
         isValid: false,
         code: 'OVER_DAILY_LIMIT',
-        reason: `Transfer would cause total daily spend (${(dailySpent + amountBdt).toLocaleString()} ${limits.currency}) to exceed the daily limit of ${limits.dailyLimit.toLocaleString()} ${limits.currency}. Current spent today: ${dailySpent.toLocaleString()} ${limits.currency}.`,
+        reason: `Transfer would cause total daily spend (${projectedDailySpent.toLocaleString()} ${limits.currency}) to exceed the daily limit of ${limits.dailyLimit.toLocaleString()} ${limits.currency}. Current spent today: ${safeDailySpent.toLocaleString()} ${limits.currency}.`,
       };
     }
 
-    if (amountBdt > currentBalance) {
+    if (amountBdt > safeBalance) {
       return {
         isValid: false,
         code: 'INSUFFICIENT_FUNDS',
-        reason: `Insufficient balance. Required: ${amountBdt.toLocaleString()} ${limits.currency}, Available: ${currentBalance.toLocaleString()} ${limits.currency}.`,
+        reason: `Insufficient balance. Required: ${amountBdt.toLocaleString()} ${limits.currency}, Available: ${safeBalance.toLocaleString()} ${limits.currency}.`,
       };
     }
 
