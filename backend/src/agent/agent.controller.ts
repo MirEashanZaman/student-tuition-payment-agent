@@ -22,7 +22,9 @@ import {
   IsNumber,
   IsBoolean,
   Min,
+  Max,
   MaxLength,
+  Matches,
   IsDateString,
   IsIn,
 } from 'class-validator';
@@ -150,22 +152,31 @@ export class CompensateTransferDto {
 export class DepositDto {
   @IsNumber()
   @Min(1)
+  @Max(10000000)
   amountBdt: number;
 
   @IsString()
   @IsOptional()
+  @MaxLength(24)
+  @Matches(/^[\d\s-]*$/, { message: 'Card number must only contain digits, spaces, and hyphens' })
   cardNumber?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
+  @Matches(/^[A-Za-z\s.'-]*$/, { message: 'Cardholder name contains invalid characters' })
   cardHolder?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(10)
+  @Matches(/^(\d{2}\/\d{2,4})?$/, { message: 'Expiry date must be in MM/YY or MM/YYYY format' })
   expiryDate?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(4)
+  @Matches(/^(\d{3,4})?$/, { message: 'CVV must be 3 or 4 digits' })
   cvv?: string;
 }
 
