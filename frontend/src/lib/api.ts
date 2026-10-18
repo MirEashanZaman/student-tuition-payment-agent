@@ -310,12 +310,13 @@ export const api = {
     }
   },
 
-  async confirmTransfer(transferId: string, confirmationToken: string, userConsent = true): Promise<any> {
+  async confirmTransfer(transferId: string, confirmationToken: string, userConsent = true, twoFactorPin?: string): Promise<any> {
     try {
-      const validated = ConfirmTransferInputSchema.parse({ transferId, confirmationToken, userConsent });
+      const validated = ConfirmTransferInputSchema.parse({ transferId, confirmationToken, userConsent, twoFactorPin });
       const response = await apiClient.post(`/transfers/${validated.transferId}/confirm`, {
         confirmationToken: validated.confirmationToken,
         userConsent: validated.userConsent,
+        ...(validated.twoFactorPin ? { twoFactorPin: validated.twoFactorPin } : {}),
       });
       return response.data;
     } catch (error) {
