@@ -16,7 +16,9 @@ import {
   RouteComparisonItem,
   DraftTransferResult,
   ConfirmedTransferResult,
+  TransferReceiptData,
 } from './agent-tools.interface';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { RouteScoringStrategyFactory } from '../strategies/route-scoring.strategy';
 import { TransferStateMachine } from '../saga/transfer-state-machine';
@@ -578,6 +580,11 @@ export class AgentToolsService {
     await this.db.updateTransferStatus(transfer.id, 'CONFIRMED', confirmedTime);
 
     const auditId = uuidv4();
+    const txHash = crypto
+      .createHash('sha256')
+      .update(`${transfer.id}:${account.student_id}:${transfer.source_amount_bdt}:${confirmedTime.toISOString()}`)
+      .digest('hex');
+
     await this.db.insertAuditLog({
       id: auditId,
       event_type: 'CONFIRM_SUCCESS',
@@ -592,6 +599,7 @@ export class AgentToolsService {
         provider: transfer.provider_name,
         newBalance,
         newDailySpent,
+        txHash,
       }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
@@ -634,6 +642,43 @@ export class AgentToolsService {
       targetAmountUsd: transfer.target_amount_usd,
       confirmedAt: confirmedTime.toISOString(),
       auditLogId: auditId,
+      txHash,
+    };
+  }
+
+  async generateReceiptData(transferId: string, studentId: string): Promise<TransferReceiptData> {
+    const transfer = this.transferRepo
+      ? await this.transferRepo.findById(transferId)
+      : await this.db.getTransferById(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+    if (transfer.student_id !== studentId) {
+      throw new ForbiddenException(`Transfer does not belong to student ${studentId}`);
+    }
+    const account = await this.db.getAccountByStudentId(studentId);
+    const confirmedTime = transfer.confirmed_at ? new Date(transfer.confirmed_at) : new Date(transfer.created_at);
+    const txHash = crypto
+      .createHash('sha256')
+      .update(`${transfer.id}:${studentId}:${transfer.source_amount_bdt}:${confirmedTime.toISOString()}`)
+      .digest('hex');
+
+    return {
+      certificateId: `CERT-${transfer.id.slice(0, 8).toUpperCase()}`,
+      transferId: transfer.id,
+      studentId: transfer.student_id,
+      studentName: account?.student_name || 'Mir Eashan Zaman',
+      recipientUniversity: transfer.recipient_university,
+      studentRegNumber: transfer.student_reg_number || 'AIUB-2026-INTL',
+      providerName: transfer.provider_name,
+      targetAmountUsd: Number(transfer.target_amount_usd),
+      sourceAmountBdt: Number(transfer.source_amount_bdt),
+      feeTotalBdt: Number(transfer.fee_total_bdt),
+      fxRateApplied: Number(transfer.fx_rate_applied),
+      status: transfer.status,
+      confirmedAt: confirmedTime.toISOString(),
+      txHash,
+      verificationUrl: `https://fintechathon2026.we-bank.com/verify/${transfer.id}`,
     };
   }
 
