@@ -67,4 +67,23 @@ export interface ConfirmedTransferResult {
   targetAmountUsd: number;
   confirmedAt: string;
   auditLogId: string;
+  txHash?: string;
+}
+
+export interface TransferReceiptData {
+  certificateId: string;
+  transferId: string;
+  studentId: string;
+  studentName: string;
+  recipientUniversity: string;
+  studentRegNumber: string;
+  providerName: string;
+  targetAmountUsd: number;
+  sourceAmountBdt: number;
+  feeTotalBdt: number;
+  fxRateApplied: number;
+  status: string;
+  confirmedAt: string;
+  txHash: string;
+  verificationUrl: string;
 }
