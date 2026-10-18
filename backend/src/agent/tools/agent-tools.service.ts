@@ -446,29 +446,6 @@ export class AgentToolsService {
     const feeBdt = +(route.transfer_fee_flat_bdt + sourceAmountBdt * route.transfer_fee_percent).toFixed(2);
     const totalRequiredBdt = +(sourceAmountBdt + feeBdt).toFixed(2);
 
-    if (this.safetyChain) {
-      await this.safetyChain.validate({
-        toolName: 'createTransferDraft',
-        isUserInitiated: true,
-        amountBdt: totalRequiredBdt,
-        dailySpentBdt: account.daily_spent,
-        currentBalanceBdt: account.balance,
-        recipientUniversity,
-        studentId,
-      });
-      await this.db.insertAuditLog({
-        id: uuidv4(),
-        event_type: 'AML_SANCTIONS_CLEARED',
-        permission_tier: PermissionTier.DRAFT,
-        account_id: account.id,
-        action_summary: `AML and Sanctions screening passed for ${recipientUniversity}`,
-        details: JSON.stringify({ recipientUniversity, studentId, amountUsd }),
-        status: 'SUCCESS',
-        ip_address: '127.0.0.1',
-        created_at: new Date(),
-      });
-    }
-
     const limitCheck = FinancialLimitsGuard.validateTransfer(
       totalRequiredBdt,
       account.balance,
@@ -496,6 +473,29 @@ export class AgentToolsService {
       });
 
       throw new BadRequestException(`Security Policy Check Failed: ${limitCheck.reason}`);
+    }
+
+    if (this.safetyChain) {
+      await this.safetyChain.validate({
+        toolName: 'createTransferDraft',
+        isUserInitiated: true,
+        amountBdt: totalRequiredBdt,
+        dailySpentBdt: account.daily_spent,
+        currentBalanceBdt: account.balance,
+        recipientUniversity,
+        studentId,
+      });
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'AML_SANCTIONS_CLEARED',
+        permission_tier: PermissionTier.DRAFT,
+        account_id: account.id,
+        action_summary: `AML and Sanctions screening passed for ${recipientUniversity}`,
+        details: JSON.stringify({ recipientUniversity, studentId, amountUsd }),
+        status: 'SUCCESS',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
     }
 
     const now = new Date();

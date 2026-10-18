@@ -176,7 +176,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async seedInitialData() {
+  async seedInitialData(skipDefaultStudent = false) {
     const defaultAccount: AccountRecord = {
       id: 'acc-stu-2026-bdt',
       student_id: 'STU-2026-BDT01',
@@ -376,7 +376,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (!this.useMemoryStore && this.pool) {
       try {
-        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true') {
+        if (!skipDefaultStudent && (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true')) {
           await this.pool.query(
             `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -394,6 +394,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               defaultAccount.role,
             ],
           );
+        }
+        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true') {
           await this.pool.query(
             `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -447,8 +449,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
-      this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+      if (!skipDefaultStudent) {
+        this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
+        this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+      }
       this.memoryStore.accounts.set(cnyAccount.student_id, { ...cnyAccount });
       this.memoryStore.accounts.set(cnyAccount.id, { ...cnyAccount });
     }
@@ -906,7 +910,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return logs.slice(0, limit);
   }
 
-  async resetSandboxData() {
+  async resetSandboxData(skipDefaultStudent = false) {
     this.memoryStore.accounts.clear();
     this.memoryStore.rates.clear();
     this.memoryStore.transfers.clear();
@@ -915,7 +919,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (!this.useMemoryStore && this.pool) {
       await this.pool.query('TRUNCATE TABLE transfers, audit_log CASCADE');
     }
-    await this.seedInitialData();
+    await this.seedInitialData(skipDefaultStudent);
   }
 
   private formatAccount(row: any): AccountRecord {

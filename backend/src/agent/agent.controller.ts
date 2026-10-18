@@ -681,9 +681,9 @@ export class AgentController {
 
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Post('sandbox/reset')
-  async resetSandbox() {
+  async resetSandbox(@Query('skipDefaultStudent') skipDefaultStudent?: string) {
     this.assertSandboxEnvironment();
-    await this.db.resetSandboxData();
+    await this.db.resetSandboxData(skipDefaultStudent === 'true');
     return {
       success: true,
       message: 'Sandbox state successfully reset to initial seed data.',
