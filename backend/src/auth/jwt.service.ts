@@ -113,6 +113,9 @@ export class JwtService {
     if (payload.exp && payload.exp < now) {
       throw new UnauthorizedException('JWT session token has expired. Please log in again.');
     }
+    if (payload.iat && payload.iat > now + 300) {
+      throw new UnauthorizedException('JWT issued in the future.');
+    }
 
     return payload;
   }
