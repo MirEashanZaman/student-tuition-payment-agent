@@ -214,7 +214,7 @@ The backend controller exposes full RESTful lifecycle operations incorporating `
 | GET | `/api/accounts/:id` | `@Param('id')`, `@Req()` | `id: string` | Retrieve student account balance and daily limits |
 | PUT | `/api/accounts/:id/limits` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDailyLimitDto { dailyLimitBdt }` | Update daily financial limit threshold (AdminRoleGuard only) |
 | POST | `/api/accounts/:id/deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto { amountBdt }` | Deposit BDT funds to student account (AdminRoleGuard only) |
-| POST | `/api/accounts/:id/card-deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto` | Student virtual credit card sandbox deposit with PCI DSS card masking |
+| POST | `/api/accounts/:id/card-deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto` | Student virtual credit card sandbox deposit with automated card number masking |
 | GET | `/api/rates` | `@Query('activeOnly')`, `@Query('targetCurrency')` | Query filters | List active remittance corridors |
 | GET | `/api/rates/stream` | None | SSE Stream | Server-Sent Events (SSE) live rate ticker stream |
 | GET | `/api/rates/live-feed` | None | None | Real-time market feed with spread calculations |
@@ -225,7 +225,7 @@ The backend controller exposes full RESTful lifecycle operations incorporating `
 | POST | `/api/routes/installments` | `@Body()` | `PlanInstallmentDto` | Smart tuition installment split planner respecting transfer caps |
 | GET | `/api/transfers` | `@Query('studentId')`, `@Query('status')`, `@Req()` | Query filters | Retrieve transfers with optional status filter |
 | GET | `/api/transfers/:id` | `@Param('id')`, `@Req()` | `id: string` | Fetch single transfer record by ID |
-| GET | `/api/transfers/:id/receipt` | `@Param('id')`, `@Req()` | `id: string` | Fetch official verification receipt data and cryptographic checksum |
+| GET | `/api/transfers/:id/receipt` | `@Param('id')`, `@Req()` | `id: string` | Fetch official verification receipt data and integrity checksum |
 | POST | `/api/transfers/draft` | `@Body()`, `@Req()` | `CreateDraftDto` | Create transfer draft (DRAFT tier) |
 | PUT | `/api/transfers/:id` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `UpdateDraftDto` | Update draft details prior to confirmation |
 | PATCH | `/api/transfers/:id` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `UpdateDraftDto` | Partial update of unconfirmed transfer draft |

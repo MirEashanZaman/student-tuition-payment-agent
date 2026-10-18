@@ -15,12 +15,12 @@
 
 ## Advanced Faculty-Recommended Features
 
-1. **Cryptographic Salt & Scrypt Password Security:** User credentials are protected using a 16-byte cryptographically secure random salt and the `scrypt` key derivation function (64-byte key length), verified via `crypto.timingSafeEqual` to prevent side-channel timing attacks.
-2. **SHA-256 Transaction Fingerprinting:** Every confirmed tuition transfer generates a tamper-evident SHA-256 cryptographic digest sealed into the append-only audit trail and rendered on the certificate.
-3. **Official PDF Tuition Payment Certificate:** Built with a pure TypeScript PDF 1.4 vector generator ([pdf-generator.ts](frontend/src/lib/pdf-generator.ts)) providing downloadable and printable A4 certificates with verification URL and cryptographic checksum.
+1. **Salt & Scrypt Password Security:** User credentials are protected using a 16-byte cryptographically secure random salt and the `scrypt` key derivation function (64-byte key length), verified via `crypto.timingSafeEqual` to prevent side-channel timing attacks.
+2. **SHA-256 Transaction Fingerprinting:** Every confirmed tuition transfer generates a SHA-256 integrity checksum recorded in the append-only audit trail and rendered on the certificate.
+3. **Official PDF Tuition Payment Certificate:** Built with a pure TypeScript PDF 1.4 vector generator ([pdf-generator.ts](frontend/src/lib/pdf-generator.ts)) providing downloadable and printable A4 certificates with verification URL and integrity checksum.
 4. **Smart Tuition Installment Planner:** Formulates 2- or 3-part split payment milestones ([tuition-calculation.service.ts](backend/src/agent/services/tuition-calculation.service.ts)) ensuring each settlement strictly respects the 400,000 BDT per-transfer limit and course registration deadlines.
-5. **Sandbox Card Deposit & Top-Up Modal:** Interactive virtual credit card modal allowing students to top up account balances using test card numbers (`4242 4242 4242 4242`) with automatic PCI DSS compliant card masking (`**** **** **** 4242`) in the audit log.
-6. **Step-Up 2FA & Dynamic OTP Verification:** Financial settlements (`EXECUTE` tier) enforce mandatory step-up 2FA verification using a 6-digit time-sensitive one-time PIN (OTP) issued dynamically (`POST /api/auth/step-up-otp`) and validated alongside the cryptographic single-use confirmation token, preventing automated or hijacked fund debits.
+5. **Sandbox Card Deposit & Top-Up Modal:** Interactive virtual credit card modal allowing students to top up account balances using test card numbers (`4242 4242 4242 4242`) with automatic card number masking (`**** **** **** 4242`) in the audit log.
+6. **Step-Up 2FA & Dynamic OTP Verification:** Financial settlements (`EXECUTE` tier) enforce mandatory step-up 2FA verification using a 6-digit time-sensitive one-time PIN (OTP) issued dynamically (`POST /api/auth/step-up-otp`) and validated alongside the single-use one-time confirmation token, preventing automated or hijacked fund debits.
 
 > [!NOTE]
 > **Sandbox Evaluation Notice:** All remittance corridors, foreign exchange rates, mock bank clearing gateways, and account balances run in a simulated sandbox environment for demonstration and algorithmic evaluation (not connected to live production SWIFT rails or real currency).

@@ -56,7 +56,7 @@ To prevent autonomous agent hallucination or malicious client abuse from executi
 | `/api/accounts/:id` | `GET` | `READ_ONLY` | `StudentScopeGuard` | Student balance, daily limit, and remaining allowance |
 | `/api/accounts/:id/limits`| `PUT` | `EXECUTE` | `AdminRoleGuard` | Administrative limit adjustment |
 | `/api/accounts/:id/deposit`| `POST` | `EXECUTE` | `AdminRoleGuard` | Administrative account funding |
-| `/api/accounts/:id/card-deposit`| `POST` | `EXECUTE` | `StudentScopeGuard` | Virtual card deposit with PCI DSS compliant number masking |
+| `/api/accounts/:id/card-deposit`| `POST` | `EXECUTE` | `StudentScopeGuard` | Virtual card deposit with automated card number masking |
 | `/api/rates` | `GET` | Public | None | Remittance corridors, inverse rates, flat & percentage fees |
 | `/api/rates/stream` | `GET` | Public | None | Server-Sent Events (SSE) live rate ticker stream |
 | `/api/rates/live-feed` | `GET` | Public | None | Real-time market feed with spread calculations |

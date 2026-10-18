@@ -107,7 +107,7 @@ For innovation, our route scoring engine balances cost at 50%, clearance speed a
   6. **Attack:** Prompt injection and shell-bomb payloads are blocked and logged.
 
 **Speaker Notes:**  
-Our live evaluation demo verifies six practical flows. First, the student asks to pay $3,000 tuition and the agent ranks four corridors. Second, clicking the chosen corridor directly creates a draft for 358,454.85 BDT without redundant prompt loops, while the student balance remains untouched. Third, the student completes mandatory 6-digit Step-Up 2FA OTP verification and approves, debiting the balance from 850,000 to 491,545.15 BDT with a cryptographic receipt. Fourth, an automated Saga compensating rollback restores the full 358,454.85 BDT. Fifth, an attempt to send $4,500—which equals 537,507.28 BDT—is blocked by the 400,000 BDT cap. Sixth, prompt injections and shell-bomb attacks are neutralized and logged.
+Our live evaluation demo verifies six practical flows. First, the student asks to pay $3,000 tuition and the agent ranks four corridors. Second, clicking the chosen corridor directly creates a draft for 358,454.85 BDT without redundant prompt loops, while the student balance remains untouched. Third, the student completes mandatory 6-digit Step-Up 2FA OTP verification and approves, debiting the balance from 850,000 to 491,545.15 BDT with an integrity checksum. Fourth, an automated Saga compensating rollback restores the full 358,454.85 BDT. Fifth, an attempt to send $4,500—which equals 537,507.28 BDT—is blocked by the 400,000 BDT cap. Sixth, prompt injections and shell-bomb attacks are neutralized and logged.
 
 ---
 
@@ -117,8 +117,9 @@ Our live evaluation demo verifies six practical flows. First, the student asks t
 - **Event Audit Log Records:**
   | Event | Tier | Result |
   |---|---|---|
-  | AUTH_REGISTRATION_SUCCESS | EXECUTE | SUCCESS |
+  | AUTH_REGISTRATION_SUCCESS | READ_ONLY | SUCCESS |
   | ROUTE_COMPARISON | READ_ONLY | SUCCESS |
+  | AML_SANCTIONS_CLEARED | DRAFT | SUCCESS |
   | DRAFT_CREATED | DRAFT | SUCCESS |
   | STEP_UP_OTP_ISSUED | EXECUTE | SUCCESS |
   | CONFIRM_SUCCESS | EXECUTE | SUCCESS |
@@ -131,7 +132,7 @@ Our live evaluation demo verifies six practical flows. First, the student asks t
 - **Production Plan:** Stream logs to write-once storage (WORM).
 
 **Speaker Notes:**  
-Compliance requires tamper-evident visibility. Every action in our system emits an append-only audit event. The table on this slide displays the exact event types from our exported sandbox run, including registration onboarding, route comparisons, successful drafts, step-up 2FA challenges, confirmations, rollbacks, limit violations, and security blocks. In production, these events stream to write-once-read-many (WORM) cloud storage for regulatory compliance.
+Compliance requires append-only audit visibility. Every action in our system emits an append-only audit event. The table on this slide displays the exact event types from our exported sandbox run, including registration onboarding, route comparisons, compliance screenings, successful drafts, step-up 2FA challenges, confirmations, rollbacks, limit violations, and security blocks. In production, these events stream to write-once-read-many (WORM) cloud storage for regulatory compliance.
 
 ---
 
@@ -149,12 +150,12 @@ Compliance requires tamper-evident visibility. Every action in our system emits 
   - Registration endpoint validation and auto-provisioning
   - Login and chat rate limiting with sliding windows
   - Tenant data isolation and IDOR cross-account protections
-  - Cryptographic token verification & tampered JWT rejections
+  - One-time token verification & invalid JWT rejections
   - Prompt injection neutralization and perimeter WAF shell-bomb defenses
   - Admin-only role gating for sandbox resets
 
 **Speaker Notes:**  
-Every claim in our submission is backed by automated tests. We maintain 80 passing Jest test cases across two comprehensive suites: 54 in the core financial security suite and 26 in the security hardening suite. These verify limit enforcement, human consent barriers with step-up 2FA verification, Saga rollbacks, tenant isolation, student registration, tampered token rejections, and prompt injection filters.
+Every claim in our submission is backed by automated tests. We maintain 80 passing Jest test cases across two comprehensive suites: 54 in the core financial security suite and 26 in the security hardening suite. These verify limit enforcement, human consent barriers with step-up 2FA verification, Saga rollbacks, tenant isolation, student registration, invalid token rejections, and prompt injection filters.
 
 ---
 
