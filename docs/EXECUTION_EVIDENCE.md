@@ -143,3 +143,34 @@ The following entries reflect real sandbox operations captured in the `audit_log
   "created_at": "2026-10-17T20:55:45.819Z"
 }
 ```
+
+### Entry 8: Step-Up 2FA OTP Issuance & Settlement Challenge (EXECUTE Tier)
+```json
+{
+  "id": "fe71c841-89d2-4e4b-97e3-05c74fb9a121",
+  "event_type": "STEP_UP_OTP_ISSUED",
+  "permission_tier": "EXECUTE",
+  "account_id": "acc-stu-2026-bdt",
+  "action_summary": "Step-up 2FA dynamic OTP issued for STU-2026-BDT01",
+  "details": "{\"studentId\":\"STU-2026-BDT01\",\"expiresInSeconds\":300}",
+  "status": "SUCCESS",
+  "ip_address": "127.0.0.1",
+  "created_at": "2026-10-17T20:55:45.300Z"
+}
+```
+
+### Entry 9: Student Registration & Wallet Provisioning (EXECUTE Tier)
+```json
+{
+  "id": "5183db2a-33ce-4279-994f-71286c4789ba",
+  "event_type": "AUTH_REGISTRATION_SUCCESS",
+  "permission_tier": "EXECUTE",
+  "account_id": "acc-stu-2026-bdt",
+  "action_summary": "Student registration completed for STU-2026-BDT01 (Mir Eashan Zaman)",
+  "details": "{\"studentId\":\"STU-2026-BDT01\",\"email\":\"eashan.student@fintechathon.org\",\"initialBalanceBdt\":850000,\"dailyLimitBdt\":1000000}",
+  "status": "SUCCESS",
+  "ip_address": "127.0.0.1",
+  "created_at": "2026-10-17T20:55:44.980Z"
+}
+```
+
