@@ -70,6 +70,24 @@ export class CompareRoutesDto {
   preference?: string;
 }
 
+export class PlanInstallmentDto {
+  @IsNumber()
+  @Min(50)
+  totalAmountUsd: number;
+
+  @IsOptional()
+  @IsNumber()
+  numInstallments?: number;
+
+  @IsOptional()
+  @IsDateString()
+  tuitionDeadline?: string;
+
+  @IsOptional()
+  @IsString()
+  routeId?: string;
+}
+
 export class CreateDraftDto {
   @IsString()
   @IsOptional()
@@ -271,6 +289,20 @@ export class AgentController {
       body.amountUsd,
       body.tuitionDeadline,
       body.preference,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.READ_ONLY)
+  @Post('routes/installments')
+  async planInstallments(
+    @Body() body: PlanInstallmentDto,
+  ) {
+    return await this.toolsService.planInstallment(
+      body.totalAmountUsd,
+      body.numInstallments || 2,
+      body.tuitionDeadline,
+      body.routeId,
     );
   }
 
