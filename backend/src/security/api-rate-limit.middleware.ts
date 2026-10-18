@@ -1,18 +1,54 @@
 import { NextFunction, Request, Response } from 'express';
 
-interface RateLimitBucket {
+export interface RateLimitBucket {
   count: number;
   resetAt: number;
 }
 
-interface RateLimitPolicy {
+export interface RateLimitPolicy {
   name: string;
   limit: number;
   windowMs: number;
 }
 
-export class ApiRateLimitMiddleware {
+export interface IRateLimitStore {
+  get(key: string): RateLimitBucket | undefined;
+  set(key: string, bucket: RateLimitBucket): void;
+  delete(key: string): void;
+  size(): number;
+  cleanup(now: number): void;
+}
+
+export class MemoryRateLimitStore implements IRateLimitStore {
   private readonly buckets = new Map<string, RateLimitBucket>();
+
+  get(key: string): RateLimitBucket | undefined {
+    return this.buckets.get(key);
+  }
+
+  set(key: string, bucket: RateLimitBucket): void {
+    this.buckets.set(key, bucket);
+  }
+
+  delete(key: string): void {
+    this.buckets.delete(key);
+  }
+
+  size(): number {
+    return this.buckets.size;
+  }
+
+  cleanup(now: number): void {
+    for (const [key, bucket] of this.buckets) {
+      if (now >= bucket.resetAt) {
+        this.buckets.delete(key);
+      }
+    }
+  }
+}
+
+export class ApiRateLimitMiddleware {
+  private readonly store: IRateLimitStore = new MemoryRateLimitStore();
   private readonly maxBuckets = 10000;
   private lastCleanup = Date.now();
 
@@ -34,22 +70,22 @@ export class ApiRateLimitMiddleware {
     const now = Date.now();
 
     if (now - this.lastCleanup > 60000) {
-      this.removeExpiredBuckets(now);
+      this.store.cleanup(now);
       this.lastCleanup = now;
     }
 
-    let bucket = this.buckets.get(key);
+    let bucket = this.store.get(key);
 
     if (!bucket || now >= bucket.resetAt) {
-      if (this.buckets.size >= this.maxBuckets) {
-        this.removeExpiredBuckets(now);
+      if (this.store.size() >= this.maxBuckets) {
+        this.store.cleanup(now);
       }
-      if (this.buckets.size >= this.maxBuckets) {
+      if (this.store.size() >= this.maxBuckets) {
         this.reject(response, 60);
         return;
       }
       bucket = { count: 0, resetAt: now + policy.windowMs };
-      this.buckets.set(key, bucket);
+      this.store.set(key, bucket);
     }
 
     if (bucket.count >= policy.limit) {
@@ -58,6 +94,7 @@ export class ApiRateLimitMiddleware {
     }
 
     bucket.count += 1;
+    this.store.set(key, bucket);
     response.setHeader('RateLimit-Limit', policy.limit);
     response.setHeader('RateLimit-Remaining', policy.limit - bucket.count);
     response.setHeader('RateLimit-Reset', Math.ceil((bucket.resetAt - now) / 1000));
@@ -82,14 +119,6 @@ export class ApiRateLimitMiddleware {
     }
     const apiLimit = parseInt(process.env.RATE_LIMIT_API_MAX || '', 10) || 120;
     return { name: 'api', limit: apiLimit, windowMs: 60 * 1000 };
-  }
-
-  private removeExpiredBuckets(now: number): void {
-    for (const [key, bucket] of this.buckets) {
-      if (now >= bucket.resetAt) {
-        this.buckets.delete(key);
-      }
-    }
   }
 
   private reject(response: Response, retryAfterSeconds: number): void {
