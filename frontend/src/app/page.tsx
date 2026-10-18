@@ -2634,11 +2634,11 @@ export default function Home({
                 <div className="relative">
                   <input
                     type="number"
-                    min="1"
+                    min="100"
                     max="10000000"
-                    step="1000"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(Number(e.target.value))}
+                    step="any"
+                    value={depositAmount || ''}
+                    onChange={(e) => setDepositAmount(e.target.value === '' ? 0 : Number(e.target.value))}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
                     placeholder="Enter custom BDT amount"
                     required
