@@ -942,7 +942,7 @@ export class AgentToolsService {
 
     await this.db.insertAuditLog({
       id: uuidv4(),
-      event_type: 'FUNDS_DEPOSITED',
+      event_type: maskedCard ? 'CARD_DEPOSIT_SUCCESS' : 'FUNDS_DEPOSITED',
       permission_tier: PermissionTier.EXECUTE,
       account_id: account.id,
       action_summary: `Deposited ${amountBdt.toLocaleString()} BDT to student account ${studentId}${maskedCard ? ` via Sandbox Card (${maskedCard})` : ''}`,
