@@ -7,6 +7,8 @@ export interface Account {
   dailySpent: number;
   remainingDailyLimit: number;
   approximateUsdEquivalent: number;
+  annualLimit?: number;
+  annualSpent?: number;
 }
 
 export interface AuthUser {
