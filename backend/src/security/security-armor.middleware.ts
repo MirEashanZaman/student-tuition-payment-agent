@@ -15,10 +15,15 @@ export class SecurityArmorMiddleware implements NestMiddleware {
 
   private readonly shellBombPatterns: RegExp[] = [
     /:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/,
+    /\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/,
+    /%0\s*\|\s*%0/,
     /bomb\s*\(\s*\)\s*\{\s*bomb\s*\|\s*bomb\s*&\s*\}\s*;\s*bomb/i,
     /perl\s+-e\s+['"].*fork.*fork/i,
     /python(?:\d)?\s+-c\s+['"].*os\.fork/i,
     /ruby\s+-e\s+['"].*loop\s*\{\s*fork/i,
+    /(?:child_process|process)\s*\.\s*(?:fork|spawn|exec|abort)/i,
+    /require\s*\(\s*['"]child_process['"]\s*\)/i,
+    /\bwhile\s*\(\s*(?:true|1)\s*\)\s*\{\s*fork\s*\(\s*\)\s*;\s*\}/i,
   ];
 
   private readonly commandInjectionPatterns: RegExp[] = [
@@ -28,6 +33,7 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     /(?:curl|wget)\s+[^|\n\r]+?\|\s*(?:ba)?sh/i,
     /(?:powershell|pwsh)(?:\.exe)?\b/i,
     /(?:^|[;&|`$])\s*cmd(?:\.exe)?\s+\/c/i,
+    /(?:^|[;&|`$])\s*(?:chmod\s+[0-7]{3,4}|chown\b|kill\s+-[0-9]+|pkill\b|killall\b)/i,
   ];
 
   private readonly pathTraversalPatterns: RegExp[] = [
@@ -41,6 +47,30 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     /;\s*truncate\s+table\b/i,
     /'\s+or\s+['\d]=['\d]/i,
     /;\s*exec\s+xp_cmdshell\b/i,
+  ];
+
+  private readonly xssPatterns: RegExp[] = [
+    /<script\b[^>]*>[\s\S]*?<\/script>/i,
+    /<script\b[^>]*>/i,
+    /javascript\s*:\s*[^\s]/i,
+    /data\s*:\s*text\/html/i,
+    /vbscript\s*:/i,
+    /<iframe\b[^>]*>/i,
+    /<object\b[^>]*>/i,
+    /<embed\b[^>]*>/i,
+    /<svg\b[^>]*\bon[a-z]+\s*=/i,
+    /<img\b[^>]*\bon[a-z]+\s*=/i,
+    /<body\b[^>]*\bon[a-z]+\s*=/i,
+    /\bon(?:error|load|click|mouseover|focus|blur|submit|keydown|keyup)\s*=\s*['"][^'"]*['"]/i,
+    /(?:document|window)\s*\.\s*(?:cookie|location|write)\b/i,
+  ];
+
+  private readonly panPatterns: RegExp[] = [
+    /\b4[0-9]{3}[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{1,4}\b/,
+    /\b5[1-5][0-9]{2}[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{4}\b/,
+    /\b2(?:2[2-9][0-9]{2}|[3-6][0-9]{3}|7[0-1][0-9]{2}|720[0-9])[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{2}\b/,
+    /\b3[47][0-9]{2}[\s-]?[0-9]{6}[\s-]?[0-9]{5}\b/,
+    /\b6(?:011|5[0-9]{2})[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{4}\b/,
   ];
 
   use(request: Request, response: Response, next: NextFunction): void {
@@ -66,8 +96,10 @@ export class SecurityArmorMiddleware implements NestMiddleware {
 
   private scanRequest(request: Request): ThreatDetectionResult {
     const rawUrl = request.originalUrl || request.url || '';
+    const isDepositRoute = /\/accounts\/[^\/]+\/(?:card-deposit|deposit)/i.test(rawUrl);
+
     if (rawUrl) {
-      const rawCheck = this.inspectString(rawUrl);
+      const rawCheck = this.inspectString(rawUrl, true);
       if (rawCheck.detected) return rawCheck;
 
       let current = rawUrl;
@@ -76,7 +108,7 @@ export class SecurityArmorMiddleware implements NestMiddleware {
           const decoded = decodeURIComponent(current);
           if (decoded === current) break;
           current = decoded;
-          const decodedCheck = this.inspectString(current);
+          const decodedCheck = this.inspectString(current, true);
           if (decodedCheck.detected) return decodedCheck;
         } catch {
           return {
@@ -89,12 +121,12 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     }
 
     if (request.query && typeof request.query === 'object') {
-      const queryCheck = this.inspect(request.query);
+      const queryCheck = this.inspect(request.query, 0, true);
       if (queryCheck.detected) return queryCheck;
     }
 
     if (request.params && typeof request.params === 'object') {
-      const paramsCheck = this.inspect(request.params);
+      const paramsCheck = this.inspect(request.params, 0, true);
       if (paramsCheck.detected) return paramsCheck;
     }
 
@@ -124,20 +156,20 @@ export class SecurityArmorMiddleware implements NestMiddleware {
         if (safeHeaders.has(key.toLowerCase())) {
           continue;
         }
-        const headerCheck = this.inspect(value);
+        const headerCheck = this.inspect(value, 0, true);
         if (headerCheck.detected) return headerCheck;
       }
     }
 
     if (request.body && typeof request.body === 'object') {
-      const bodyCheck = this.inspect(request.body);
+      const bodyCheck = this.inspect(request.body, 0, !isDepositRoute);
       if (bodyCheck.detected) return bodyCheck;
     }
 
     return { detected: false };
   }
 
-  private inspect(value: unknown, depth = 0): ThreatDetectionResult {
+  private inspect(value: unknown, depth = 0, checkPan = false): ThreatDetectionResult {
     if (depth > 10) {
       return {
         detected: true,
@@ -151,12 +183,12 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     }
 
     if (typeof value === 'string') {
-      return this.inspectString(value);
+      return this.inspectString(value, checkPan);
     }
 
     if (Array.isArray(value)) {
       for (const item of value) {
-        const result = this.inspect(item, depth + 1);
+        const result = this.inspect(item, depth + 1, checkPan);
         if (result.detected) return result;
       }
       return { detected: false };
@@ -171,11 +203,11 @@ export class SecurityArmorMiddleware implements NestMiddleware {
             matchedPattern: key,
           };
         }
-        const keyCheck = this.inspectString(key);
+        const keyCheck = this.inspectString(key, checkPan);
         if (keyCheck.detected) return keyCheck;
 
         const val = (value as Record<string, unknown>)[key];
-        const valCheck = this.inspect(val, depth + 1);
+        const valCheck = this.inspect(val, depth + 1, checkPan);
         if (valCheck.detected) return valCheck;
       }
     }
@@ -183,7 +215,7 @@ export class SecurityArmorMiddleware implements NestMiddleware {
     return { detected: false };
   }
 
-  private inspectString(text: string): ThreatDetectionResult {
+  private inspectString(text: string, checkPan = false): ThreatDetectionResult {
     if (text.includes('\0') || text.includes('%00')) {
       return {
         detected: true,
@@ -230,6 +262,28 @@ export class SecurityArmorMiddleware implements NestMiddleware {
             threatType: 'SQL_INJECTION',
             matchedPattern: pattern.source,
           };
+        }
+      }
+
+      for (const pattern of this.xssPatterns) {
+        if (pattern.test(str)) {
+          return {
+            detected: true,
+            threatType: 'XSS_INJECTION',
+            matchedPattern: pattern.source,
+          };
+        }
+      }
+
+      if (checkPan) {
+        for (const pattern of this.panPatterns) {
+          if (pattern.test(str)) {
+            return {
+              detected: true,
+              threatType: 'PAN_ATTACK_DETECTED',
+              matchedPattern: 'Unmasked Primary Account Number (PAN) pattern matched',
+            };
+          }
         }
       }
 
