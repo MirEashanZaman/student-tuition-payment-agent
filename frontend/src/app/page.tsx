@@ -756,7 +756,20 @@ export default function Home({
         cvv: depositCvv,
       });
 
-      setAccount(updatedAccount);
+      if (updatedAccount) {
+        setAccount({
+          studentId: updatedAccount.studentId || (updatedAccount as any).student_id || targetId,
+          studentName: updatedAccount.studentName || (updatedAccount as any).student_name || 'Student',
+          currency: updatedAccount.currency || 'BDT',
+          balance: Number(updatedAccount.balance) || 0,
+          dailyLimit: updatedAccount.dailyLimit || (updatedAccount as any).daily_limit || 1000000,
+          dailySpent: updatedAccount.dailySpent || (updatedAccount as any).daily_spent || 0,
+          annualLimit: updatedAccount.annualLimit || (updatedAccount as any).annual_limit || 1500000,
+          annualSpent: updatedAccount.annualSpent || (updatedAccount as any).annual_spent || 0,
+          remainingDailyLimit: updatedAccount.remainingDailyLimit ?? Math.max(0, (updatedAccount.dailyLimit || (updatedAccount as any).daily_limit || 1000000) - (updatedAccount.dailySpent || (updatedAccount as any).daily_spent || 0)),
+          approximateUsdEquivalent: updatedAccount.approximateUsdEquivalent ?? +((Number(updatedAccount.balance) || 0) / 119.5).toFixed(2),
+        });
+      }
       setShowDepositModal(false);
       confetti({ particleCount: 75, spread: 60, origin: { y: 0.6 } });
       showNotification(`Successfully deposited ${Number(depositAmount).toLocaleString()} BDT via Sandbox Card.`, 'success');
@@ -766,7 +779,7 @@ export default function Home({
         {
           id: `deposit-msg-${Date.now()}`,
           sender: 'system',
-          text: `**Deposit Confirmed:** Successfully credited **${Number(depositAmount).toLocaleString()} BDT** to your student account via Sandbox Card ending in \`${depositCardNumber.replace(/\s+/g, '').slice(-4) || '4242'}\`. Your new available balance is **${updatedAccount.balance.toLocaleString()} BDT**.`,
+          text: `**Deposit Confirmed:** Successfully credited **${Number(depositAmount).toLocaleString()} BDT** to your student account via Sandbox Card ending in \`${depositCardNumber.replace(/\s+/g, '').slice(-4) || '4242'}\`. Your new available balance is **${(updatedAccount?.balance ?? 0).toLocaleString()} BDT**.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -1762,7 +1775,7 @@ export default function Home({
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">USD Equivalent:</span>
-                      <span className="text-slate-700">~${account.approximateUsdEquivalent.toLocaleString()} USD</span>
+                      <span className="text-slate-700">~${(account.approximateUsdEquivalent ?? +(account.balance / 119.5)).toLocaleString()} USD</span>
                     </div>
 
                     <button
@@ -1909,7 +1922,7 @@ export default function Home({
                   </div>
                 </div>
                 <span className="text-xs text-slate-500 mt-1">
-                  ≈ ${account ? account.approximateUsdEquivalent.toLocaleString() : '0'} USD ready for foreign tuition remittance
+                  ≈ ${account ? (account.approximateUsdEquivalent ?? +(account.balance / 119.5)).toLocaleString() : '0'} USD ready for foreign tuition remittance
                 </span>
               </div>
 
