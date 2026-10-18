@@ -28,6 +28,7 @@ export const ConfirmTransferInputSchema = z.object({
   transferId: z.string().min(1, 'Transfer ID is required'),
   confirmationToken: z.string().min(8, 'Confirmation token is required'),
   userConsent: z.boolean().default(true),
+  twoFactorPin: z.string().max(6).optional(),
 });
 
 export const UpdateDailyLimitInputSchema = z.object({
