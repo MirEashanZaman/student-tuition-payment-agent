@@ -49,6 +49,7 @@ import {
   Printer,
   Copy,
   Calendar,
+  CreditCard,
 } from 'lucide-react';
 import { downloadTuitionReceiptPdf, ReceiptData } from '../lib/pdf-generator';
 
@@ -137,6 +138,13 @@ export default function Home({
   const [selectedReceiptData, setSelectedReceiptData] = useState<ReceiptData | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositAmount, setDepositAmount] = useState<number>(100000);
+  const [depositCardNumber, setDepositCardNumber] = useState('4242 4242 4242 4242');
+  const [depositCardHolder, setDepositCardHolder] = useState('Mir Eashan Zaman');
+  const [depositExpiry, setDepositExpiry] = useState('12/28');
+  const [depositCvv, setDepositCvv] = useState('888');
+  const [depositLoading, setDepositLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -626,6 +634,63 @@ export default function Home({
       await loadData();
     } catch (err: any) {
       showNotification(err.message, 'error');
+    }
+  };
+
+  const handleExecuteCardDeposit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!authSession && !authStorage.getToken()) {
+      showNotification('You need to log in first to deposit funds.', 'error');
+      setShowLoginModal(true);
+      return;
+    }
+    if (authSession?.user?.permissionTier && authSession.user.permissionTier !== 'EXECUTE') {
+      showNotification('Financial Safety: Fund deposits require EXECUTE tier permissions.', 'info');
+      setLoginInput((prev) => ({
+        ...prev,
+        studentIdOrEmail: authSession.user.studentId || 'STU-2026-BDT01',
+        password: 'student123',
+        permissionTier: 'EXECUTE',
+      }));
+      setShowDepositModal(false);
+      setShowLoginModal(true);
+      return;
+    }
+    if (!depositAmount || depositAmount <= 0) {
+      showNotification('Please enter a valid deposit amount.', 'error');
+      return;
+    }
+
+    setDepositLoading(true);
+    try {
+      const targetId = authSession?.user.studentId || authStorage.getStudentId() || 'STU-2026-BDT01';
+      const updatedAccount = await api.depositFunds(targetId, Number(depositAmount), {
+        cardNumber: depositCardNumber,
+        cardHolder: depositCardHolder,
+        expiryDate: depositExpiry,
+        cvv: depositCvv,
+      });
+
+      setAccount(updatedAccount);
+      setShowDepositModal(false);
+      confetti({ particleCount: 75, spread: 60, origin: { y: 0.6 } });
+      showNotification(`Successfully deposited ${Number(depositAmount).toLocaleString()} BDT via Sandbox Card.`, 'success');
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `deposit-msg-${Date.now()}`,
+          sender: 'system',
+          text: `**Deposit Confirmed:** Successfully credited **${Number(depositAmount).toLocaleString()} BDT** to your student account via Sandbox Card ending in \`${depositCardNumber.replace(/\s+/g, '').slice(-4) || '4242'}\`. Your new available balance is **${updatedAccount.balance.toLocaleString()} BDT**.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+
+      await loadData();
+    } catch (err: any) {
+      showNotification(err.message || 'Deposit failed', 'error');
+    } finally {
+      setDepositLoading(false);
     }
   };
 
@@ -1501,6 +1566,12 @@ export default function Home({
                   </button>
                   <button
                     className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
+                    onClick={() => setShowDepositModal(true)}
+                  >
+                    Top up via sandbox card
+                  </button>
+                  <button
+                    className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
                     onClick={() => handleSendMessage('What is my current account balance?')}
                   >
                     Check account balance
@@ -1571,6 +1642,15 @@ export default function Home({
                       <span className="text-slate-500">USD Equivalent:</span>
                       <span className="text-slate-700">~${account.approximateUsdEquivalent.toLocaleString()} USD</span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDepositModal(true)}
+                      className="w-full mt-2 py-2 px-3 rounded-xl bg-gradient-to-r from-[#0D9488] to-[#1E3A8A] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Top Up via Sandbox Card</span>
+                    </button>
 
                     <div className="pt-2 border-t border-slate-100">
                       <div className="flex justify-between text-xs text-slate-500 mb-1">
@@ -2303,6 +2383,226 @@ export default function Home({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showDepositModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-[#0D9488] via-[#0F766E] to-[#1E3A8A] text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20">
+                  <CreditCard className="w-5 h-5 text-teal-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm leading-tight">Sandbox Card Deposit &amp; Top-Up</h3>
+                  <p className="text-[11px] text-teal-100">PCI DSS Mock Environment • Instant BDT Balance Credit</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDepositModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteCardDeposit} className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="relative rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-5 text-white shadow-lg overflow-hidden border border-slate-700">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider text-teal-300 font-semibold block">
+                      FinTechathon 2026 Sandbox Bank
+                    </span>
+                    <span className="text-xs text-slate-300 font-mono">Student Virtual Debit</span>
+                  </div>
+                  <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
+                    <div className="w-6 h-4 border border-amber-600/40 rounded-xs flex flex-col justify-between p-0.5">
+                      <div className="h-0.5 bg-amber-700/50"></div>
+                      <div className="h-0.5 bg-amber-700/50"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="font-mono text-base tracking-widest text-slate-100 font-semibold mb-4">
+                  {depositCardNumber || '4242 •••• •••• 4242'}
+                </div>
+
+                <div className="flex justify-between items-end text-[11px]">
+                  <div>
+                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-medium">Cardholder</div>
+                    <div className="font-semibold text-slate-200 uppercase">{depositCardHolder || account?.studentName || 'Mir Eashan Zaman'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-medium">Expires</div>
+                    <div className="font-mono font-semibold text-slate-200">{depositExpiry || '12/28'}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1.5">
+                  Select Deposit Amount (BDT):
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {[50000, 100000, 250000, 500000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setDepositAmount(amt)}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border ${
+                        depositAmount === amt
+                          ? 'bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:border-[#0D9488]'
+                      }`}
+                    >
+                      +{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="10000000"
+                    step="1000"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(Number(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                    placeholder="Enter custom BDT amount"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">BDT</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-slate-600 font-semibold text-xs">Card Credentials (Sandbox Mock):</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDepositCardNumber('4242 4242 4242 4242');
+                    setDepositCardHolder(account?.studentName || 'Mir Eashan Zaman');
+                    setDepositExpiry('12/28');
+                    setDepositCvv('888');
+                  }}
+                  className="text-[11px] text-[#0D9488] hover:underline font-semibold"
+                >
+                  Fill Sandbox Test Card
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">Card Number:</label>
+                <input
+                  type="text"
+                  maxLength={19}
+                  value={depositCardNumber}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                    const matches = v.match(/\d{4,16}/g);
+                    const match = (matches && matches[0]) || '';
+                    const parts = [];
+                    for (let i = 0, len = match.length; i < len; i += 4) {
+                      parts.push(match.substring(i, i + 4));
+                    }
+                    if (parts.length) {
+                      setDepositCardNumber(parts.join(' '));
+                    } else {
+                      setDepositCardNumber(v);
+                    }
+                  }}
+                  placeholder="4242 4242 4242 4242"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Cardholder Name:</label>
+                  <input
+                    type="text"
+                    value={depositCardHolder}
+                    onChange={(e) => setDepositCardHolder(e.target.value)}
+                    placeholder="Student Name"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-600 font-medium mb-1">Expires:</label>
+                    <input
+                      type="text"
+                      maxLength={5}
+                      value={depositExpiry}
+                      onChange={(e) => setDepositExpiry(e.target.value)}
+                      placeholder="MM/YY"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-mono text-center text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 font-medium mb-1">CVV:</label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      value={depositCvv}
+                      onChange={(e) => setDepositCvv(e.target.value)}
+                      placeholder="888"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-mono text-center text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {authSession?.user?.permissionTier && authSession.user.permissionTier !== 'EXECUTE' && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Depositing funds requires <strong>EXECUTE</strong> permission tier.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginInput((prev) => ({
+                        ...prev,
+                        studentIdOrEmail: authSession.user.studentId || 'STU-2026-BDT01',
+                        password: 'student123',
+                        permissionTier: 'EXECUTE',
+                      }));
+                      setShowDepositModal(false);
+                      setShowLoginModal(true);
+                    }}
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] whitespace-nowrap transition-colors shadow-xs"
+                  >
+                    Step-Up to EXECUTE
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDepositModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositLoading || !depositAmount}
+                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm transition-colors disabled:opacity-50"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>{depositLoading ? 'Authorizing Card...' : `Deposit ${depositAmount ? depositAmount.toLocaleString() : 0} BDT`}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
