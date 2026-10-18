@@ -514,17 +514,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   async updateAccountBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord> {
+    const safeBalance = !isNaN(newBalance) && Number.isFinite(newBalance) ? +Number(newBalance).toFixed(2) : 0;
+    const safeDailySpent = !isNaN(newDailySpent) && Number.isFinite(newDailySpent) ? +Number(newDailySpent).toFixed(2) : 0;
     if (!this.useMemoryStore && this.pool) {
       const res = await this.pool.query(
         'UPDATE accounts SET balance = $1, daily_spent = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
-        [newBalance, newDailySpent, id],
+        [safeBalance, safeDailySpent, id],
       );
       return this.formatAccount(res.rows[0]);
     }
     const acc = this.memoryStore.accounts.get(id);
     if (!acc) throw new Error(`Account ${id} not found`);
-    acc.balance = newBalance;
-    acc.daily_spent = newDailySpent;
+    acc.balance = safeBalance;
+    acc.daily_spent = safeDailySpent;
     acc.updated_at = new Date();
     this.memoryStore.accounts.set(id, acc);
     this.memoryStore.accounts.set(acc.student_id, acc);
