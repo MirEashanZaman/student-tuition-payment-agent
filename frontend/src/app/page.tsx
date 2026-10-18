@@ -601,7 +601,7 @@ export default function Home({
             `• **Deducted from Account:** **${deductedAmount.toLocaleString()} BDT**\n` +
             `• **Updated Balance:** **${updatedBalance.toLocaleString()} BDT**\n` +
             (settledTxHash ? `• **SHA-256 Receipt Fingerprint:** \`${settledTxHash.slice(0, 16)}...\`\n` : '') +
-            `• **Compliance Audit Log:** Tamper-evident record sealed in database.`,
+            `• **Compliance Audit Log:** Immutable append-only record recorded in database.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           receiptTransferId: transferRefId,
         },
@@ -1209,7 +1209,7 @@ export default function Home({
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
-                      <span><strong>DRAFT:</strong> Cryptographic confirmation token</span>
+                      <span><strong>DRAFT:</strong> One-time confirmation token</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
@@ -1911,7 +1911,7 @@ export default function Home({
                   <button
                     className="w-full py-2.5 px-3 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98]"
                     onClick={handleExportLogs}
-                    title="Export Tamper-Evident Evidence Log (JSON)"
+                    title="Export Audit Evidence Log (JSON)"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">Export Evidence</span>
@@ -2156,7 +2156,7 @@ export default function Home({
                   <ShieldCheck className="w-5 h-5 text-[#16A34A]" /> Immutable Audit Trail &amp; Permission Inspector
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Every agent query, route scoring, draft creation, safety block, and human authorization is tamper-evident and permanently recorded.
+                  Every agent query, route scoring, draft creation, safety block, and human authorization is permanently recorded in the append-only audit trail.
                 </p>
               </div>
 
@@ -2565,7 +2565,7 @@ export default function Home({
                   {selectedReceiptData.txHash}
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  Tamper-evident verification hash sealed in PostgreSQL append-only audit trail.
+                  Integrity verification hash recorded in PostgreSQL append-only audit trail.
                 </p>
               </div>
 
@@ -2602,7 +2602,7 @@ export default function Home({
                 </div>
                 <div>
                   <h3 className="font-bold text-sm leading-tight">Sandbox Card Deposit &amp; Top-Up</h3>
-                  <p className="text-[11px] text-teal-100">PCI DSS Mock Environment • Instant BDT Balance Credit</p>
+                  <p className="text-[11px] text-teal-100">Secure Mock Sandbox Environment • Instant BDT Balance Credit</p>
                 </div>
               </div>
               <button

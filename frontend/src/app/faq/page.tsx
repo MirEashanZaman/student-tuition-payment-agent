@@ -26,7 +26,7 @@ export default function FaqPage() {
       id: 'protection',
       question: 'How is my payment protected?',
       answer:
-        'Every transaction is guarded through defense-in-depth: (1) Hard compiled velocity limits of 400,000 BDT per transfer and 1,000,000 BDT daily, (2) Pre-draft balance validation and atomic balance reservation, (3) Single-use cryptographic confirmation tokens that expire, (4) Pre-settlement re-verification, and (5) Tamper-evident immutable audit logging.',
+        'Every transaction is guarded through defense-in-depth: (1) Hard compiled velocity limits of 400,000 BDT per transfer and 1,000,000 BDT daily, (2) Pre-draft balance validation and atomic balance reservation, (3) Single-use one-time confirmation tokens that expire, (4) Pre-settlement re-verification, and (5) Append-only immutable audit logging.',
       highlight:
         'Compiled security controls cannot be overridden by conversational prompts or agent instructions.',
     },
