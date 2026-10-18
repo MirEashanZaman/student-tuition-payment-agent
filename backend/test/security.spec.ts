@@ -858,6 +858,12 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
 
       const deadline = calc.evaluateDeadline(24, new Date(Date.now() + 48 * 3600 * 1000).toISOString());
       expect(deadline.deadlineWarning).toBe(false);
+
+      const installmentPlan = calc.calculateInstallmentPlan(3000, 2, mockRoute);
+      expect(installmentPlan.numInstallments).toBe(2);
+      expect(installmentPlan.milestones.length).toBe(2);
+      expect(installmentPlan.allWithinTransferCap).toBe(true);
+      expect(installmentPlan.milestones[0].amountUsd).toBe(1500);
     });
 
     it('O - Open/Closed Principle: SafetyRuleEngine is open for extension with custom rules without altering core code', async () => {
