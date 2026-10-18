@@ -14,7 +14,12 @@ import {
   ForbiddenException,
   NotFoundException,
   UseGuards,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable, interval } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { v4 as uuidv4 } from 'uuid';
 import {
   IsNotEmpty,
   IsString,
@@ -50,6 +55,18 @@ export class ChatDto {
   @IsOptional()
   @MaxLength(100)
   studentId?: string;
+}
+
+export class ExtractInvoiceDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(10000)
+  invoiceText: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  fileName?: string;
 }
 
 export class CompareRoutesDto {
@@ -271,6 +288,16 @@ export class AgentController {
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
   @RequirePermissionTier(PermissionTier.READ_ONLY)
+  @Post('invoice/extract')
+  async extractInvoice(@Body() dto: ExtractInvoiceDto) {
+    if (!dto || !dto.invoiceText) {
+      throw new BadRequestException('Invoice text content is required');
+    }
+    return await this.toolsService.parseInvoiceDocument(dto.invoiceText, dto.fileName);
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @RequirePermissionTier(PermissionTier.READ_ONLY)
   @Get('accounts/:id')
   async getAccount(
     @Param('id') id: string,
@@ -322,6 +349,47 @@ export class AgentController {
       rates = rates.filter((r) => r.target_currency.toUpperCase() === targetCurrency.toUpperCase());
     }
     return rates;
+  }
+
+  @Sse('rates/stream')
+  streamRates(): Observable<MessageEvent> {
+    return interval(10000).pipe(
+      map(() => {
+        return {
+          data: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            status: 'LIVE_TICK',
+            corridors: [
+              { code: 'USD', volatility: '+0.02%', marketStatus: 'OPEN' },
+              { code: 'GBP', volatility: '-0.01%', marketStatus: 'OPEN' },
+              { code: 'EUR', volatility: '+0.04%', marketStatus: 'OPEN' },
+              { code: 'CAD', volatility: '+0.00%', marketStatus: 'OPEN' },
+              { code: 'AUD', volatility: '-0.03%', marketStatus: 'OPEN' },
+            ],
+          }),
+        } as MessageEvent;
+      }),
+    );
+  }
+
+  @Get('rates/live-feed')
+  async getLiveRateFeed() {
+    const rates = await this.db.getAllRates();
+    return {
+      timestamp: new Date().toISOString(),
+      marketStatus: 'OPEN',
+      corridorsCount: rates.length,
+      rates: rates.map((r) => ({
+        id: r.id,
+        provider: r.provider_name,
+        targetCurrency: r.target_currency,
+        exchangeRate: r.exchange_rate,
+        inverseRate: r.inverse_rate,
+        spreadPercent: +(Math.abs(r.inverse_rate - 119.0) / 119.0 * 100).toFixed(2),
+        speedHours: r.speed_hours,
+        reliabilityScore: r.reliability_score,
+      })),
+    };
   }
 
   @Get('rates/:id')
@@ -622,5 +690,23 @@ export class AgentController {
       auditLogCount: logs.length,
       auditLogs: logs,
     };
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
+  @Post('auth/step-up-otp')
+  async issueStepUpOtp(@Req() request: { user: { studentId: string } }) {
+    const result = this.toolsService.generateStepUpOtp();
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'STEP_UP_OTP_ISSUED',
+      permission_tier: PermissionTier.EXECUTE,
+      action_summary: `Step-up 2FA dynamic OTP issued for ${request.user.studentId}`,
+      details: JSON.stringify({ studentId: request.user.studentId, expiresInSeconds: result.expiresInSeconds }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return result;
   }
 }
