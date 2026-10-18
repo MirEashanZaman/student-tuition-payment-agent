@@ -52,6 +52,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { downloadTuitionReceiptPdf, ReceiptData } from '../lib/pdf-generator';
+import { getFinancialBoundaries } from '../lib/formatters';
 
 const renderFormattedText = (content: string) => {
   return content.split('\n').map((line, idx) => {
@@ -105,6 +106,7 @@ export default function Home({
   initialTab?: 'home' | 'chat' | 'dashboard' | 'audit';
   initialShowLogin?: boolean;
 } = {}) {
+  const boundaries = getFinancialBoundaries();
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'dashboard' | 'audit'>(initialTab);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [account, setAccount] = useState<Account | null>(null);
@@ -609,6 +611,8 @@ export default function Home({
           status: matched.status,
           confirmedAt: confirmedTime.toISOString(),
           txHash: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
+          sourceCurrency: matched.source_currency || boundaries.defaultCurrency,
+          targetCurrency: matched.target_currency || 'USD',
         });
         setShowReceiptModal(true);
       }
@@ -1058,11 +1062,11 @@ export default function Home({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 mt-8 border-t border-blue-800/80 text-xs">
                   <div>
                     <div className="text-blue-200">Per-Transfer Cap</div>
-                    <div className="text-lg font-bold font-mono text-white mt-0.5">400,000 BDT</div>
+                    <div className="text-lg font-bold font-mono text-white mt-0.5">{boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency}</div>
                   </div>
                   <div>
                     <div className="text-blue-200">Daily Spending Limit</div>
-                    <div className="text-lg font-bold font-mono text-white mt-0.5">1,000,000 BDT</div>
+                    <div className="text-lg font-bold font-mono text-white mt-0.5">{boundaries.dailyLimit.toLocaleString()} {boundaries.defaultCurrency}</div>
                   </div>
                   <div>
                     <div className="text-blue-200">Safety Architecture</div>
@@ -1491,12 +1495,12 @@ export default function Home({
                                     </div>
                                     {m.transferLimitExceeded ? (
                                       <div className="text-[11px] text-red-600 bg-red-50 p-1.5 rounded mb-2 border border-red-200">
-                                        Exceeds 400,000 BDT per-transfer limit
+                                        Exceeds {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} per-transfer limit
                                       </div>
                                     ) : (
                                       <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1 rounded mb-2 border border-emerald-100 flex items-center gap-1">
                                         <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                        <span>Within 400,000 BDT limit</span>
+                                        <span>Within {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} limit</span>
                                       </div>
                                     )}
                                   </div>
@@ -1695,11 +1699,11 @@ export default function Home({
                 <ul className="space-y-1.5 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
-                    <span><strong>Per-Transfer Limit:</strong> 400,000 BDT max</span>
+                    <span><strong>Per-Transfer Limit:</strong> {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} max</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
-                    <span><strong>Daily Safety Limit:</strong> 1,000,000 BDT max</span>
+                    <span><strong>Daily Safety Limit:</strong> {boundaries.dailyLimit.toLocaleString()} {boundaries.defaultCurrency} max</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
