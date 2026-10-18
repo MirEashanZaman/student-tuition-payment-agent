@@ -38,6 +38,10 @@ export const UpdateDailyLimitInputSchema = z.object({
 export const DepositFundsInputSchema = z.object({
   studentId: z.string().min(1, 'Student ID is required'),
   amountBdt: z.number().positive('Deposit amount must be greater than zero'),
+  cardNumber: z.string().optional(),
+  cardHolder: z.string().optional(),
+  expiryDate: z.string().optional(),
+  cvv: z.string().optional(),
 });
 
 export const LoginInputSchema = z.object({
