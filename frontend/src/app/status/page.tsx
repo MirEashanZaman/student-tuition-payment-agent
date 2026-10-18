@@ -82,6 +82,14 @@ async function getSystemHealth(): Promise<SystemHealth> {
 
 export default async function StatusPage() {
   const health = await getSystemHealth();
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
+  const apiHost = (() => {
+    try {
+      return new URL(apiBase).host;
+    } catch {
+      return 'Port 4568';
+    }
+  })();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#0D9488] selection:text-white">
@@ -213,7 +221,7 @@ export default async function StatusPage() {
                 </>
               )}
             </div>
-            <span className="text-[11px] text-[#64748B] block mt-1 font-mono">NestJS port 4568</span>
+            <span className="text-[11px] text-[#64748B] block mt-1 font-mono">Backend API ({apiHost})</span>
           </div>
 
           <div className="bg-white border border-[#E2E8F0] p-5 rounded-xl shadow-sm">
