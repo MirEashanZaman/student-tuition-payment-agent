@@ -177,9 +177,10 @@ export const api = {
         amountBdt,
         ...cardDetails,
       });
+      const { studentId: targetStudentId, ...bodyPayload } = validated;
       const response = await apiClient.post<Account>(
-        `/accounts/${validated.studentId}/card-deposit`,
-        validated,
+        `/accounts/${targetStudentId}/card-deposit`,
+        bodyPayload,
       );
       return response.data;
     } catch (error) {
