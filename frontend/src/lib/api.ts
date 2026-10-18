@@ -161,12 +161,26 @@ export const api = {
     }
   },
 
-  async depositFunds(studentId: string, amountBdt: number): Promise<Account> {
+  async depositFunds(
+    studentId: string,
+    amountBdt: number,
+    cardDetails?: {
+      cardNumber?: string;
+      cardHolder?: string;
+      expiryDate?: string;
+      cvv?: string;
+    },
+  ): Promise<Account> {
     try {
-      const validated = DepositFundsInputSchema.parse({ studentId, amountBdt });
-      const response = await apiClient.post<Account>(`/accounts/${validated.studentId}/deposit`, {
-        amountBdt: validated.amountBdt,
+      const validated = DepositFundsInputSchema.parse({
+        studentId,
+        amountBdt,
+        ...cardDetails,
       });
+      const response = await apiClient.post<Account>(
+        `/accounts/${validated.studentId}/card-deposit`,
+        validated,
+      );
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to deposit funds');
