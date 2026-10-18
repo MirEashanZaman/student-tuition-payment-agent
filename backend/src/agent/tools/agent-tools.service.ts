@@ -684,6 +684,7 @@ export class AgentToolsService {
       transfer.source_amount_bdt,
       account.balance,
       account.daily_spent,
+      account.annual_spent,
     );
 
     if (!limitCheck.isValid) {
@@ -708,8 +709,9 @@ export class AgentToolsService {
 
     const newBalance = +(account.balance - transfer.source_amount_bdt).toFixed(2);
     const newDailySpent = +(account.daily_spent + transfer.source_amount_bdt).toFixed(2);
+    const newAnnualSpent = +((account.annual_spent || 0) + transfer.source_amount_bdt).toFixed(2);
 
-    await this.db.updateAccountBalance(account.id, newBalance, newDailySpent);
+    await this.db.updateAccountBalance(account.id, newBalance, newDailySpent, newAnnualSpent);
     const confirmedTime = new Date();
     await this.db.updateTransferStatus(transfer.id, 'CONFIRMED', confirmedTime);
 
