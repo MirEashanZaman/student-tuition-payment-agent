@@ -7,6 +7,12 @@ import { SecurityArmorMiddleware } from './security/security-armor.middleware';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  process.on('unhandledRejection', (reason) => {
+    logger.error(`Unhandled Promise Rejection: ${reason}`);
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error(`Uncaught Exception: ${err.message}`);
+  });
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.enableShutdownHooks();
   const server = app.getHttpAdapter().getInstance();
