@@ -2644,7 +2644,7 @@ export default function Home({
                     </button>
                   ))}
                 </div>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     type="number"
                     min="100"
@@ -2652,11 +2652,13 @@ export default function Home({
                     step="any"
                     value={depositAmount || ''}
                     onChange={(e) => setDepositAmount(e.target.value === '' ? 0 : Number(e.target.value))}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-14 py-2.5 text-sm font-mono font-bold text-slate-900 focus:outline-none focus:border-[#1E3A8A] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="Enter custom BDT amount"
                     required
                   />
-                  <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">BDT</span>
+                  <span className="absolute right-3.5 inset-y-0 flex items-center pointer-events-none font-bold text-slate-400 text-xs select-none">
+                    BDT
+                  </span>
                 </div>
               </div>
 
