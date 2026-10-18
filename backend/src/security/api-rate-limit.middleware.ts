@@ -100,7 +100,13 @@ export class ApiRateLimitMiddleware {
     }
 
     const policy = this.getPolicy(cleanPath);
-    const rawAddress = request.ip || request.socket.remoteAddress || 'unknown';
+    const forwardedHeader = request.headers ? request.headers['x-forwarded-for'] : undefined;
+    const forwardedIp = Array.isArray(forwardedHeader)
+      ? forwardedHeader[0]
+      : typeof forwardedHeader === 'string'
+      ? forwardedHeader.split(',')[0].trim()
+      : undefined;
+    const rawAddress = forwardedIp || request.ip || request.socket.remoteAddress || 'unknown';
     const address = rawAddress.replace(/^::ffff:/, '');
     const key = `${address}:${policy.name}`;
     const now = Date.now();
