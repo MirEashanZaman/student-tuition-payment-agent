@@ -6,6 +6,8 @@ import {
   ITuitionCalculator,
   RouteCostBreakdown,
   DeadlineEvaluation,
+  InstallmentPlan,
+  InstallmentMilestone,
 } from './tuition-calculation.interface';
 
 @Injectable()
@@ -118,5 +120,69 @@ export class TuitionCalculationService implements ITuitionCalculator {
     });
 
     return routes;
+  }
+
+  calculateInstallmentPlan(
+    totalAmountUsd: number,
+    numInstallments: number,
+    route: RateRecord,
+    tuitionDeadline?: string,
+    benchmarkRateBdt = 119.0,
+  ): InstallmentPlan {
+    const validCount = numInstallments === 3 ? 3 : 2;
+    const percentages = validCount === 3 ? [0.4, 0.3, 0.3] : [0.5, 0.5];
+    const now = new Date();
+    const finalDeadline = tuitionDeadline ? new Date(tuitionDeadline) : new Date(now.getTime() + 30 * 86400 * 1000);
+    const totalTimeSpanMs = Math.max(86400 * 1000, finalDeadline.getTime() - now.getTime());
+
+    let totalBdtWithFees = 0;
+    const perTransferCapBdt = 400000;
+    let allWithinTransferCap = true;
+
+    const milestones: InstallmentMilestone[] = percentages.map((pct, idx) => {
+      const amountUsd = +(totalAmountUsd * pct).toFixed(2);
+      const cost = this.calculateRouteCost(amountUsd, route, benchmarkRateBdt);
+      const totalCostBdt = +(cost.sourceAmountBdt + cost.totalFeeBdt).toFixed(2);
+      totalBdtWithFees = +(totalBdtWithFees + totalCostBdt).toFixed(2);
+
+      const milestoneOffsetMs = (totalTimeSpanMs / validCount) * idx;
+      const scheduledDateObj = new Date(now.getTime() + milestoneOffsetMs);
+      const targetDeadlineForMilestone = new Date(
+        now.getTime() + (totalTimeSpanMs / validCount) * (idx + 1),
+      );
+
+      const deadlineEval = this.evaluateDeadline(
+        route.speed_hours,
+        targetDeadlineForMilestone.toISOString(),
+        scheduledDateObj,
+      );
+
+      const transferLimitExceeded = cost.sourceAmountBdt > perTransferCapBdt;
+      if (transferLimitExceeded) allWithinTransferCap = false;
+
+      return {
+        installmentNumber: idx + 1,
+        portionPercentage: Math.round(pct * 100),
+        amountUsd,
+        sourceAmountBdt: cost.sourceAmountBdt,
+        totalFeeBdt: cost.totalFeeBdt,
+        totalCostBdt,
+        scheduledDate: scheduledDateObj.toISOString(),
+        isDeadlineSafe: !deadlineEval.deadlineWarning,
+        deadlineNotice: deadlineEval.deadlineNotice,
+        transferLimitExceeded,
+      };
+    });
+
+    return {
+      totalAmountUsd,
+      numInstallments: validCount,
+      providerName: route.provider_name,
+      routeId: route.id,
+      totalBdtWithFees,
+      perTransferCapBdt,
+      allWithinTransferCap,
+      milestones,
+    };
   }
 }
