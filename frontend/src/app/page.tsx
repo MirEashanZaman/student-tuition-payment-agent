@@ -1664,7 +1664,19 @@ export default function Home({
                                   if (action.actionType === 'PLAN_INSTALLMENT') {
                                     handleDraftMilestone(action.payload.amountUsd, action.payload.routeId, action.payload.milestone);
                                   } else if (action.actionType === 'SELECT_ROUTE') {
-                                    handleSendMessage(`Select route ${action.payload.providerName}`);
+                                    if (action.payload?.routeId) {
+                                      handleSelectRoute(
+                                        {
+                                          routeId: action.payload.routeId,
+                                          providerName: action.payload.providerName,
+                                        } as RouteItem,
+                                        action.payload.amountUsd || 3000,
+                                        action.payload.university || 'University of Toronto (Tuition Office)',
+                                        action.payload.tuitionDeadline,
+                                      );
+                                    } else {
+                                      handleSendMessage(`Select route ${action.payload?.providerName || ''}`);
+                                    }
                                   } else if (action.actionType === 'CHECK_BALANCE') {
                                     handleSendMessage('What is my current account balance?');
                                   }
