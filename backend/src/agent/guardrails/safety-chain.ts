@@ -9,6 +9,7 @@ export interface SafetyCheckContext {
   amountBdt?: number;
   dailySpentBdt?: number;
   currentBalanceBdt?: number;
+  annualSpentBdt?: number;
   userConsent?: boolean;
   confirmationToken?: string;
   expectedToken?: string;
@@ -95,7 +96,12 @@ export class FinancialLimitCheckHandler extends SafetyCheckHandler {
     const dailySpent = context.dailySpentBdt || 0;
     const balance = context.currentBalanceBdt || 0;
 
-    const result = FinancialLimitsGuard.validateTransfer(context.amountBdt, balance, dailySpent);
+    const result = FinancialLimitsGuard.validateTransfer(
+      context.amountBdt,
+      balance,
+      dailySpent,
+      context.annualSpentBdt,
+    );
     if (!result.isValid) {
       return {
         passed: false,
