@@ -1746,14 +1746,26 @@ export default function Home({
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-                <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
-                  Available Tuition Balance
-                </span>
-                <div className="text-3xl font-extrabold text-[#16A34A] font-mono my-1">
-                  {account ? `${account.balance.toLocaleString()} BDT` : '0.00 BDT'}
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
+                      Available Tuition Balance
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDepositModal(true)}
+                      className="px-2.5 py-1 bg-gradient-to-r from-[#0D9488] to-[#1E3A8A] hover:opacity-95 text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-xs transition-all"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Top Up Balance</span>
+                    </button>
+                  </div>
+                  <div className="text-3xl font-extrabold text-[#16A34A] font-mono my-1">
+                    {account ? `${account.balance.toLocaleString()} BDT` : '0.00 BDT'}
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 mt-1">
                   ≈ ${account ? account.approximateUsdEquivalent.toLocaleString() : '0'} USD ready for foreign tuition remittance
                 </span>
               </div>
