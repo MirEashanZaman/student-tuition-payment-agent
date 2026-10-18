@@ -60,7 +60,7 @@ Our solution is an intelligent tuition payment agent built with strict financial
   - **Production Engineering:** Docker Compose run, GitHub Actions CI, Zod validation, 80 Jest tests
 
 **Speaker Notes:**  
-Our architecture is built for security, resilience, and testability. The frontend uses Next.js 14 with a high-performance hybrid rendering model and custom dark fintech styling. The backend is an enterprise NestJS API implementing permission guards, safety rules, and agent tools. Data is stored in PostgreSQL across four core tables. The AI agent supports Google Gemini or an offline deterministic sandbox, validated by Docker Compose orchestration, GitHub Actions CI, and 80 automated Jest tests.
+Our architecture is built for security, resilience, and testability. The frontend uses Next.js 14 with a high-performance hybrid rendering model and custom dark fintech styling. The backend is a hardened NestJS API implementing permission guards, safety rules, and agent tools. Data is stored in PostgreSQL across four core tables. The AI agent supports Google Gemini or an offline deterministic sandbox, validated by Docker Compose orchestration, GitHub Actions CI, and 80 automated Jest tests.
 
 ---
 
