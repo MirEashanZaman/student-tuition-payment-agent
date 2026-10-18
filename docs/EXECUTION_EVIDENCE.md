@@ -124,7 +124,7 @@ The following entries reflect live sandbox operations captured in the `audit_log
 }
 ```
 
-> **OTP Validity Window Notice:** In the automated sandbox run script, the dynamic TOTP challenge captured `expiresInSeconds: 5` reflecting the test execution timing delta within the TOTP cycle. In standard interactive application runtime, the step-up OTP challenge operates with a 300-second (5-minute) validity window (`STEP_UP_OTP_TTL_SECONDS=300`) along with static verification bypass PINs to ensure robust human interaction during live evaluations.
+> **OTP Validity Window Notice:** The sandbox test execution script sets `STEP_UP_OTP_TTL_SECONDS=5` to exercise short-lived token handling and boundary expiry; standard runtime uses 300 seconds.
 
 ### Entry 7: Human-Authorized Fund Settlement with OTP Verification (EXECUTE Tier)
 ```json
