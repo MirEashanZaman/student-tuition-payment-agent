@@ -20,6 +20,7 @@
 3. **Official PDF Tuition Payment Certificate:** Built with a pure TypeScript PDF 1.4 vector generator ([pdf-generator.ts](frontend/src/lib/pdf-generator.ts)) providing downloadable and printable A4 certificates with verification URL and cryptographic checksum.
 4. **Smart Tuition Installment Planner:** Formulates 2- or 3-part split payment milestones ([tuition-calculation.service.ts](backend/src/agent/services/tuition-calculation.service.ts)) ensuring each settlement strictly respects the 400,000 BDT per-transfer limit and course registration deadlines.
 5. **Sandbox Card Deposit & Top-Up Modal:** Interactive virtual credit card modal allowing students to top up account balances using test card numbers (`4242 4242 4242 4242`) with automatic PCI DSS compliant card masking (`**** **** **** 4242`) in the audit log.
+6. **Step-Up 2FA & Dynamic OTP Verification:** Financial settlements (`EXECUTE` tier) enforce mandatory step-up 2FA verification using a 6-digit time-sensitive one-time PIN (OTP) issued dynamically (`POST /api/auth/step-up-otp`) and validated alongside the cryptographic single-use confirmation token, preventing automated or hijacked fund debits.
 
 > [!NOTE]
 > **Sandbox Evaluation Notice:** All remittance corridors, foreign exchange rates, mock bank clearing gateways, and account balances run in a simulated sandbox environment for demonstration and algorithmic evaluation (not connected to live production SWIFT rails or real currency).
@@ -188,10 +189,12 @@ The database automatically seeds an initial student persona, authentication cred
 - **Daily Spending Limit:** `1,000,000.00 BDT`
 
 ### Authentication Endpoints:
+- `POST /api/auth/registration` - Register a new student account and auto-provision sandbox balance (aliases `POST /api/auth/register`)
 - `POST /api/auth/login` - Authenticate credentials (`studentIdOrEmail`, `password`) and receive signed JWT
-- `GET /api/auth/session` - Verify active JWT bearer token and retrieve student profile
+- `GET /api/auth/session` - Verify active JWT bearer token and retrieve student profile (aliases `GET /api/auth/me`)
 - `POST /api/auth/logout` - Terminate session and record audit event
 - `GET /api/auth/demo-credentials` - Quick sandbox demo credentials
+- `POST /api/auth/step-up-otp` - Issue time-sensitive 6-digit 2FA step-up OTP for settlement authorization
 
 ### Mock Corridors:
 | Provider | Inverse Rate | Fees | Speed | Reliability | Rating |
@@ -208,21 +211,28 @@ The database automatically seeds an initial student persona, authentication cred
 The system implements complete RESTful HTTP operations using `@Param()`, `@Body()`, `@Query()`, `@Get()`, `@Post()`, `@Put()`, `@Patch()`, and `@Delete()`:
 
 - `POST /api/chat` - Natural language query processing (`@Body()`)
+- `POST /api/invoice/extract` - University tuition invoice document parsing (`@Body()`)
 - `GET /api/accounts/:id` - Fetch student account balance & limits (`@Param('id')`)
 - `PUT /api/accounts/:id/limits` - Update student daily limit (`@Param('id')`, `@Body()`)
 - `POST /api/accounts/:id/deposit` - Deposit funds to student account (`@Param('id')`, `@Body()`)
+- `POST /api/accounts/:id/card-deposit` - Student virtual credit card sandbox deposit (`@Param('id')`, `@Body()`)
 - `GET /api/rates` - Remittance corridor rates with query filtering (`@Query('activeOnly')`, `@Query('targetCurrency')`)
+- `GET /api/rates/stream` - Server-Sent Events (SSE) live rate ticker stream
+- `GET /api/rates/live-feed` - Real-time market feed with spread calculations
 - `GET /api/rates/:id` - Remittance corridor rate by ID (`@Param('id')`)
 - `PUT /api/rates/:id` - Update remittance corridor rate or status (`@Param('id')`, `@Body()`)
 - `DELETE /api/rates/:id` - Deactivate corridor rate (`@Param('id')`)
 - `POST /api/routes/compare` - Compare remittance corridors with multi-objective scoring (`@Body()`)
+- `POST /api/routes/installments` - Smart tuition installment split planner (`@Body()`)
 - `GET /api/transfers` - List student transfers with status filtering (`@Query('studentId')`, `@Query('status')`)
 - `GET /api/transfers/:id` - Transfer details by ID (`@Param('id')`)
+- `GET /api/transfers/:id/receipt` - Official transfer verification receipt & checksum (`@Param('id')`)
 - `POST /api/transfers/draft` - Create pending transfer draft (`@Body()`)
 - `PUT /api/transfers/:id` - Update draft recipient before confirmation (`@Param('id')`, `@Body()`)
 - `PATCH /api/transfers/:id` - Partial update of unconfirmed transfer draft (`@Param('id')`, `@Body()`)
 - `DELETE /api/transfers/:id` - Discard transfer draft (`@Param('id')`)
-- `POST /api/transfers/:id/confirm` - User-consented transfer execution (`@Param('id')`, `@Body()`)
+- `POST /api/transfers/:id/confirm` - User-consented transfer execution with 2FA step-up OTP (`@Param('id')`, `@Body()`)
+- `POST /api/webhooks/bank-clearing` - Inbound bank clearing settlement webhook with secret verification (`@Body()`, `@Headers()`)
 - `POST /api/transfers/:id/compensate` - Saga compensating transaction rollback (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/rollback` - Unified Saga rollback restoring student balance and unreserving gateway funds (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/cancel` - Cancel transfer draft (`@Param('id')`)
@@ -231,6 +241,7 @@ The system implements complete RESTful HTTP operations using `@Param()`, `@Body(
 - `DELETE /api/audit/:id` - Sandbox development audit log pruning (AdminRoleGuard only) (`@Param('id')`)
 - `POST /api/sandbox/reset` - Reset sandbox database to seed data (AdminRoleGuard & non-production only)
 - `GET /api/sandbox/export-logs` - Export full audit records archive (AdminRoleGuard only)
+- `POST /api/auth/step-up-otp` - Issue time-sensitive 6-digit 2FA step-up OTP (`@Req()`)
 
 ---
 
