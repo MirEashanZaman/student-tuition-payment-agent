@@ -470,6 +470,57 @@ Your duties:
       };
     }
 
+    if (lower.startsWith('select route') || lower.startsWith('choose route') || lower.startsWith('use route')) {
+      const allRates = await this.db.getAllRates();
+      const activeRates = allRates.filter((r) => r.is_active);
+      const rates = activeRates.length > 0 ? activeRates : allRates;
+      const matched = rates.find((r) =>
+        lower.includes(r.provider_name.toLowerCase()) ||
+        lower.includes(r.provider_name.split(' ')[0].toLowerCase())
+      ) || rates[0];
+
+      const university = 'University of Toronto (Tuition Office)';
+      const targetUsd = amountUsd > 0 ? amountUsd : 3000;
+      const draft = await this.toolsService.createTransferDraft(
+        studentId,
+        matched.id,
+        targetUsd,
+        university,
+        'REG-FALL-2026',
+      );
+
+      executedCalls.push({
+        toolName: 'createTransferDraft',
+        params: { studentId, routeId: matched.id, amountUsd: targetUsd, recipientUniversity: university },
+        result: draft,
+      });
+
+      replyText =
+        `### Transfer Draft Generated: \`${draft.transferId}\`\n\n` +
+        `• **Settlement Corridor:** ${draft.providerName}\n` +
+        `• **Recipient University:** ${draft.recipientUniversity}\n` +
+        `• **Target Amount:** $${draft.targetAmountUsd.toLocaleString()} USD\n` +
+        `• **Total Landed Cost:** **${draft.sourceAmountBdt.toLocaleString()} BDT** (Includes ${draft.totalFeeBdt.toLocaleString()} BDT fee + FX spread)\n` +
+        `• **Estimated Arrival:** ${new Date(draft.estimatedDeliveryDate).toLocaleString()}\n\n` +
+        `**Permission Tier Notice:** Autonomous agents cannot unilaterally execute fund movements. Explicit human confirmation is required below:`;
+
+      return {
+        message: replyText,
+        toolCallsExecuted: executedCalls,
+        suggestedActions: [
+          {
+            label: `Confirm Transfer (${draft.transferId.slice(0, 8)})`,
+            actionType: 'CONFIRM_DRAFT',
+            payload: {
+              transferId: draft.transferId,
+              confirmationToken: draft.confirmationToken,
+            },
+          },
+        ],
+        securityFlags: { isSuspicious: false, flaggedPatterns: [] },
+      };
+    }
+
     if (
       lower.includes('pay') ||
       lower.includes('tuition') ||
