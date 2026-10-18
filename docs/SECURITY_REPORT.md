@@ -41,33 +41,45 @@ To prevent autonomous agent hallucination or malicious client abuse from executi
 3. **EXECUTE**:
    - **Target Persona / State:** Verified human student authorizing a finalized transaction draft.
    - **Allowed Actions:** All `DRAFT` actions plus `confirmTransfer`, `compensateTransfer` (Saga rollback), account deposits, and daily limit adjustments (admin only).
-   - **Crucial Safety Boundary:** The AI agent and automated background workers are strictly barred from the `EXECUTE` tier. Even when a user session possesses `EXECUTE` permissions, `AgentToolsService.confirmTransfer` requires `isUserInitiated = true`, a matching single-use one-time confirmation token, token freshness within 15 minutes, and explicit boolean user consent (`userConsent: true`).
+   - **Crucial Safety Boundary:** The AI agent and automated background workers are strictly barred from the `EXECUTE` tier. Even when a user session possesses `EXECUTE` permissions, `AgentToolsService.confirmTransfer` requires `isUserInitiated = true`, a matching single-use one-time confirmation token, token freshness within 15 minutes, explicit boolean user consent (`userConsent: true`), and verified 6-digit Step-Up 2FA OTP verification (`twoFactorPin`).
    - **Enforcement Guard:** `@RequirePermissionTier(PermissionTier.EXECUTE)` and `PermissionTierValidator.validateToolExecution`.
 
 ### Permission Matrix
 
 | Endpoint / Action | Method | Minimum Tier | Scoping Guard | Description |
 | :--- | :--- | :--- | :--- | :--- |
+| `/api/auth/registration` | `POST` | Public | Rate Limited | Student registration & sandbox wallet auto-provisioning (aliases `/api/auth/register`) |
+| `/api/auth/login` | `POST` | Public | Rate Limited | Student credential authentication with scrypt hashing and JWT issuance |
+| `/api/auth/session` | `GET` | `READ_ONLY` | `JwtAuthGuard` | Verifies active JWT bearer token and returns student profile (aliases `/api/auth/me`) |
+| `/api/auth/logout` | `POST` | `READ_ONLY` | `JwtAuthGuard` | Terminates student session and records audit event |
+| `/api/auth/step-up-otp` | `POST` | `EXECUTE` | `StudentScopeGuard` | Issues time-sensitive 6-digit Step-Up 2FA OTP for settlement authorization |
 | `/api/accounts/:id` | `GET` | `READ_ONLY` | `StudentScopeGuard` | Student balance, daily limit, and remaining allowance |
+| `/api/accounts/:id/limits`| `PUT` | `EXECUTE` | `AdminRoleGuard` | Administrative limit adjustment |
+| `/api/accounts/:id/deposit`| `POST` | `EXECUTE` | `AdminRoleGuard` | Administrative account funding |
+| `/api/accounts/:id/card-deposit`| `POST` | `EXECUTE` | `StudentScopeGuard` | Virtual card deposit with PCI DSS compliant number masking |
 | `/api/rates` | `GET` | Public | None | Remittance corridors, inverse rates, flat & percentage fees |
+| `/api/rates/stream` | `GET` | Public | None | Server-Sent Events (SSE) live rate ticker stream |
+| `/api/rates/live-feed` | `GET` | Public | None | Real-time market feed with spread calculations |
 | `/api/rates/:id` | `GET` | Public | None | Detailed corridor clearing speed and reliability profile |
+| `/api/rates/:id` | `PUT/DELETE`| `EXECUTE` | `AdminRoleGuard` | Administrative corridor rate configuration |
 | `/api/routes/compare` | `POST` | `READ_ONLY` | `StudentScopeGuard` | Algorithmic multi-objective route ranking |
+| `/api/routes/installments` | `POST` | `READ_ONLY` | `PermissionTierGuard` | Smart tuition installment split planner respecting transfer caps |
+| `/api/invoice/extract` | `POST` | `READ_ONLY` | `StudentScopeGuard` | University tuition invoice document parsing & parameter extraction |
 | `/api/chat` | `POST` | `READ_ONLY` | `StudentScopeGuard` | Conversational assistant with prompt injection filter |
 | `/api/transfers` | `GET` | `READ_ONLY` | `StudentScopeGuard` | Authenticated student transfer history |
 | `/api/transfers/:id` | `GET` | `READ_ONLY` | `assertTransferOwner` | Specific transfer status and corridor details |
-| `/api/audit` | `GET` | `READ_ONLY` | Account Scoped | Authenticated student append-only audit log |
-| `/api/audit/:id` | `GET` | `READ_ONLY` | Account Scoped | Specific audit record entry |
-| `/api/audit/:id` | `DELETE` | `EXECUTE` | `AdminRoleGuard` | Administrative test teardown and sandbox reset (see Section 2.3) |
+| `/api/transfers/:id/receipt` | `GET` | `READ_ONLY` | `assertTransferOwner` | Official vector receipt data and SHA-256 fingerprint verification |
 | `/api/transfers/draft` | `POST` | `DRAFT` | `StudentScopeGuard` | Pre-transaction reservation draft with single-use token |
 | `/api/transfers/:id` | `PUT/PATCH` | `DRAFT` | `assertTransferOwner` | Modifies university or registration number |
 | `/api/transfers/:id` | `DELETE` | `DRAFT` | `assertTransferOwner` | Discards pending draft prior to confirmation |
 | `/api/transfers/:id/cancel`| `POST` | `DRAFT` | `assertTransferOwner` | Cancels draft and logs `TRANSFER_CANCELLED` |
-| `/api/transfers/:id/confirm`| `POST` | `EXECUTE` | `assertTransferOwner` | Debits balance, updates daily spent, advances state |
+| `/api/transfers/:id/confirm`| `POST` | `EXECUTE` | `assertTransferOwner` | Debits balance, verifies 2FA OTP & token, advances state |
 | `/api/transfers/:id/compensate`| `POST` | `EXECUTE` | `assertTransferOwner` | Saga rollback restoring reserved funds upon rail failure |
 | `/api/transfers/:id/rollback`| `POST` | `EXECUTE` | `assertTransferOwner` | Saga rollback restoring student balance and unreserving gateway funds |
-| `/api/accounts/:id/limits`| `PUT` | `EXECUTE` | `AdminRoleGuard` | Administrative limit adjustment |
-| `/api/accounts/:id/deposit`| `POST` | `EXECUTE` | `AdminRoleGuard` | Administrative account funding |
-| `/api/rates/:id` | `PUT/DELETE`| `EXECUTE` | `AdminRoleGuard` | Administrative corridor rate configuration |
+| `/api/webhooks/bank-clearing`| `POST` | Public | Webhook Secret | Inbound settlement rail callback with HMAC secret validation |
+| `/api/audit` | `GET` | `READ_ONLY` | Account Scoped | Authenticated student append-only audit log |
+| `/api/audit/:id` | `GET` | `READ_ONLY` | Account Scoped | Specific audit record entry |
+| `/api/audit/:id` | `DELETE` | `EXECUTE` | `AdminRoleGuard` | Administrative test teardown and sandbox reset (see Section 2.3) |
 
 ### Multi-Layer Enforcement Architecture
 
@@ -103,6 +115,8 @@ The audit trail operates strictly as an append-only ledger during standard stude
 - **Sliding-Window Rate Limiting**: `ApiRateLimitMiddleware` enforces client IP rate limiting: 5 attempts per 15 minutes on `/api/auth/login`, 20 requests per minute on `/api/chat`, and 120 requests per minute across general API endpoints.
 - **Hardened HTTP Headers**: Helmet sets `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, and strips `X-Powered-By`.
 - **Least-Privilege Containers**: Backend and frontend containers run as unprivileged `node` users with `read_only` root filesystems, dropped capabilities (`ALL`), `no-new-privileges: true`, and strict memory/CPU limits.
+- **Step-Up 2FA & Dynamic OTP Challenge**: `AgentToolsService.generateStepUpOtp` and `AgentToolsService.verifyStepUpPin` enforce dynamic, cryptographically generated 6-digit one-time PINs for all high-value `EXECUTE` tier operations. The PIN has a strict 300-second TTL and must be supplied along with the single-use `confirmationToken` to finalize settlement, neutralizing session-hijacking and automated bot script attacks.
+- **Strict Registration DTO Validation**: `RegistrationDto` enforces strict regex patterns on `studentId` (`/^[A-Za-z0-9_-]{2,64}$/`), `studentName` (`/^[^\u0000-\u001F<>]{2,128}$/`), RFC 5322 compliant emails, and 64-byte `scrypt` password derivation with constant-time verification.
 
 ---
 
@@ -113,7 +127,7 @@ The following risk register categorizes known vulnerabilities, structural limita
 | Risk ID | Category | Threat / Vulnerability Description | Severity | Current Sandbox Mitigation | Residual Risk & Required Production Action |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **SEC-01** | **Identity & Session** | Stateless JWT stored in client-side storage is susceptible to theft via physical device compromise or token leakage. | **High** | Short-lived tokens, HMAC-SHA256 signature verification, strict CORS allowlist, and zero client token exposure across SSR routes. | In production, migrate to secure, HttpOnly, SameSite=Strict cookies with rotating refresh tokens and server-side Redis revocation blocklists. |
-| **SEC-02** | **Session Escalation** | Self-selection of permission tiers at registration could allow students to self-provision `EXECUTE` rights. | **High** | Physical human confirmation, single-use token match, 15-minute token TTL, and balance checks are enforced on every transfer regardless of tier. | Production requires server-side tier provisioning bound to institutional student verification and step-up biometric/SMS MFA for execution. |
+| **SEC-02** | **Session Escalation** | Self-selection of permission tiers at registration could allow students to self-provision `EXECUTE` rights. | **High** | Physical human confirmation, single-use token match, 15-minute token TTL, mandatory 6-digit Step-Up 2FA OTP verification (`twoFactorPin`), and balance checks are enforced on every transfer regardless of tier. | Production requires server-side tier provisioning bound to institutional student verification and step-up biometric/SMS MFA for execution. |
 | **SEC-03** | **Rate Limiting** | Rate limiting is implemented in-memory per Node.js process; counters reset on container restart and do not coordinate across horizontally scaled replicas. | **High** | Local sliding-window limiter throttles individual containers (5 auth / 15m, 20 chat / min, 120 api / min) with automated Retry-After headers. | Deploy distributed Redis token-bucket rate limiting at the API Gateway or ingress controller level with cloud-edge WAF / DDoS filtering. |
 | **SEC-04** | **Financial Settlement & Sandbox Mock Data** | All accounts, exchange rates, corridor fees, and bank clearing settlement rails operate entirely on simulated mock data in a sandbox environment and are not connected to real money. | **High** | High-fidelity mock banking gateway (`MockBankGateway`) and deterministic rate repository simulate settlement latencies, wire reference numbers, fee calculations, and Saga compensation rollbacks for algorithmic evaluation. | The system is strictly an academic sandbox demonstration and not certified for live capital. Production requires real correspondent banking APIs, ISO 20022 clearing rails, central bank foreign exchange declaration integration (Form A2), and automated AML/CFT sanctions screening. |
 | **SEC-05** | **Adversarial AI / LLM & Prompt Injection** | Prompt injection attacks might attempt novel multi-turn semantic jailbreaks to bypass conversational assistant rules. Regex and keyword filters are pattern matching and can theoretically be bypassed by clever linguistic obfuscation. | **Medium** | Multi-layer defense: While `PromptInjectionFilter` provides a first-line heuristic filter, foundational safety is enforced in compiled NestJS code (`PermissionTierGuard`, `StudentScopeGuard`, `FinancialLimitsGuard`). The agent is architecturally blocked from executing transfers or adjusting financial limits regardless of prompt manipulation. | Pattern-matching filters are an initial perimeter layer; production deployments should add dedicated semantic moderation guardrail models (e.g., Llama Guard, NeMo Guardrails) in addition to backend code invariants. |
