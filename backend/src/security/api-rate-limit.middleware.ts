@@ -80,7 +80,8 @@ export class ApiRateLimitMiddleware {
       const limit = parseInt(process.env.RATE_LIMIT_CHAT_MAX || '', 10) || defaultLimit;
       return { name: 'chat', limit, windowMs: 60 * 1000 };
     }
-    return { name: 'api', limit: 120, windowMs: 60 * 1000 };
+    const apiLimit = parseInt(process.env.RATE_LIMIT_API_MAX || '', 10) || 120;
+    return { name: 'api', limit: apiLimit, windowMs: 60 * 1000 };
   }
 
   private removeExpiredBuckets(now: number): void {
