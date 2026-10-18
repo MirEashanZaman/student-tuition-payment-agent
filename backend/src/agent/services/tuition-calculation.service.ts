@@ -24,8 +24,21 @@ export class TuitionCalculationService implements ITuitionCalculator {
     const percentageFeeBdt = +(sourceAmountBdt * (route.transfer_fee_percent || 0)).toFixed(2);
     const totalFeeBdt = +(flatFeeBdt + percentageFeeBdt).toFixed(2);
 
+    const effectiveBenchmark =
+      route.target_currency === 'CNY'
+        ? 16.80
+        : route.target_currency === 'GBP'
+        ? 155.0
+        : route.target_currency === 'EUR'
+        ? 129.0
+        : route.target_currency === 'CAD'
+        ? 87.5
+        : route.target_currency === 'AUD'
+        ? 78.0
+        : benchmarkRateBdt;
+
     const fxMarkupLossBdt = +(
-      Math.max(0, inverseRate - benchmarkRateBdt) * safeAmount
+      Math.max(0, inverseRate - effectiveBenchmark) * safeAmount
     ).toFixed(2);
 
     const totalCostBdt = +(totalFeeBdt + fxMarkupLossBdt).toFixed(2);
