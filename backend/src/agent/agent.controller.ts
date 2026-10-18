@@ -295,6 +295,17 @@ export class AgentController {
     return await this.assertTransferOwner(id, request.user.studentId);
   }
 
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.READ_ONLY)
+  @Get('transfers/:id/receipt')
+  async getTransferReceipt(
+    @Param('id') id: string,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    await this.assertTransferOwner(id, request.user.studentId);
+    return await this.toolsService.generateReceiptData(id, request.user.studentId);
+  }
+
   @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
   @RequirePermissionTier(PermissionTier.DRAFT)
   @Post('transfers/draft')
