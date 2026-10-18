@@ -151,4 +151,5 @@ export interface ChatMessage {
     isSuspicious: boolean;
     flaggedPatterns: string[];
   };
+  receiptTransferId?: string;
 }
