@@ -87,6 +87,11 @@ export class CompareRoutesDto {
   @IsOptional()
   @IsIn(['balanced', 'cheapest', 'fastest', 'reliable'])
   preference?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(10)
+  targetCurrency?: string;
 }
 
 export class PlanInstallmentDto {
@@ -360,6 +365,7 @@ export class AgentController {
             timestamp: new Date().toISOString(),
             status: 'LIVE_TICK',
             corridors: [
+              { code: 'CNY', volatility: '+0.01%', marketStatus: 'OPEN' },
               { code: 'USD', volatility: '+0.02%', marketStatus: 'OPEN' },
               { code: 'GBP', volatility: '-0.01%', marketStatus: 'OPEN' },
               { code: 'EUR', volatility: '+0.04%', marketStatus: 'OPEN' },
@@ -424,6 +430,7 @@ export class AgentController {
       body.amountUsd,
       body.tuitionDeadline,
       body.preference,
+      body.targetCurrency,
     );
   }
 
