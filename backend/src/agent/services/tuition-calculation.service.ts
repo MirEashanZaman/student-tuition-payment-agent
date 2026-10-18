@@ -17,13 +17,15 @@ export class TuitionCalculationService implements ITuitionCalculator {
     route: RateRecord,
     benchmarkRateBdt = parseFloat(process.env.BENCHMARK_RATE_BDT || '') || 119.0,
   ): RouteCostBreakdown {
-    const sourceAmountBdt = +(amountUsd * route.inverse_rate).toFixed(2);
-    const flatFeeBdt = route.transfer_fee_flat_bdt;
-    const percentageFeeBdt = +(sourceAmountBdt * route.transfer_fee_percent).toFixed(2);
+    const safeAmount = !isNaN(amountUsd) && amountUsd > 0 ? amountUsd : 0;
+    const inverseRate = !isNaN(route.inverse_rate) && route.inverse_rate > 0 ? route.inverse_rate : 119.0;
+    const sourceAmountBdt = +(safeAmount * inverseRate).toFixed(2);
+    const flatFeeBdt = route.transfer_fee_flat_bdt || 0;
+    const percentageFeeBdt = +(sourceAmountBdt * (route.transfer_fee_percent || 0)).toFixed(2);
     const totalFeeBdt = +(flatFeeBdt + percentageFeeBdt).toFixed(2);
 
     const fxMarkupLossBdt = +(
-      Math.max(0, route.inverse_rate - benchmarkRateBdt) * amountUsd
+      Math.max(0, inverseRate - benchmarkRateBdt) * safeAmount
     ).toFixed(2);
 
     const totalCostBdt = +(totalFeeBdt + fxMarkupLossBdt).toFixed(2);
