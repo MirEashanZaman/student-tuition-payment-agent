@@ -7,7 +7,7 @@
 
 The **Student Tuition Payment Agent** is an autonomous, security-first financial assistant engineered specifically for international students paying foreign university tuition from Bangladesh (BDT). 
 
-Traditional cross-border tuition remittances suffer from opaque exchange-rate markups, hidden wire intermediary fees, and delayed settlements that risk university enrollment holds. Our system addresses these pain points by pairing an **Autonomous LLM Agent (Google Gemini API with Offline Sandbox Fallback)** with a **strict NestJS Policy Engine**, a **Multi-Objective Corridors Scoring Engine**, and an **Immutable PostgreSQL Audit Trail**.
+Traditional cross-border tuition remittances suffer from opaque exchange-rate markups, hidden wire intermediary fees, and delayed settlements that risk university enrollment holds. Our system addresses these pain points by pairing an **Autonomous LLM Agent (Google Gemini API with Offline Sandbox Fallback)** with a **strict NestJS Policy Engine**, a **Multi-Objective Corridors Scoring Engine**, and an **Append-Only PostgreSQL Audit Trail**.
 
 ### Architecture Diagram
 
@@ -39,7 +39,7 @@ graph TD
         Accounts[("accounts Table")]
         Rates[("rates Table")]
         Transfers[("transfers Table")]
-        AuditLog[("audit_log Table (Immutable)")]
+        AuditLog[("audit_log Table (Append-Only)")]
         end
     end
 
@@ -142,10 +142,16 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 | **Backend Framework** | **NestJS (Node.js/TypeScript)** | Enterprise-grade modular architecture, dependency injection, strict validation pipes, built-in exception filters. |
 | **Frontend Framework** | **Next.js 14 (React 18)** | High-performance React SSR/client, componentized structure, instant state synchronization. |
 | **Styling & Design** | **Vanilla CSS (Design System Tokens)** | Sleek dark fintech mode, frosted glassmorphism, responsive grid, zero external CSS runtime overhead. |
-| **Database** | **PostgreSQL 14+ (pg driver)** | ACID-compliant relational storage for financial accounts, transactions, and immutable audit logs. |
+| **Database** | **PostgreSQL 14+ (pg driver)** | ACID-compliant relational storage for financial accounts, transactions, and append-only audit logs. |
 | **AI / Agent Engine** | **Google Gemini 1.5 Flash + Sandbox Engine** | Low-latency tool calling; deterministic offline sandbox fallback for instant judge testing without API keys. |
 | **Testing** | **Jest & ts-jest** | Unit and integration test coverage for security guardrails, financial limit enforcement, and ranking logic. |
 | **Containerization** | **Docker & Docker Compose** | Reproducible, single-command environment spinning up frontend, backend, and PostgreSQL database. |
+
+### AI Agent Engine & Evaluator Offline Sandbox
+
+The agent defaults to `gemini-1.5-flash` (configurable via `GEMINI_MODEL`), Google's low-latency multimodal LLM. The system is designed to provide immediate evaluation without external network or API prerequisites:
+- **Offline Sandbox Fallback (`OfflineLlmClient`):** When `GEMINI_API_KEY` is omitted or set to the default mock key (`mock_key_offline_agent`), the system automatically activates a deterministic offline LLM client. This processes student queries, executes corridor ranking calculations, flags prompt injections, and generates drafts with 100% predictable fidelity and zero network latency.
+- **Live Google Gemini Engine (`GeminiLlmClient`):** When an evaluator supplies their own Gemini API key, the client connects to Google Generative AI using the configured model (`gemini-1.5-flash`). Calls are wrapped in defensive try/catch blocks with automatic fallback to the offline client on any rate limit, network timeout, or quota error.
 
 ---
 
@@ -166,7 +172,7 @@ The backend is engineered with production-grade software design patterns that is
 |---|---|---|
 | Route comparison and ranking | Strategy | Distinct scoring classes for Balanced, Cheapest, Fastest, and Reliable (`RouteScoringStrategy`). When a student indicates urgency (e.g., "prioritize speed"), the engine swaps strategy dynamically at runtime. |
 | Transfer lifecycle (draft, confirm, execute, fail) | State machine (a light Saga) | Validated transitions include `PENDING_CONFIRMATION` -> `CONFIRMED` -> `EXECUTED` -> `SETTLED`. The authenticated owner can request compensation for `CONFIRMED`, `EXECUTED`, or `FAILED` transfers. Account restoration and the `ROLLED_BACK` status change occur atomically; pending, settled, cancelled, blocked, or already rolled-back transfers cannot be compensated. |
-| Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small, decoupled handlers run sequentially: `PromptInjectionCheckHandler`, `PermissionTierCheckHandler`, `AnomalyCheckHandler`, `FinancialLimitCheckHandler`, `ConfirmationCheckHandler`. Any check can short-circuit, reject execution, and emit an immutable security audit event. |
+| Safety checks (limits, confirmation, unusual amounts) | Chain of Responsibility | Small, decoupled handlers run sequentially: `PromptInjectionCheckHandler`, `PermissionTierCheckHandler`, `AnomalyCheckHandler`, `FinancialLimitCheckHandler`, `ConfirmationCheckHandler`. Any check can short-circuit, reject execution, and emit an append-only security audit event. |
 | The 5 agent tools exposed to the LLM | Facade | `AgentToolsService` acts as a unified Facade that coordinates the bank gateway, rates engine, safety guardrails, state machine, and event emitter behind a clean tool interface for the AI assistant. |
 | LLM and mock bank | Dependency Inversion (the D in SOLID) | Business logic depends strictly on abstract interfaces (`ILlmClient`, `IBankGateway`). Production utilizes Gemini AI and direct banking rails, while automated test suites inject mock implementations without external network dependencies. |
 | Audit logging | Observer (NestJS events) | Operations emit decoupled domain events (`transfer.drafted`, `transfer.confirmed`, `transfer.compensated`, `route.compared`). An asynchronous `AuditLogListener` observer records events in the audit log, keeping core financial code clean of logging side-effects. |
@@ -199,11 +205,11 @@ The backend controller exposes full RESTful lifecycle operations incorporating `
 | POST | `/api/transfers/:id/confirm` | `@Param('id')`, `@Body()` | `id: string`, `ConfirmTransferDto` | Human-in-the-loop transfer execution (EXECUTE tier) |
 | POST | `/api/transfers/:id/compensate` | `@Param('id')`, `@Body()` | `id: string`, `CompensateTransferDto` | Saga compensating rollback transaction |
 | POST | `/api/transfers/:id/cancel` | `@Param('id')` | `id: string` | Cancel transfer draft |
-| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch immutable audit logs with multi-field filtering |
+| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch append-only audit logs with multi-field filtering |
 | GET | `/api/audit/:id` | `@Param('id')` | `id: string` | Fetch specific audit log by ID |
-| DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Delete specific audit log entry |
-| POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state |
-| GET | `/api/sandbox/export-logs` | None | None | Export audit log archive |
+| DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Sandbox development audit log pruning (AdminRoleGuard only) |
+| POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state (AdminRoleGuard & non-production only) |
+| GET | `/api/sandbox/export-logs` | None | None | Export audit log archive (AdminRoleGuard only) |
 
 ---
 
@@ -259,7 +265,7 @@ The repository incorporates an enterprise-grade automated CI/CD pipeline impleme
 
 | Stage | Trigger | Actions Executed | Purpose |
 |---|---|---|---|
-| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 46 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
+| **Backend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm test` (Jest suite, 80 test cases), `npm run build` | Validates security guardrails, financial limits, and NestJS production compilation. |
 | **Frontend CI** | Push & PR (`main`, `Eashan`) | `npm ci`, `npm run build` | Validates Next.js SSR and client bundle compilation with static page optimization. |
 | **Docker Build Verification** | On CI success | `docker build` backend and frontend images | Ensures multi-stage container builds succeed reproducibly for production deployments. |
 | **Security & Cleanliness Scan** | Push & PR | Node.js automated repository audit | Enforces code cleanliness, verifies zero exposed secrets, and prevents unauthorized syntax patterns. |
@@ -267,17 +273,42 @@ The repository incorporates an enterprise-grade automated CI/CD pipeline impleme
 
 ---
 
-## 10. Frontend Architecture & Rendering Strategy (SSG vs CSR)
+## 10. Authentication and Student Registration Architecture
 
-To optimize load latency for judges, provide instant first-contentful paint (FCP), and maintain real-time reactivity for financial operations, the Next.js 14 frontend implements a hybrid rendering strategy:
+The application provides a complete authentication, session management, and student registration subsystem designed for both production security and seamless hackathon evaluation:
 
-| Page | Route | Best Fit | Architectural Rationale & Why |
+### Cryptographic Security & Sessions
+- **Password Hashing:** Passwords are salted and hashed using Node.js `scrypt` with a 64-byte derived key and unique 16-byte cryptographically secure random salts.
+- **Stateless JWT Tokens:** Authentication returns HS256 signed JWT tokens containing student identity, email, role, and granted permission tier (`EXECUTE`).
+- **Session Verification:** `JwtAuthGuard` validates the `Authorization: Bearer <token>` header on protected routes and attaches the verified student context to incoming requests.
+
+### Student Registration Flow
+- **API Endpoint:** `POST /api/auth/registration` (with `POST /api/auth/register` alias).
+- **Validation:** Enforces non-empty student ID, student name, RFC-compliant email, and minimum 6-character password via `class-validator` and `zod` schemas.
+- **Account Auto-Provisioning:** Newly registered accounts receive an initial sandbox allocation of 850,000.00 BDT balance and 1,000,000.00 BDT daily limit.
+- **Audit Trail:** Registration operations record an append-only `AUTH_REGISTRATION_SUCCESS` event in the audit log.
+- **Frontend Route:** Accessible at `/registration` with dark theme styling, demo persona auto-fill, and immediate redirection into the student dashboard upon completion.
+
+### Evaluation Demo Account Showcase
+- **Demo Persona:** `STU-2026-BDT01` (Mir Eashan Zaman), password: `student123`.
+- **Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.
+
+---
+
+## 11. Next.js 14 Hybrid Rendering Architecture: SSG, ISR, SSR, and CSR
+
+The frontend implements an enterprise-grade hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:
+
+| Route | Strategy | Config / Implementation | Architectural Rationale & Why |
 |---|---|---|---|
-| **Home Page** | `/` | **SSG** | Static content with project headline, one-line pitch, and 3 feature pillars that never change at runtime. Pre-rendered to static HTML at build time for instant first-contentful paint (<10ms). Judges see this first without cold-start latency. |
-| **FAQ / "How it works"** | `/faq`, `/#faq` | **SSG** | Static text and educational compliance explanations answering sandbox real-money rules, defense-in-depth protection, and Saga rollbacks. Pre-rendered as static content for instant searchability and zero client bundle penalty. |
-| **Chat** | `/chat` | **CSR** | Fully interactive natural language agent studio, authenticated per-student session, real-time message mutations, and dynamic route calculations. Operates behind login and data changes constantly; requires zero SEO. |
-| **Dashboard** | `/dashboard`, `/audit` | **CSR** | Private, per-user financial data that must be fresh. Real-time balance calculations, active transfer state machine status, and fresh audit logs polled on an 8-second interval. |
-| **Login** | `/login` | **CSR** | A simple interactive client form with client-side credential validation, demo account auto-fill, and immediate localStorage JWT token acquisition. |
+| **FAQ / Compliance** (`/faq`) | **SSG** (Static Site Generation) | `export const dynamic = 'force-static'` | Pure educational content explaining sandbox security, defense-in-depth, and Saga rollbacks. Pre-rendered to HTML at build time for sub-10ms delivery from edge CDN cache with zero server execution penalty. |
+| **Corridors & FX Board** (`/rates`) | **ISR** (Incremental Static Regeneration) | `export const revalidate = 60` | Public remittance corridors and live foreign exchange rates (BDT to USD) are identical for all visiting students. Pre-rendered statically at build time, and revalidated in the background every 60 seconds when new requests arrive, delivering instant cached loads with guaranteed fresh bank rates. |
+| **System Liveness Verifier** (`/status`) | **SSR** (Server-Side Rendering) | `export const dynamic = 'force-dynamic'`, `cache: 'no-store'` | Real-time regulatory audit verifier measuring backend ping latency, database store connectivity, rate limiter health, and cryptographic session verification. Must never be served from stale cache; dynamically evaluated on the server per request at the exact millisecond of access. |
+| **Agent Chat Studio** (`/chat`) | **CSR** (Client-Side Rendering) | `'use client'`, React state & streaming | Stateful AI conversational agent loop managing interactive speech/text input, real-time tool calling execution, and student JWT authorization. |
+| **Financial Dashboard** (`/dashboard`) | **CSR** (Client-Side Rendering) | `'use client'`, 8-second polling interval | Private, authenticated student account ledger displaying dynamic BDT balance, daily limit quotas, pending transfer state machines, and deposit actions. |
+| **Audit & Safety Ledger** (`/audit`) | **CSR** (Client-Side Rendering) | `'use client'`, client-side filtering | Interactive security audit log view enabling multi-field client filtering by permission tier (`READ_ONLY`, `DRAFT`, `EXECUTE`) and status, plus browser JSON file export. |
+| **Student Sign In** (`/login`) | **CSR** (Client-Side Rendering) | `'use client'`, password eye toggle | Interactive authentication form with client-side credential validation, demo account auto-fill, and immediate `localStorage` JWT token acquisition. |
+| **Student Registration** (`/registration`) | **CSR** (Client-Side Rendering) | `'use client'`, form validation | Interactive registration form with real-time field validation, demo persona auto-fill, and post-registration automated session onboarding. |
 
 
 

@@ -3,12 +3,15 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { ApiRateLimitMiddleware } from './security/api-rate-limit.middleware';
+import { SecurityArmorMiddleware } from './security/security-armor.middleware';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.enableShutdownHooks();
   const server = app.getHttpAdapter().getInstance();
   const apiRateLimiter = new ApiRateLimitMiddleware();
+  const securityArmor = app.get(SecurityArmorMiddleware);
   server.disable('x-powered-by');
   app.use((_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -22,12 +25,8 @@ async function bootstrap() {
     response.setHeader('Cache-Control', 'no-store');
     next();
   });
-  app.use(apiRateLimiter.use.bind(apiRateLimiter));
-  app.use(express.json({ limit: '16kb' }));
-  app.use(express.urlencoded({ extended: false, limit: '16kb' }));
-
   const allowedOrigins = new Set(
-    (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:4567')
+    (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:4567,http://127.0.0.1:4567')
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
@@ -37,6 +36,11 @@ async function bootstrap() {
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
+
+  app.use(express.json({ limit: '16kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+  app.use(securityArmor.use.bind(securityArmor));
+  app.use(apiRateLimiter.use.bind(apiRateLimiter));
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -48,12 +52,13 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT || 4568;
-  await app.listen(port);
+  const host = process.env.HOST || '0.0.0.0';
+  await app.listen(port, host);
   logger.log(`================================================================`);
   logger.log(` FinTechathon 2026: Student Tuition Payment Agent Backend       `);
-  logger.log(` Server is listening at http://localhost:${port}                `);
-  logger.log(` Health check: http://localhost:${port}/api/rates               `);
-  logger.log(` Chat API: http://localhost:${port}/api/chat                    `);
+  logger.log(` Server is listening at http://${host}:${port}                  `);
+  logger.log(` Health check: http://${host}:${port}/api/rates                 `);
+  logger.log(` Chat API: http://${host}:${port}/api/chat                      `);
   logger.log(`================================================================`);
 }
 

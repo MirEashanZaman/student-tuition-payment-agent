@@ -14,17 +14,30 @@ interface RateLimitPolicy {
 export class ApiRateLimitMiddleware {
   private readonly buckets = new Map<string, RateLimitBucket>();
   private readonly maxBuckets = 10000;
+  private lastCleanup = Date.now();
 
   use(request: Request, response: Response, next: NextFunction): void {
-    if (!request.path.startsWith('/api/')) {
+    if (request.method === 'OPTIONS') {
+      next();
+      return;
+    }
+    const cleanPath = request.path ? request.path.replace(/\/+$/, '') : '';
+    if (!cleanPath.startsWith('/api')) {
       next();
       return;
     }
 
-    const policy = this.getPolicy(request.path);
-    const address = request.ip || request.socket.remoteAddress || 'unknown';
+    const policy = this.getPolicy(cleanPath);
+    const rawAddress = request.ip || request.socket.remoteAddress || 'unknown';
+    const address = rawAddress.replace(/^::ffff:/, '');
     const key = `${address}:${policy.name}`;
     const now = Date.now();
+
+    if (now - this.lastCleanup > 60000) {
+      this.removeExpiredBuckets(now);
+      this.lastCleanup = now;
+    }
+
     let bucket = this.buckets.get(key);
 
     if (!bucket || now >= bucket.resetAt) {
@@ -53,10 +66,19 @@ export class ApiRateLimitMiddleware {
 
   private getPolicy(path: string): RateLimitPolicy {
     if (path === '/api/auth/login') {
-      return { name: 'login', limit: 5, windowMs: 15 * 60 * 1000 };
+      const defaultLimit = process.env.NODE_ENV === 'test' ? 5 : 60;
+      const limit = parseInt(process.env.RATE_LIMIT_LOGIN_MAX || '', 10) || defaultLimit;
+      return { name: 'login', limit, windowMs: 15 * 60 * 1000 };
+    }
+    if (path === '/api/auth/registration' || path === '/api/auth/register') {
+      const defaultLimit = process.env.NODE_ENV === 'test' ? 10 : 30;
+      const limit = parseInt(process.env.RATE_LIMIT_REGISTRATION_MAX || '', 10) || defaultLimit;
+      return { name: 'registration', limit, windowMs: 15 * 60 * 1000 };
     }
     if (path === '/api/chat') {
-      return { name: 'chat', limit: 20, windowMs: 60 * 1000 };
+      const defaultLimit = process.env.NODE_ENV === 'test' ? 20 : 60;
+      const limit = parseInt(process.env.RATE_LIMIT_CHAT_MAX || '', 10) || defaultLimit;
+      return { name: 'chat', limit, windowMs: 60 * 1000 };
     }
     return { name: 'api', limit: 120, windowMs: 60 * 1000 };
   }

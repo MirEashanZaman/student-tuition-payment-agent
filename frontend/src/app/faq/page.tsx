@@ -5,11 +5,12 @@ import {
   ShieldCheck,
   Zap,
   ArrowRight,
-  Lock,
-  RefreshCw,
-  Clock,
   Home as HomeIcon,
+  Activity,
+  Layers,
 } from 'lucide-react';
+
+export const dynamic = 'force-static';
 
 export default function FaqPage() {
   const faqItems = [
@@ -17,7 +18,7 @@ export default function FaqPage() {
       id: 'real-money',
       question: 'Is this real money?',
       answer:
-        'No. This system operates entirely within a high-fidelity institutional sandbox simulation. All student balances, correspondent banking rails (Standard Chartered, City Bank, bKash remittance), and university student accounts are sandboxed to demonstrate real-world production safety without capital exposure.',
+        'No. This system operates entirely within a high-fidelity institutional sandbox simulation. All student balances, correspondent banking rails, and university accounts are sandboxed to demonstrate real-world production safety without capital exposure.',
       highlight:
         'Sandbox environment: safe for full functional evaluation without real monetary debit.',
     },
@@ -41,7 +42,7 @@ export default function FaqPage() {
       id: 'failure-rollback',
       question: 'What happens if a corridor clearance or wire transfer fails?',
       answer:
-        'The system executes an automated Saga compensation workflow. If any clearing rail fails or a university receiving bank rejects the transaction, the transfer status transitions to FAILED and a compensating transaction immediately unreserves and restores the funds back into your available BDT balance.',
+        'The system executes an automated Saga compensation workflow. If any clearing rail fails or a university receiving bank rejects the transaction, the transfer status transitions to FAILED and a compensating transaction immediately unreserves and restores the funds back into your available balance.',
       highlight:
         'Deterministic rollback: no funds can be stranded in pending or indeterminate states.',
     },
@@ -56,70 +57,121 @@ export default function FaqPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <header className="navbar bg-[#1E3A8A] text-white px-6 py-3 shadow-md sticky top-0 z-40">
-        <div className="navbar-start flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-xl bg-[#0D9488] flex items-center justify-center text-white font-extrabold shadow-sm">
-              <Zap className="w-6 h-6" />
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#0D9488] selection:text-white">
+      <header className="sticky top-0 z-40 bg-[#1E3A8A] border-b border-[#1E3A8A] text-white px-4 sm:px-8 py-3 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none">
+            <div className="w-9 h-9 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold">
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-white leading-tight">FinTechathon 2026</h1>
-              <p className="text-xs text-teal-300 font-medium">Topic C: Cross-Border Student Tuition Payment Agent</p>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-[#0D9488] text-white">
+                  Topic C
+                </span>
+              </div>
+              <p className="text-[11px] text-blue-100 font-medium">Cross-Border Student Tuition Agent</p>
             </div>
           </Link>
-        </div>
 
-        <div className="navbar-end flex items-center gap-3">
-          <Link
-            href="/"
-            className="btn btn-sm btn-ghost text-blue-200 hover:text-white flex items-center gap-1.5"
-          >
-            <HomeIcon className="w-4 h-4" />
-            <span>Overview</span>
-          </Link>
+          <nav className="hidden md:flex items-center gap-1.5 bg-[#172E6F] border border-[#2B4C9B] p-1 rounded-lg">
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span>Overview</span>
+            </Link>
+            <Link
+              href="/chat"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Studio</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              href="/audit"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Audit</span>
+            </Link>
+            <span className="w-px h-4 bg-[#2B4C9B] my-auto mx-1"></span>
+            <Link
+              href="/rates"
+              className="px-2.5 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors"
+            >
+              Rates (ISR)
+            </Link>
+            <Link
+              href="/status"
+              className="px-2.5 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors"
+            >
+              Status (SSR)
+            </Link>
+            <Link
+              href="/faq"
+              className="px-3 py-1.5 rounded text-xs font-semibold bg-[#0D9488] text-white shadow-sm"
+            >
+              FAQ (SSG)
+            </Link>
+          </nav>
+
           <Link
             href="/chat"
-            className="btn btn-sm bg-[#0D9488] hover:bg-teal-700 text-white border-none font-bold flex items-center gap-1.5"
+            className="py-2 px-3.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-xs shadow-sm flex items-center gap-1.5 transition-colors"
           >
-            <span>Agent Chat</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Launch Studio</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-10 space-y-8">
-        <div className="bg-gradient-to-br from-[#1E3A8A] via-[#172554] to-[#0F172A] text-white rounded-3xl p-8 sm:p-10 shadow-xl border border-blue-900/50">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold mb-4">
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Institutional Compliance &amp; Architectural Answers</span>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 sm:p-8 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-xs font-semibold">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Institutional Compliance &amp; Architectural Answers</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#EFF6FF] border border-[#DBEAFE] text-[#1E3A8A] text-xs font-bold font-mono">
+              <span>SSG: Pre-rendered Build-Time Static Page</span>
+            </div>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A] mb-2">
             How It Works &amp; Security FAQ
-          </h2>
-          <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl leading-relaxed">
-            Transparent explanations on fund custody, velocity limits, zero-trust human confirmation, and autonomous agent safety for judges and international students.
+          </h1>
+          <p className="text-sm sm:text-base text-[#64748B] max-w-3xl leading-relaxed">
+            Transparent explanations on fund custody, velocity limits, zero-trust human confirmation, and autonomous agent safety for evaluators and international students.
           </p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {faqItems.map((item, idx) => (
             <div
               key={item.id}
-              className="card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-xl p-6 shadow-sm transition-all"
             >
               <div className="flex items-start gap-4">
-                <span className="w-8 h-8 rounded-xl bg-teal-50 text-[#0D9488] text-sm font-bold flex items-center justify-center shrink-0 border border-teal-200">
+                <span className="w-8 h-8 rounded-lg bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-xs font-bold flex items-center justify-center shrink-0">
                   Q{idx + 1}
                 </span>
-                <div className="flex-1 space-y-3">
-                  <h3 className="font-bold text-base sm:text-lg text-slate-900">
+                <div className="flex-1 space-y-2">
+                  <h2 className="font-bold text-base sm:text-lg text-[#0F172A]">
                     {item.question}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
                     {item.answer}
                   </p>
-                  <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs font-medium flex items-start gap-2">
+                  <div className="p-3 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E3A8A] text-xs font-medium flex items-start gap-2">
                     <ShieldCheck className="w-4 h-4 text-[#0D9488] shrink-0 mt-0.5" />
                     <span>{item.highlight}</span>
                   </div>
@@ -129,35 +181,35 @@ export default function FaqPage() {
           ))}
         </div>
 
-        <div className="card bg-slate-100 border border-slate-200 rounded-3xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
           <div>
-            <h4 className="font-bold text-base text-slate-900">
+            <h3 className="font-bold text-base text-[#0F172A]">
               Ready to evaluate live tuition payment processing?
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
+            </h3>
+            <p className="text-xs text-[#64748B] mt-1">
               Launch the Agent Chat Studio to test quotes, route ranking, and human-in-the-loop confirmation.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="btn btn-outline border-slate-300 text-slate-700 hover:bg-slate-200 text-xs font-bold"
+              className="py-2 px-4 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold transition-colors"
             >
               Back to Overview
             </Link>
             <Link
               href="/chat"
-              className="btn bg-[#0D9488] hover:bg-teal-700 text-white border-none text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              className="py-2 px-4 rounded-lg bg-[#1E3A8A] hover:bg-[#172E6F] text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-colors"
             >
-              <span>Launch Assistant</span>
+              <span>Launch Studio</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-slate-400 py-6 border-t border-slate-200">
-        FinTechathon 2026 - Cross-Border Student Tuition Payment Agent
+      <footer className="text-center text-xs text-[#64748B] py-6 border-t border-[#E2E8F0] bg-white">
+        FinTechathon 2026 • Cross-Border Student Tuition Payment Agent
       </footer>
     </div>
   );

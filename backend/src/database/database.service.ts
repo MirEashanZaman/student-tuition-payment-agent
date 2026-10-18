@@ -170,11 +170,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const defaultAccount: AccountRecord = {
       id: 'acc-stu-2026-bdt',
       student_id: 'STU-2026-BDT01',
-      student_name: 'Tanvir Ahmed',
-      email: 'tanvir.student@fintechathon.org',
-      currency: 'BDT',
-      balance: 850000.00,
-      daily_limit: 1000000.00,
+      student_name: 'Mir Eashan Zaman',
+      email: 'eashan.student@fintechathon.org',
+      currency: process.env.DEFAULT_SOURCE_CURRENCY || 'BDT',
+      balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
+      daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
       daily_spent: 0.00,
       password_hash: PasswordHasher.hashPassword('student123'),
       role: 'STUDENT',
@@ -251,7 +251,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (!this.useMemoryStore && this.pool) {
       try {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true') {
           await this.pool.query(
             `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -347,6 +347,32 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       return res.rows[0] ? this.formatAccount(res.rows[0]) : null;
     }
     return this.memoryStore.accounts.get(id) || null;
+  }
+
+  async insertAccount(account: AccountRecord): Promise<AccountRecord> {
+    if (!this.useMemoryStore && this.pool) {
+      const res = await this.pool.query(
+        `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+          account.id,
+          account.student_id,
+          account.student_name,
+          account.email,
+          account.currency,
+          account.balance,
+          account.daily_limit,
+          account.daily_spent,
+          account.password_hash,
+          account.role,
+        ],
+      );
+      return this.formatAccount(res.rows[0]);
+    }
+    this.memoryStore.accounts.set(account.student_id, { ...account });
+    this.memoryStore.accounts.set(account.id, { ...account });
+    return account;
   }
 
   async updateAccountBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord> {
@@ -705,7 +731,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (!this.useMemoryStore && this.pool) {
       const result = await this.pool.query(
         `SELECT * FROM audit_log
-         WHERE account_id = $1
+         WHERE (account_id = $1 OR account_id IS NULL)
            AND ($2::text IS NULL OR permission_tier::text = $2)
            AND ($3::text IS NULL OR audit_log.status::text = $3)
          ORDER BY created_at DESC
@@ -715,7 +741,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       return result.rows.map(this.formatAudit);
     }
 
-    let logs = this.memoryStore.audit_log.filter((log) => log.account_id === accountId);
+    let logs = this.memoryStore.audit_log.filter((log) => !log.account_id || log.account_id === accountId);
     if (tier) {
       logs = logs.filter((log) => log.permission_tier === tier);
     }

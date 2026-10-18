@@ -78,11 +78,15 @@
 │   ├── TECHNICAL_DOCUMENTATION.md   # Architecture diagram, scoring math, lifecycle flow
 │   ├── SECURITY_REPORT.md           # Permission tiers, limit enforcement, risk matrix
 │   ├── PRESENTATION_DECK.md         # 10-minute pitch deck slides & speaker notes
+│   ├── FINTECHATHON_2026_PRESENTATION.pptx # Primary official presentation slide deck
 │   ├── DEMO_SCRIPT.md               # 5-minute video demonstration script
-│   └── EXECUTION_EVIDENCE.md        # Sandbox test execution logs with timestamps
+│   ├── EXECUTION_EVIDENCE.md        # Sandbox test execution logs with timestamps
+│   ├── execution-evidence.json      # Raw sandbox audit log export
+│   └── LICENSE                      # Open-source MIT License document copy
 │
 ├── docker-compose.yml         # One-command orchestration (PostgreSQL + Backend + Frontend)
 ├── .env.example               # Environment template (No secrets or real keys)
+├── LICENSE                    # Root repository MIT License
 ├── package.json               # Root scripts
 └── README.md
 ```
@@ -101,11 +105,11 @@
 
 ### Option 1: Using Docker Compose (Hardened Sandbox)
 
-Generate distinct random values with `openssl rand -hex 32` and set them as `POSTGRES_PASSWORD` and `JWT_SECRET` in `.env`.
+Run directly with no manual edits required (`.env.example` supplies pre-configured sandbox defaults):
 
 ```bash
-git clone <repository-url>
-cd "Student Tuition Payment Agent"
+git clone https://github.com/MirEashanZaman/student-tuition-payment-agent.git
+cd student-tuition-payment-agent
 cp .env.example .env
 docker compose up --build
 ```
@@ -147,53 +151,13 @@ cd backend
 npm test
 ```
 
-### Verified Test Cases (46 Passed):
-1. `should block a single transfer draft exceeding the per-transfer limit (400,000 BDT)` (PASSED)
-2. `should block transfers that would breach the daily limit (1,000,000 BDT)` (PASSED)
-3. `should forbid the automated LLM/agent from unilaterally executing confirmTransfer` (PASSED)
-4. `should reject confirmation if user consent boolean is false` (PASSED)
-5. `should reject transfer execution when confirmation is missing` (PASSED)
-6. `should successfully execute transfer when valid token and explicit user consent are provided` (PASSED)
-7. `should roll back a confirmed transfer once and restore its account balance` (PASSED)
-8. `should reject rollback of a pending transfer and transfers owned by another student` (PASSED)
-9. `should rank routes using weighted multi-objective score and identify cheapest route` (PASSED)
-10. `should flag deadline warnings when route arrival date exceeds tuition deadline` (PASSED)
-11. `should write an audit log entry for every single agent action` (PASSED)
-12. `should escape HTML and script payloads in user text` (PASSED)
-13. `should safely flag and neutralize prompt injection attempts without crashing` (PASSED)
-14. `should treat attempts to change permission tiers or rules as data, not instructions` (PASSED)
-15. `should deny access to another student account` (PASSED)
-16. `should handle invalid inputs and unexpected data formats gracefully` (PASSED)
-17. `should swap scoring strategy dynamically based on user preference` (PASSED)
-18. `should execute compensating transaction and roll back funds in Saga pattern` (PASSED)
-19. `should update draft transfer recipient via PUT before confirmation` (PASSED)
-20. `should delete draft transfer via DELETE endpoint` (PASSED)
-21. `should update account daily limits via PUT and deposit funds via POST` (PASSED)
-22. `should filter audit logs by permission tier and status using query parameters` (PASSED)
-23. `should delete audit log records via DELETE endpoint` (PASSED)
-24. `S - Single Responsibility: TuitionCalculationService computes route cost and deadline without database or HTTP side-effects` (PASSED)
-25. `O - Open/Closed Principle: SafetyRuleEngine is open for extension with custom rules without altering core code` (PASSED)
-26. `L - Liskov Substitution Principle: BankGateway and AccountRepository subtypes can substitute base contracts` (PASSED)
-27. `I - Interface Segregation: Client depending only on IAccountReader cannot mutate account state` (PASSED)
-28. `D - Dependency Inversion: Modules resolve interfaces via injection tokens rather than hardcoded implementations` (PASSED)
-29. `should validate inputs using Zod schemas and reject malformed payloads` (PASSED)
-30. `should verify accounts and settle transfers using Axios HTTP bank gateway` (PASSED)
-31. `should hash password and verify with scrypt correctly` (PASSED)
-32. `should reject login with wrong password and write an audit log entry` (PASSED)
-33. `should successfully login with valid credentials and return JWT session` (PASSED)
-34. `should decode and verify valid JWT session token` (PASSED)
-35. `should reject expired or tampered JWT token` (PASSED)
-36. `applies a strict login rate limit per client IP` (PASSED)
-37. `requires a valid JWT to read account data` (PASSED)
-38. `allows a student to read their own account` (PASSED)
-39. `prevents a student from reading another student account` (PASSED)
-40. `does not let student tokens mutate account limits` (PASSED)
-41. `prevents access to another student transfer records by transfer ID` (PASSED)
-42. `returns only the authenticated student account audit records` (PASSED)
-43. `blocks sandbox administration and demo credentials in production` (PASSED)
-44. `rejects production startup without a JWT secret or database URL` (PASSED)
-45. `applies an independent higher rate limit to chat requests` (PASSED)
-46. `does not throttle non-API routes` (PASSED)
+### Verified Test Cases (80 Passed):
+
+All 80 test cases pass deterministically across two dedicated test suites:
+- `test/security.spec.ts` (54 tests): Core financial invariants, permission tiers, Saga rollback restoration, multi-objective route ranking, and prompt injection filters.
+- `test/security-hardening.spec.ts` (26 tests): Rate limiting, ownership boundary enforcement, production startup hardening, prototype pollution immunity, and WAF shell-bomb defenses.
+
+See [backend/test/](backend/test/) for complete test suite definitions.
 
 ---
 
@@ -202,8 +166,8 @@ npm test
 The database automatically seeds an initial student persona, authentication credentials, and 4 mock remittance corridors:
 
 - **Student ID:** `STU-2026-BDT01`
-- **Student Name:** Tanvir Ahmed
-- **Email:** `tanvir.student@fintechathon.org`
+- **Student Name:** Mir Eashan Zaman
+- **Email:** `eashan.student@fintechathon.org`
 - **Default Password:** `student123` (Hashed with Node.js scrypt)
 - **Role:** `STUDENT`
 - **Initial Balance:** `850,000.00 BDT` (~$7,112 USD)
@@ -246,12 +210,13 @@ The system implements complete RESTful HTTP operations using `@Param()`, `@Body(
 - `DELETE /api/transfers/:id` - Discard transfer draft (`@Param('id')`)
 - `POST /api/transfers/:id/confirm` - User-consented transfer execution (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/compensate` - Saga compensating transaction rollback (`@Param('id')`, `@Body()`)
+- `POST /api/transfers/:id/rollback` - Unified Saga rollback restoring student balance and unreserving gateway funds (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/cancel` - Cancel transfer draft (`@Param('id')`)
-- `GET /api/audit` - Immutable audit logs with tier and status filtering (`@Query('limit')`, `@Query('tier')`, `@Query('status')`)
+- `GET /api/audit` - Append-only audit logs with tier and status filtering (`@Query('limit')`, `@Query('tier')`, `@Query('status')`)
 - `GET /api/audit/:id` - Fetch specific audit log by ID (`@Param('id')`)
-- `DELETE /api/audit/:id` - Remove audit log record (`@Param('id')`)
-- `POST /api/sandbox/reset` - Reset sandbox database
-- `GET /api/sandbox/export-logs` - Export full audit records archive
+- `DELETE /api/audit/:id` - Sandbox development audit log pruning (AdminRoleGuard only) (`@Param('id')`)
+- `POST /api/sandbox/reset` - Reset sandbox database to seed data (AdminRoleGuard & non-production only)
+- `GET /api/sandbox/export-logs` - Export full audit records archive (AdminRoleGuard only)
 
 ---
 
@@ -274,7 +239,7 @@ GEMINI_MODEL=gemini-1.5-flash
 MAX_TRANSFER_LIMIT_BDT=400000
 DAILY_TRANSFER_LIMIT_BDT=1000000
 ```
-*(No real API keys or passwords are committed to the codebase).*
+*(No real API keys or passwords are committed to the codebase. The default model identifier is `gemini-1.5-flash`, Google's low-latency multimodal LLM. Live API execution operates whenever a valid `GEMINI_API_KEY` is provided. If the key is omitted or left as `mock_key_offline_agent`, the application automatically activates its deterministic offline sandbox agent (`OfflineLlmClient`), enabling complete, instant evaluation of all conversational flows, corridor comparisons, and security guardrails with zero external network dependencies).*
 
 ---
 
@@ -282,7 +247,7 @@ DAILY_TRANSFER_LIMIT_BDT=1000000
 
 The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main` and `Eashan`:
 
-1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (46/46 tests passing), and NestJS production build.
+1. **Backend CI**: Automated dependency resolution (`npm ci`), Jest test suite execution (80/80 tests passing), and NestJS production build.
 2. **Frontend CI**: Dependency installation and Next.js static and server optimization build.
 3. **Docker Verification**: Builds multi-stage Docker images for both services to ensure container reproducibility.
 4. **Security & Cleanliness**: Automated Node.js audit ensuring zero exposed secrets and code policy compliance.
@@ -292,10 +257,24 @@ The project features a GitHub Actions workflow (`.github/workflows/ci.yml`) trig
 
 ## Submission Deliverables Index
 
-All 6 official FinTechathon submission documents are prepared in the repository:
-1. **Technical Documentation:** [`docs/TECHNICAL_DOCUMENTATION.md`](file:///docs/TECHNICAL_DOCUMENTATION.md)
-2. **Security Self-Assessment:** [`docs/SECURITY_REPORT.md`](file:///docs/SECURITY_REPORT.md)
-3. **Presentation Deck Script:** [`docs/PRESENTATION_DECK.md`](file:///docs/PRESENTATION_DECK.md)
-4. **Demo Video Script:** [`docs/DEMO_SCRIPT.md`](file:///docs/DEMO_SCRIPT.md)
-5. **Execution Evidence:** [`docs/EXECUTION_EVIDENCE.md`](file:///docs/EXECUTION_EVIDENCE.md)
-6. **Source Code & Tests:** [`backend/`](file:///backend) & [`frontend/`](file:///frontend)
+All official FinTechathon submission documents are prepared in the repository:
+1. **Technical Documentation:** [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) (comprehensive architectural spec, formatted for PDF generation)
+2. **Security Self-Assessment:** [docs/SECURITY_REPORT.md](docs/SECURITY_REPORT.md)
+3. **Presentation Deck:** [docs/FINTECHATHON_2026_PRESENTATION.pptx](docs/FINTECHATHON_2026_PRESENTATION.pptx) (primary official PowerPoint deck) & [docs/PRESENTATION_DECK.md](docs/PRESENTATION_DECK.md)
+4. **Demo Video Script:** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
+5. **Execution Evidence:** [docs/EXECUTION_EVIDENCE.md](docs/EXECUTION_EVIDENCE.md) & [docs/execution-evidence.json](docs/execution-evidence.json)
+6. **Open-Source License:** [LICENSE](LICENSE) & [docs/LICENSE](docs/LICENSE)
+7. **Source Code & Tests:** [backend/](backend/) & [frontend/](frontend/)
+
+---
+
+## Team & Attribution
+
+- **Mir Eashan Zaman** — Architecture, Security Engineering, Agent Guardrails (American International University-Bangladesh - AIUB)
+- **Ishmam Mubtasim** — Product Design, Remittance Calculations, Strategy Engine (American International University-Bangladesh - AIUB)
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE) (also mirrored in [docs/LICENSE](docs/LICENSE)).

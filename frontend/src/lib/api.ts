@@ -7,6 +7,7 @@ import {
   AuditLog,
   AuthSession,
   LoginCredentials,
+  RegistrationData,
 } from '../types';
 import {
   ChatMessageInputSchema,
@@ -16,6 +17,7 @@ import {
   UpdateDailyLimitInputSchema,
   DepositFundsInputSchema,
   LoginInputSchema,
+  RegistrationInputSchema,
 } from './schemas';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4568/api';
@@ -41,12 +43,27 @@ apiClient.interceptors.request.use((config) => {
 
 function handleApiError(error: unknown, fallbackMessage: string): never {
   if (axios.isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Connection timed out. The server took too long to respond. Please try again.');
+    }
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Unable to connect to the Tuition Payment server. Please verify the backend is online at http://localhost:4568.');
+    }
     const serverMessage = error.response?.data?.message;
     if (typeof serverMessage === 'string' && serverMessage.length > 0) {
       throw new Error(serverMessage);
     }
     if (Array.isArray(serverMessage) && serverMessage.length > 0) {
       throw new Error(serverMessage.join(', '));
+    }
+    if (error.response?.status === 429) {
+      throw new Error('Too many requests. Rate limit active, please wait a moment and try again.');
+    }
+    if (error.response?.status === 403) {
+      throw new Error(error.response?.data?.message || 'Access Forbidden: Security policy blocked this request.');
+    }
+    if (error.response?.status === 404) {
+      throw new Error('Requested resource not found.');
     }
   }
   if (error instanceof Error) {
@@ -60,14 +77,22 @@ export const authStorage = {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('fintech_auth_token');
   },
-  setToken(token: string): void {
+  getStudentId(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('fintech_auth_student_id');
+  },
+  setToken(token: string, studentId?: string): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem('fintech_auth_token', token);
+    if (studentId) {
+      localStorage.setItem('fintech_auth_student_id', studentId);
+    }
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   },
   clearToken(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('fintech_auth_token');
+    localStorage.removeItem('fintech_auth_student_id');
     delete apiClient.defaults.headers.common['Authorization'];
   },
 };
@@ -93,16 +118,30 @@ export const api = {
       const validated = LoginInputSchema.parse(credentials);
       const response = await apiClient.post<AuthSession>('/auth/login', validated);
       if (response.data?.accessToken) {
-        authStorage.setToken(response.data.accessToken);
+        authStorage.setToken(response.data.accessToken, response.data.user?.studentId);
       }
       return response.data;
     } catch (error) {
       handleApiError(error, 'Login failed');
     }
   },
-  async getAccount(studentId = 'STU-2026-BDT01'): Promise<Account> {
+
+  async registration(data: RegistrationData): Promise<AuthSession> {
     try {
-      const response = await apiClient.get<Account>(`/accounts/${studentId}`);
+      const validated = RegistrationInputSchema.parse(data);
+      const response = await apiClient.post<AuthSession>('/auth/registration', validated);
+      if (response.data?.accessToken) {
+        authStorage.setToken(response.data.accessToken, response.data.user?.studentId);
+      }
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Registration failed');
+    }
+  },
+  async getAccount(studentId?: string): Promise<Account> {
+    try {
+      const targetId = studentId || authStorage.getStudentId() || 'me';
+      const response = await apiClient.get<Account>(`/accounts/${targetId}`);
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to fetch account balance');
@@ -255,9 +294,19 @@ export const api = {
     }
   },
 
-  async getTransfers(studentId = 'STU-2026-BDT01', status?: string): Promise<TransferRecord[]> {
+  async rollbackTransfer(transferId: string, reason = 'User requested transfer rollback'): Promise<any> {
     try {
-      const params: Record<string, string> = { studentId };
+      const response = await apiClient.post(`/transfers/${transferId}/rollback`, { reason });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to roll back transfer');
+    }
+  },
+
+  async getTransfers(studentId?: string, status?: string): Promise<TransferRecord[]> {
+    try {
+      const params: Record<string, string> = {};
+      if (studentId) params.studentId = studentId;
       if (status) params.status = status;
       const response = await apiClient.get<TransferRecord[]>('/transfers', { params });
       return response.data;

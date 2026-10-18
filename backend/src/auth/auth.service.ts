@@ -40,6 +40,7 @@ export class AuthService {
     studentIdOrEmail: string,
     plainPassword: string,
     ipAddress = '127.0.0.1',
+    requestedTier?: PermissionTier,
   ): Promise<AuthSessionResponse> {
     if (!studentIdOrEmail || !plainPassword) {
       throw new BadRequestException('Student ID / email and password are required.');
@@ -79,13 +80,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid student ID/email or password.');
     }
 
+    const tier = requestedTier || PermissionTier.EXECUTE;
     const payload: JwtPayload = {
       sub: account.id,
       studentId: account.student_id,
       studentName: account.student_name,
       email: account.email,
       role: account.role || 'STUDENT',
-      permissionTier: PermissionTier.EXECUTE,
+      permissionTier: tier,
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -112,7 +114,7 @@ export class AuthService {
         studentName: account.student_name,
         email: account.email,
         role: account.role || 'STUDENT',
-        permissionTier: PermissionTier.EXECUTE,
+        permissionTier: tier,
         balance: account.balance,
         currency: account.currency,
         dailyLimit: account.daily_limit,
@@ -164,12 +166,95 @@ export class AuthService {
     };
   }
 
+  async registerStudent(
+    dto: {
+      studentId: string;
+      studentName: string;
+      email: string;
+      password: string;
+    },
+    ipAddress = '127.0.0.1',
+    requestedTier?: PermissionTier,
+  ): Promise<AuthSessionResponse> {
+    if (!dto.studentId || !dto.studentName || !dto.email || !dto.password) {
+      throw new BadRequestException('Student ID, student name, email, and password are required.');
+    }
+
+    const existingById = await this.db.getAccountByStudentId(dto.studentId.trim());
+    if (existingById) {
+      throw new BadRequestException(`An account with Student ID "${dto.studentId.trim()}" already exists.`);
+    }
+
+    const existingByEmail = await this.db.getAccountByStudentIdOrEmail(dto.email.trim());
+    if (existingByEmail) {
+      throw new BadRequestException(`An account with email "${dto.email.trim()}" already exists.`);
+    }
+
+    const hashedPassword = PasswordHasher.hashPassword(dto.password);
+    const newAccount = await this.db.insertAccount({
+      id: `acc-${dto.studentId.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      student_id: dto.studentId.trim(),
+      student_name: dto.studentName.trim(),
+      email: dto.email.trim().toLowerCase(),
+      currency: process.env.DEFAULT_SOURCE_CURRENCY || 'BDT',
+      balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
+      daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
+      daily_spent: 0.00,
+      password_hash: hashedPassword,
+      role: 'STUDENT',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'AUTH_REGISTRATION_SUCCESS',
+      permission_tier: 'READ_ONLY',
+      account_id: newAccount.id,
+      action_summary: `Student registration completed for ${newAccount.student_id} (${newAccount.student_name})`,
+      status: 'SUCCESS',
+      ip_address: ipAddress,
+      created_at: new Date(),
+    });
+
+    const tier = requestedTier || PermissionTier.EXECUTE;
+    const payload: JwtPayload = {
+      sub: newAccount.id,
+      studentId: newAccount.student_id,
+      studentName: newAccount.student_name,
+      email: newAccount.email,
+      role: newAccount.role || 'STUDENT',
+      permissionTier: tier,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    this.logger.log(`Student ${newAccount.student_id} registered and authenticated successfully.`);
+
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: 86400,
+      user: {
+        studentId: newAccount.student_id,
+        studentName: newAccount.student_name,
+        email: newAccount.email,
+        role: newAccount.role || 'STUDENT',
+        permissionTier: tier,
+        balance: newAccount.balance,
+        currency: newAccount.currency,
+        dailyLimit: newAccount.daily_limit,
+        dailySpent: newAccount.daily_spent,
+      },
+    };
+  }
+
   getDemoCredentials() {
     return {
       studentId: 'STU-2026-BDT01',
       password: 'student123',
-      studentName: 'Tanvir Ahmed',
-      email: 'tanvir.student@fintechathon.org',
+      studentName: 'Mir Eashan Zaman',
+      email: 'eashan.student@fintechathon.org',
       role: 'STUDENT',
       permissionTier: PermissionTier.EXECUTE,
       note: 'Pre-seeded demo persona for FinTechathon 2026 sandbox testing.',

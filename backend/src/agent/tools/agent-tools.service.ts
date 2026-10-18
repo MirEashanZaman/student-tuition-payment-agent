@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { FinancialLimitsGuard } from '../guardrails/financial-limits.guard';
+import { PromptInjectionFilter } from '../guardrails/prompt-injection.filter';
 import { PermissionTierValidator, PermissionTier, PermissionPolicyException } from '../guardrails/permission-tier.guard';
 import {
   RouteComparisonResult,
@@ -91,7 +92,10 @@ export class AgentToolsService {
     return this.auditRepository || this.auditRepo || (this.db as any);
   }
 
-  async getBalance(studentId: string) {
+  async getBalance(studentId: string, requestingStudentId?: string) {
+    if (requestingStudentId && studentId !== requestingStudentId) {
+      throw new ForbiddenException(`Access denied: Cannot access account for student ${studentId}.`);
+    }
     const account = await this.accountStore.findByStudentId(studentId);
     if (!account) {
       throw new NotFoundException(`Student account ${studentId} not found`);
@@ -373,12 +377,15 @@ export class AgentToolsService {
     const confirmationToken = `CONFIRM-${uuidv4().substring(0, 8).toUpperCase()}`;
     const transferId = `TRX-${uuidv4().substring(0, 8).toUpperCase()}`;
 
+    const sanitizedUniversity = PromptInjectionFilter.sanitizeUserText(recipientUniversity);
+    const sanitizedRegNumber = PromptInjectionFilter.sanitizeUserText(studentRegNumber);
+
     const transfer = await this.db.createTransfer({
       id: transferId,
       account_id: account.id,
       student_id: account.student_id,
-      recipient_university: recipientUniversity,
-      student_reg_number: studentRegNumber,
+      recipient_university: sanitizedUniversity,
+      student_reg_number: sanitizedRegNumber,
       source_currency: 'BDT',
       target_currency: 'USD',
       target_amount_usd: amountUsd,
@@ -452,6 +459,7 @@ export class AgentToolsService {
     confirmationToken: string,
     userConsent: boolean,
     isUserInitiated = true,
+    requestingStudentId?: string,
   ): Promise<ConfirmedTransferResult> {
     const validation = PermissionTierValidator.validateToolExecution('confirmTransfer', isUserInitiated);
     if (!validation.allowed) {
@@ -489,6 +497,10 @@ export class AgentToolsService {
       throw new NotFoundException(`Transfer ${transferId} not found`);
     }
 
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${transferId} does not belong to requesting student.`);
+    }
+
     if (this.stateMachine) {
       this.stateMachine.assertTransition(transfer.status as any, 'CONFIRMED');
     } else if (transfer.status !== 'PENDING_CONFIRMATION') {
@@ -508,6 +520,23 @@ export class AgentToolsService {
         created_at: new Date(),
       });
       throw new BadRequestException('Security token verification failed: Invalid confirmation token.');
+    }
+
+    const tokenAgeMs = Date.now() - new Date(transfer.created_at).getTime();
+    if (tokenAgeMs > 15 * 60 * 1000) {
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'CONFIRM_REJECTED',
+        permission_tier: PermissionTier.EXECUTE,
+        account_id: transfer.account_id,
+        transfer_id: transfer.id,
+        action_summary: 'BLOCKED: Confirmation token expired',
+        details: 'Token exceeded 15 minute validity window',
+        status: 'BLOCKED',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
+      throw new BadRequestException('Security token verification failed: Confirmation token has expired. Please generate a new draft.');
     }
 
     const account = await this.db.getAccountById(transfer.account_id);
@@ -677,6 +706,61 @@ export class AgentToolsService {
     }
   }
 
+  async rollbackTransfer(
+    transferId: string,
+    reason = 'User requested transfer rollback',
+    requestingStudentId?: string,
+  ) {
+    const transfer = await this.db.getTransferById(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException('You can only roll back your own transfer.');
+    }
+
+    if (transfer.status === 'ROLLED_BACK') {
+      throw new BadRequestException('Transfer has already been rolled back.');
+    }
+
+    if (transfer.status === 'CANCELLED') {
+      throw new BadRequestException('Transfer has already been cancelled.');
+    }
+
+    if (transfer.status === 'PENDING_CONFIRMATION' || transfer.status === 'BLOCKED') {
+      const cancelled = await this.cancelTransfer(transferId, requestingStudentId);
+      return {
+        success: true,
+        transferId,
+        status: cancelled.status,
+        message: 'Transfer draft cancelled and rolled back successfully.',
+        restoredAmountBdt: 0,
+      };
+    }
+
+    if (
+      transfer.status !== 'CONFIRMED' &&
+      transfer.status !== 'EXECUTED' &&
+      transfer.status !== 'FAILED'
+    ) {
+      throw new BadRequestException(`Cannot roll back transfer with status "${transfer.status}".`);
+    }
+
+    await this.compensateTransfer(transferId, reason, requestingStudentId);
+    const updatedTransfer = await this.db.getTransferById(transferId);
+    const updatedAccount = await this.db.getAccountByStudentId(transfer.student_id);
+
+    return {
+      success: true,
+      transferId,
+      status: updatedTransfer?.status || 'ROLLED_BACK',
+      message: 'Transfer successfully rolled back and student balance restored.',
+      restoredAmountBdt: transfer.source_amount_bdt,
+      updatedBalance: updatedAccount?.balance,
+    };
+  }
+
   async getAuditLog(limit = 50, tier?: string, status?: string) {
     if (this.auditRepo && !tier && !status) {
       return this.auditRepo.findRecent(limit);
@@ -704,15 +788,23 @@ export class AgentToolsService {
   async updateTransferDraft(
     id: string,
     updates: { recipient_university?: string; student_reg_number?: string },
+    requestingStudentId?: string,
   ) {
     const existing = await this.db.getTransferById(id);
     if (!existing) {
       throw new NotFoundException(`Transfer ${id} not found`);
     }
+    if (requestingStudentId && existing.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${id} does not belong to requesting student.`);
+    }
     if (existing.status !== 'PENDING_CONFIRMATION') {
       throw new BadRequestException(`Cannot update transfer with status "${existing.status}". Only draft transfers can be modified.`);
     }
-    const updated = await this.db.updateTransferDraft(id, updates);
+    const sanitizedUpdates: { recipient_university?: string; student_reg_number?: string } = {
+      ...(updates.recipient_university ? { recipient_university: PromptInjectionFilter.sanitizeUserText(updates.recipient_university) } : {}),
+      ...(updates.student_reg_number ? { student_reg_number: PromptInjectionFilter.sanitizeUserText(updates.student_reg_number) } : {}),
+    };
+    const updated = await this.db.updateTransferDraft(id, sanitizedUpdates);
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: 'DRAFT_UPDATED',
@@ -728,10 +820,13 @@ export class AgentToolsService {
     return updated;
   }
 
-  async deleteTransferDraft(id: string) {
+  async deleteTransferDraft(id: string, requestingStudentId?: string) {
     const existing = await this.db.getTransferById(id);
     if (!existing) {
       throw new NotFoundException(`Transfer ${id} not found`);
+    }
+    if (requestingStudentId && existing.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${id} does not belong to requesting student.`);
     }
     if (existing.status !== 'PENDING_CONFIRMATION' && existing.status !== 'BLOCKED') {
       throw new BadRequestException(`Cannot delete transfer with status "${existing.status}".`);
@@ -799,8 +894,44 @@ export class AgentToolsService {
     return rate;
   }
 
+  async cancelTransfer(id: string, requestingStudentId?: string) {
+    const transfer = await this.db.getTransferById(id);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${id} not found`);
+    }
+    if (requestingStudentId && transfer.student_id !== requestingStudentId) {
+      throw new ForbiddenException(`Transfer ${id} does not belong to requesting student.`);
+    }
+    const updated = await this.db.updateTransferStatus(id, 'CANCELLED');
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'TRANSFER_CANCELLED',
+      permission_tier: PermissionTier.DRAFT,
+      account_id: transfer.account_id,
+      transfer_id: id,
+      action_summary: `Transfer ${id} cancelled`,
+      details: JSON.stringify({ transferId: id, previousStatus: transfer.status }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return updated;
+  }
+
   async updateRate(id: string, updates: any) {
     const rate = await this.db.updateRate(id, updates);
+    if (rate) {
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'RATE_UPDATED',
+        permission_tier: PermissionTier.EXECUTE,
+        action_summary: `Remittance rate ${id} updated`,
+        details: JSON.stringify(updates),
+        status: 'SUCCESS',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
+    }
     return rate;
   }
 
@@ -809,6 +940,16 @@ export class AgentToolsService {
     if (!deleted) {
       throw new NotFoundException(`Remittance route ${id} not found`);
     }
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'RATE_DEACTIVATED',
+      permission_tier: PermissionTier.EXECUTE,
+      action_summary: `Remittance route ${id} deactivated`,
+      details: JSON.stringify({ id, is_active: false }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
     return { success: true, id, is_active: false };
   }
 }
