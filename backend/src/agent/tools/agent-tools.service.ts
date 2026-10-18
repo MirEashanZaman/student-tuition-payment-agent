@@ -935,9 +935,17 @@ export class AgentToolsService {
 
     let maskedCard: string | undefined;
     if (cardDetails?.cardNumber) {
-      const cleaned = cardDetails.cardNumber.replace(/\s+/g, '');
+      const cleaned = cardDetails.cardNumber.replace(/[\s-]+/g, '');
+      if (!/^\d{12,19}$/.test(cleaned)) {
+        throw new BadRequestException('Invalid PAN format: Card number must consist of 12 to 19 digits');
+      }
       const last4 = cleaned.slice(-4) || '4242';
       maskedCard = `**** **** **** ${last4}`;
+    }
+
+    let sanitizedCardHolder: string | undefined;
+    if (cardDetails?.cardHolder) {
+      sanitizedCardHolder = cardDetails.cardHolder.replace(/[<>"'&]/g, '').trim().slice(0, 100);
     }
 
     const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
@@ -952,7 +960,7 @@ export class AgentToolsService {
         newBalance: account.balance,
         paymentMethod: maskedCard ? 'SANDBOX_CARD' : 'DIRECT_DEPOSIT',
         cardMask: maskedCard,
-        cardHolder: cardDetails?.cardHolder || account.student_name,
+        cardHolder: sanitizedCardHolder || account.student_name,
       }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
