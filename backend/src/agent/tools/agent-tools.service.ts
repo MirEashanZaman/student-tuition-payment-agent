@@ -918,18 +918,41 @@ export class AgentToolsService {
     return { success: true, id, status: 'DISCARDED' };
   }
 
-  async depositFunds(studentId: string, amountBdt: number) {
+  async depositFunds(
+    studentId: string,
+    amountBdt: number,
+    cardDetails?: {
+      cardNumber?: string;
+      cardHolder?: string;
+      expiryDate?: string;
+      cvv?: string;
+    },
+  ) {
     if (amountBdt <= 0) {
       throw new BadRequestException('Deposit amount must be greater than 0');
     }
     const account = await this.db.depositFunds(studentId, amountBdt);
+
+    let maskedCard: string | undefined;
+    if (cardDetails?.cardNumber) {
+      const cleaned = cardDetails.cardNumber.replace(/\s+/g, '');
+      const last4 = cleaned.slice(-4) || '4242';
+      maskedCard = `**** **** **** ${last4}`;
+    }
+
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: 'FUNDS_DEPOSITED',
       permission_tier: PermissionTier.EXECUTE,
       account_id: account.id,
-      action_summary: `Deposited ${amountBdt.toLocaleString()} BDT to student account ${studentId}`,
-      details: JSON.stringify({ amountBdt, newBalance: account.balance }),
+      action_summary: `Deposited ${amountBdt.toLocaleString()} BDT to student account ${studentId}${maskedCard ? ` via Sandbox Card (${maskedCard})` : ''}`,
+      details: JSON.stringify({
+        amountBdt,
+        newBalance: account.balance,
+        paymentMethod: maskedCard ? 'SANDBOX_CARD' : 'DIRECT_DEPOSIT',
+        cardMask: maskedCard,
+        cardHolder: cardDetails?.cardHolder || account.student_name,
+      }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
       created_at: new Date(),
