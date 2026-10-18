@@ -566,9 +566,13 @@ export default function Home({
       setShowLoginModal(true);
       return;
     }
+    const pin = draftOtpMap[transferId]?.trim() || '';
+    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      showNotification('2FA Step-Up Required: Please enter the 6-digit OTP (or click "Request Live OTP") before authorizing payment.', 'error');
+      return;
+    }
     setLoading(true);
     try {
-      const pin = draftOtpMap[transferId]?.trim() || undefined;
       const res = await api.confirmTransfer(transferId, confirmationToken, true, pin);
 
       confetti({
@@ -1537,18 +1541,25 @@ export default function Home({
                                 onChange={(e) =>
                                   setDraftOtpMap((prev) => ({
                                     ...prev,
-                                    [msg.draftData!.transferId]: e.target.value,
+                                    [msg.draftData!.transferId]: e.target.value.replace(/\D/g, '').slice(0, 6),
                                   }))
                                 }
                                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold tracking-wider text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:border-[#0D9488]"
                                 maxLength={6}
                               />
+                              {(!draftOtpMap[msg.draftData!.transferId] || draftOtpMap[msg.draftData!.transferId].length !== 6) && (
+                                <p className="text-[10px] text-amber-700 mt-1.5 font-medium flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>6-digit OTP required before authorization can be confirmed.</span>
+                                </p>
+                              )}
                             </div>
 
                             <div className="flex gap-2.5">
                               <button
-                                className="flex-1 py-2.5 px-4 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                                className="flex-1 py-2.5 px-4 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => handleConfirmTransfer(msg.draftData!.transferId, msg.draftData!.confirmationToken)}
+                                disabled={loading || !draftOtpMap[msg.draftData!.transferId] || draftOtpMap[msg.draftData!.transferId].length !== 6}
                               >
                                 <CheckCircle2 className="w-4 h-4" />
                                 <span>Authorize & Confirm Payment</span>
