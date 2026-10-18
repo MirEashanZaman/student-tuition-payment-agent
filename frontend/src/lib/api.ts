@@ -8,6 +8,7 @@ import {
   AuthSession,
   LoginCredentials,
   RegistrationData,
+  InstallmentPlan,
 } from '../types';
 import {
   ChatMessageInputSchema,
@@ -193,6 +194,25 @@ export const api = {
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to compare routes');
+    }
+  },
+
+  async planInstallments(
+    totalAmountUsd: number,
+    numInstallments = 2,
+    tuitionDeadline?: string,
+    routeId?: string,
+  ): Promise<InstallmentPlan> {
+    try {
+      const response = await apiClient.post<InstallmentPlan>('/routes/installments', {
+        totalAmountUsd,
+        numInstallments,
+        tuitionDeadline,
+        routeId,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to generate installment plan');
     }
   },
 
