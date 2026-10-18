@@ -21,9 +21,12 @@
 4. **Smart Tuition Installment Planner:** Formulates 2- or 3-part split payment milestones ([tuition-calculation.service.ts](backend/src/agent/services/tuition-calculation.service.ts)) ensuring each settlement strictly respects the 400,000 BDT per-transfer limit and course registration deadlines.
 5. **Sandbox Card Deposit & Top-Up Modal:** Interactive virtual credit card modal allowing students to top up account balances using test card numbers (`4242 4242 4242 4242`) with automatic PCI DSS compliant card masking (`**** **** **** 4242`) in the audit log.
 
+> [!NOTE]
+> **Sandbox Evaluation Notice:** All remittance corridors, foreign exchange rates, mock bank clearing gateways, and account balances run in a simulated sandbox environment for demonstration and algorithmic evaluation (not connected to live production SWIFT rails or real currency).
+
 ---
 
-## Enterprise Architectural Patterns
+## Architectural Design Patterns
 
 | Feature | Pattern | How it is used |
 |---|---|---|
@@ -54,7 +57,7 @@
 ## Monorepo Project Structure
 
 ```
-├── backend/                   # NestJS Enterprise Backend API
+├── backend/                   # NestJS Hardened Backend API
 │   ├── src/
 │   │   ├── agent/             # Gemini LLM Service, Agent Tools, & Policy Guardrails
 │   │   │   ├── guardrails/    # Permission tiers, financial limits, prompt injection filter
