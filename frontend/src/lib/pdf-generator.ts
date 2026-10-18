@@ -13,9 +13,13 @@ export interface ReceiptData {
   confirmedAt: string;
   status: string;
   txHash: string;
+  sourceCurrency?: string;
+  targetCurrency?: string;
 }
 
 export function generateTuitionReceiptPdf(data: ReceiptData): Blob {
+  const srcCurr = data.sourceCurrency || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'BDT';
+  const tgtCurr = data.targetCurrency || 'USD';
   const sanitize = (val: string | number | undefined | null) =>
     String(val ?? '').replace(/[\\()]/g, '');
 
@@ -103,21 +107,21 @@ BT
 /F1 10 Tf
 0.2 0.2 0.25 rg
 55 520 Td
-(Settled Tuition (USD):) Tj
+(Settled Tuition (${tgtCurr}):) Tj
 200 520 Td
-($${sanitize(Number(data.targetAmountUsd || 0).toLocaleString())} USD) Tj
+(${tgtCurr === 'USD' ? '$' : ''}${sanitize(Number(data.targetAmountUsd || 0).toLocaleString())} ${tgtCurr}) Tj
 55 500 Td
-(Debited from Account (BDT):) Tj
+(Debited from Account (${srcCurr}):) Tj
 200 500 Td
-(${sanitize(Number(data.sourceAmountBdt || 0).toLocaleString())} BDT) Tj
+(${sanitize(Number(data.sourceAmountBdt || 0).toLocaleString())} ${srcCurr}) Tj
 55 480 Td
 (Applied FX Rate:) Tj
 200 480 Td
-(${sanitize(data.fxRateApplied)} BDT/USD) Tj
+(${sanitize(data.fxRateApplied)} ${srcCurr}/${tgtCurr}) Tj
 55 460 Td
 (Corridor Fee:) Tj
 200 460 Td
-(${sanitize(Number(data.feeTotalBdt || 0).toLocaleString())} BDT) Tj
+(${sanitize(Number(data.feeTotalBdt || 0).toLocaleString())} ${srcCurr}) Tj
 55 440 Td
 (Settlement Timestamp:) Tj
 200 440 Td
