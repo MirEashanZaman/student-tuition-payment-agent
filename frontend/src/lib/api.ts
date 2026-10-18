@@ -201,10 +201,14 @@ export const api = {
     amountUsd: number,
     tuitionDeadline?: string,
     studentId = 'STU-2026-BDT01',
+    targetCurrency?: string,
   ): Promise<RouteComparisonResult> {
     try {
       const validated = CompareRoutesInputSchema.parse({ amountUsd, tuitionDeadline, studentId });
-      const response = await apiClient.post<RouteComparisonResult>('/routes/compare', validated);
+      const response = await apiClient.post<RouteComparisonResult>('/routes/compare', {
+        ...validated,
+        ...(targetCurrency ? { targetCurrency } : {}),
+      });
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to compare routes');
