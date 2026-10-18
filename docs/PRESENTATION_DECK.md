@@ -70,11 +70,11 @@ Our architecture is built for security, resilience, and testability. The fronten
 - **Permission Tiers:**
   - **READ_ONLY (AI allowed):** Check balance, compare routes, read the audit log. No money moves.
   - **DRAFT (AI allowed):** Create a pending transfer with a one-time token. Balance is unchanged.
-  - **EXECUTE (Human only):** Confirm payment with the token and explicit consent. The AI is blocked here.
+  - **EXECUTE (Human only):** Confirm payment with dual-layer verification: single-use token + mandatory 6-digit Step-Up 2FA OTP. The AI is strictly blocked here.
 - **Hard Limits:** 400,000 BDT per transfer | 1,000,000 BDT per day. Enforced in backend code, not in the AI prompt.
 
 **Speaker Notes:**  
-To address the hackathon's security criterion, we engineered three strict permission tiers. The AI operates only in READ_ONLY and DRAFT tiers. In DRAFT tier, it generates a pending transfer and a single-use one-time token, but student balances remain untouched. Fund settlement belongs solely to the EXECUTE tier, where automated AI execution is strictly blocked by code. Only the human student providing explicit consent and the matching one-time token can confirm. Hard transfer caps of 400,000 BDT per transfer and 1,000,000 BDT per day are enforced in backend code, never left to LLM prompts.
+To address the hackathon's security criterion, we engineered three strict permission tiers. The AI operates only in READ_ONLY and DRAFT tiers. In DRAFT tier, it generates a pending transfer and a single-use one-time token, but student balances remain untouched. Fund settlement belongs solely to the EXECUTE tier, where automated AI execution is strictly blocked by code. Only the human student providing explicit consent, the matching one-time token, and a verified 6-digit step-up 2FA OTP can confirm. Hard transfer caps of 400,000 BDT per transfer and 1,000,000 BDT per day are enforced in backend code, never left to LLM prompts.
 
 ---
 
@@ -100,14 +100,14 @@ For innovation, our route scoring engine balances cost at 50%, clearance speed a
 - **Title:** The Demo Flow
 - **Six Demonstration Steps:**
   1. **Ask & compare:** "Pay my $3,000 tuition." Four routes are ranked.
-  2. **Draft:** EduPay Prime draft: 358,454.85 BDT. Balance unchanged.
-  3. **Confirm:** Student approves. Balance: 850,000 to 491,545.15 BDT.
+  2. **Direct Draft:** EduPay Prime direct corridor draft: 358,454.85 BDT. Balance unchanged.
+  3. **2FA Step-Up & Confirm:** Student enters 6-digit OTP and approves. Balance debits: 850,000 to 491,545.15 BDT.
   4. **Roll back:** Saga rollback restores 358,454.85 BDT to the account.
   5. **Over limit:** $4,500 = 537,507.28 BDT. Blocked at the 400,000 cap.
   6. **Attack:** Prompt injection and shell-bomb payloads are blocked and logged.
 
 **Speaker Notes:**  
-Our live evaluation demo verifies six practical flows. First, the student asks to pay $3,000 tuition and the agent ranks four corridors. Second, a draft is created for 358,454.85 BDT while the student balance remains untouched. Third, the student approves, debiting the balance from 850,000 to 491,545.15 BDT. Fourth, an automated Saga compensating rollback restores the full 358,454.85 BDT. Fifth, an attempt to send $4,500—which equals 537,507.28 BDT—is blocked by the 400,000 BDT cap. Sixth, prompt injections and shell-bomb attacks are neutralized and logged.
+Our live evaluation demo verifies six practical flows. First, the student asks to pay $3,000 tuition and the agent ranks four corridors. Second, clicking the chosen corridor directly creates a draft for 358,454.85 BDT without redundant prompt loops, while the student balance remains untouched. Third, the student completes mandatory 6-digit Step-Up 2FA OTP verification and approves, debiting the balance from 850,000 to 491,545.15 BDT with a cryptographic receipt. Fourth, an automated Saga compensating rollback restores the full 358,454.85 BDT. Fifth, an attempt to send $4,500—which equals 537,507.28 BDT—is blocked by the 400,000 BDT cap. Sixth, prompt injections and shell-bomb attacks are neutralized and logged.
 
 ---
 
@@ -117,19 +117,21 @@ Our live evaluation demo verifies six practical flows. First, the student asks t
 - **Event Audit Log Records:**
   | Event | Tier | Result |
   |---|---|---|
+  | AUTH_REGISTRATION_SUCCESS | EXECUTE | SUCCESS |
   | ROUTE_COMPARISON | READ_ONLY | SUCCESS |
   | DRAFT_CREATED | DRAFT | SUCCESS |
+  | STEP_UP_OTP_ISSUED | EXECUTE | SUCCESS |
   | CONFIRM_SUCCESS | EXECUTE | SUCCESS |
   | TRANSFER_COMPENSATED | EXECUTE | WARNING |
   | SAFETY_LIMIT_TRIGGERED | DRAFT | BLOCKED |
   | PROMPT_INJECTION_FLAGGED | READ_ONLY | FLAGGED |
   | PENETRATION_ATTACK_BLOCKED | READ_ONLY | BLOCKED |
 - **Evidence Source:** `execution-evidence.json` (sandbox export)
-- **Key Metric:** 9 records in the sandbox export. Every tool call, block, and confirmation is logged.
+- **Key Metric:** Every tool call, block, registration, 2FA challenge, and confirmation is logged.
 - **Production Plan:** Stream logs to write-once storage (WORM).
 
 **Speaker Notes:**  
-Compliance requires tamper-evident visibility. Every action in our system emits an append-only audit event. The table on this slide displays the exact event types from our exported sandbox run, including successful drafts, confirmations, rollbacks, limit violations, and security blocks. In production, these events stream to write-once-read-many (WORM) cloud storage for regulatory compliance.
+Compliance requires tamper-evident visibility. Every action in our system emits an append-only audit event. The table on this slide displays the exact event types from our exported sandbox run, including registration onboarding, route comparisons, successful drafts, step-up 2FA challenges, confirmations, rollbacks, limit violations, and security blocks. In production, these events stream to write-once-read-many (WORM) cloud storage for regulatory compliance.
 
 ---
 
@@ -138,20 +140,21 @@ Compliance requires tamper-evident visibility. Every action in our system emits 
 - **Title:** 80 Tests, All Passing
 - **Test Metric:** 80/80 Jest tests pass across two test suites: security and hardening.
 - **Financial Safety Suite (54 Tests):**
-  - Transfer limits enforced
-  - AI cannot confirm payment
-  - Consent and token needed
-  - Rollback restores funds
-  - Route ranking, deadlines
+  - Transfer limits enforced (400k BDT per-transfer / 1M BDT daily)
+  - AI cannot confirm payment (EXECUTE tier locked to human)
+  - Dual-layer consent: matching token + verified 2FA OTP
+  - Saga compensating rollback restores funds idempotently
+  - Route ranking, fee calculations, and deadline warnings
 - **Security Hardening Suite (26 Tests):**
-  - Login and chat rate limits
-  - Student data isolation
-  - Tampered JWTs rejected
-  - Injection and WAF blocks
-  - Admin-only sandbox reset
+  - Registration endpoint validation and auto-provisioning
+  - Login and chat rate limiting with sliding windows
+  - Tenant data isolation and IDOR cross-account protections
+  - Cryptographic token verification & tampered JWT rejections
+  - Prompt injection neutralization and perimeter WAF shell-bomb defenses
+  - Admin-only role gating for sandbox resets
 
 **Speaker Notes:**  
-Every claim in our submission is backed by automated tests. We maintain 80 passing Jest test cases across two comprehensive suites: 54 in the core financial security suite and 26 in the security hardening suite. These verify limit enforcement, human consent barriers, Saga rollbacks, tenant isolation, tampered token rejections, and prompt injection filters.
+Every claim in our submission is backed by automated tests. We maintain 80 passing Jest test cases across two comprehensive suites: 54 in the core financial security suite and 26 in the security hardening suite. These verify limit enforcement, human consent barriers with step-up 2FA verification, Saga rollbacks, tenant isolation, student registration, tampered token rejections, and prompt injection filters.
 
 ---
 
