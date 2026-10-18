@@ -1690,7 +1690,7 @@ export default function Home({
               </div>
 
               <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar text-xs pb-1">
+                <div className="flex flex-wrap gap-2 text-xs pb-1">
                   <button
                     className="py-1 px-3 rounded-full bg-teal-50 border border-[#0D9488]/40 hover:bg-teal-100 text-[#0D9488] whitespace-nowrap transition-colors font-semibold shadow-xs flex items-center gap-1.5"
                     onClick={() => setShowInvoiceModal(true)}
@@ -1745,7 +1745,7 @@ export default function Home({
                 >
                   <input
                     type="text"
-                    className="flex-1 bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] transition-colors"
+                    className="flex-1 min-w-0 bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] transition-colors"
                     placeholder="Type a tuition payment instruction (e.g. 'Pay my $3,000 tuition to University of Toronto')..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
@@ -1753,7 +1753,7 @@ export default function Home({
                   />
                   <button
                     type="submit"
-                    className="p-2.5 px-4 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold transition-colors disabled:opacity-50 flex items-center justify-center shadow-sm"
+                    className="p-2.5 px-4 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold transition-colors disabled:opacity-50 flex items-center justify-center shadow-sm shrink-0"
                     disabled={loading || !inputMessage.trim()}
                   >
                     <Send className="w-4 h-4" />
