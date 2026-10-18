@@ -151,6 +151,22 @@ export class DepositDto {
   @IsNumber()
   @Min(1)
   amountBdt: number;
+
+  @IsString()
+  @IsOptional()
+  cardNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  cardHolder?: string;
+
+  @IsString()
+  @IsOptional()
+  expiryDate?: string;
+
+  @IsString()
+  @IsOptional()
+  cvv?: string;
 }
 
 export class UpdateDailyLimitDto {
@@ -239,7 +255,24 @@ export class AgentController {
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Post('accounts/:id/deposit')
   async depositFunds(@Param('id') id: string, @Body() dto: DepositDto) {
-    return await this.toolsService.depositFunds(id, dto.amountBdt);
+    return await this.toolsService.depositFunds(id, dto.amountBdt, {
+      cardNumber: dto.cardNumber,
+      cardHolder: dto.cardHolder,
+      expiryDate: dto.expiryDate,
+      cvv: dto.cvv,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
+  @Post('accounts/:id/card-deposit')
+  async cardDeposit(@Param('id') id: string, @Body() dto: DepositDto) {
+    return await this.toolsService.depositFunds(id, dto.amountBdt, {
+      cardNumber: dto.cardNumber,
+      cardHolder: dto.cardHolder,
+      expiryDate: dto.expiryDate,
+      cvv: dto.cvv,
+    });
   }
 
   @Get('rates')
