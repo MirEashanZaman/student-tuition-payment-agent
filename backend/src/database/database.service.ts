@@ -515,28 +515,32 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           );
         }
 
-        for (const r of defaultRates) {
-          await this.pool.query(
-            `INSERT INTO rates (id, provider_name, source_currency, target_currency, exchange_rate, inverse_rate, transfer_fee_flat_bdt, transfer_fee_percent, speed_hours, speed_description, reliability_score, compliance_rating, is_active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-             ON CONFLICT (id) DO UPDATE SET exchange_rate = $5, inverse_rate = $6, transfer_fee_flat_bdt = $7, transfer_fee_percent = $8;`,
-            [
-              r.id,
-              r.provider_name,
-              r.source_currency,
-              r.target_currency,
-              r.exchange_rate,
-              r.inverse_rate,
-              r.transfer_fee_flat_bdt,
-              r.transfer_fee_percent,
-              r.speed_hours,
-              r.speed_description,
-              r.reliability_score,
-              r.compliance_rating,
-              r.is_active,
-            ],
+        const rateValues: any[] = [];
+        const rateClauses = defaultRates.map((r, idx) => {
+          const base = idx * 13;
+          rateValues.push(
+            r.id,
+            r.provider_name,
+            r.source_currency,
+            r.target_currency,
+            r.exchange_rate,
+            r.inverse_rate,
+            r.transfer_fee_flat_bdt,
+            r.transfer_fee_percent,
+            r.speed_hours,
+            r.speed_description,
+            r.reliability_score,
+            r.compliance_rating,
+            r.is_active,
           );
-        }
+          return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13})`;
+        });
+        await this.pool.query(
+          `INSERT INTO rates (id, provider_name, source_currency, target_currency, exchange_rate, inverse_rate, transfer_fee_flat_bdt, transfer_fee_percent, speed_hours, speed_description, reliability_score, compliance_rating, is_active)
+           VALUES ${rateClauses.join(', ')}
+           ON CONFLICT (id) DO UPDATE SET exchange_rate = EXCLUDED.exchange_rate, inverse_rate = EXCLUDED.inverse_rate, transfer_fee_flat_bdt = EXCLUDED.transfer_fee_flat_bdt, transfer_fee_percent = EXCLUDED.transfer_fee_percent;`,
+          rateValues,
+        );
         this.logger.log('PostgreSQL seed completed.');
         return;
       } catch (err) {

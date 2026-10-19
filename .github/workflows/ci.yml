@@ -167,7 +167,7 @@ jobs:
         run: |
           echo "Waiting for PostgreSQL, Backend, and Frontend to become responsive..."
           SUCCESS=0
-          for i in {1..40}; do
+          for i in {1..70}; do
             BACKEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4568/api/rates 2>/dev/null || echo "000")
             FRONTEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4567 2>/dev/null || echo "000")
             if [ "$BACKEND_CODE" = "200" ] && [ "$FRONTEND_CODE" = "200" ]; then
