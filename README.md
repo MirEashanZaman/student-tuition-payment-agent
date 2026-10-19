@@ -142,25 +142,49 @@ When confirming a payment transfer draft in the UI:
 
 ---
 
-### Option 2: Running Locally (Development Mode)
+### Option 2: Running Locally Without Docker (Lightweight In-Memory Mode)
 
-In development, the backend uses an in-memory sandbox store if PostgreSQL is unavailable. In production mode it requires PostgreSQL and fails startup rather than silently falling back to ephemeral storage. Demo student credentials are seeded only outside production.
+This mode runs the complete application using built production artifacts and the high-fidelity in-memory sandbox engine. It requires zero external database installations or container runtimes, while maintaining identical financial calculations, multi-objective ranking, and safety guardrails:
 
-1. **Install and run Backend:**
+1. **Build and start Backend:**
    ```bash
    cd backend
    npm install
-   npm run start:dev
+   npm run build
+   PORT=4568 FORCE_MEMORY_DB=true ALLOW_DEMO_SEED=true node dist/main.js
+   ```
+   *Windows PowerShell:*
+   ```powershell
+   cd backend
+   npm install
+   npm run build
+   $env:PORT="4568"; $env:FORCE_MEMORY_DB="true"; $env:ALLOW_DEMO_SEED="true"; node dist/main.js
    ```
    *Backend starts at http://localhost:4568*
 
-2. **In a separate terminal, install and run Frontend:**
+2. **In a separate terminal, build and start Frontend:**
    ```bash
    cd frontend
    npm install
-   npm run dev
+   npm run build
+   PORT=4567 NEXT_PUBLIC_API_URL=http://localhost:4568/api npm start
+   ```
+   *Windows PowerShell:*
+   ```powershell
+   cd frontend
+   npm install
+   npm run build
+   $env:PORT="4567"; $env:NEXT_PUBLIC_API_URL="http://localhost:4568/api"; npm start
    ```
    *Frontend starts at http://localhost:4567*
+
+---
+
+### Option 3: Local Development (Live Watch Mode)
+
+For live code editing with hot module replacement:
+1. **Backend:** `cd backend && npm install && npm run start:dev` (runs at http://localhost:4568)
+2. **Frontend:** `cd frontend && npm install && npm run dev` (runs at http://localhost:4567)
 
 ---
 
