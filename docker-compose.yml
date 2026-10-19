@@ -40,8 +40,8 @@ services:
     ports:
       - "4568:4568"
     cpus: 1.0
-    mem_limit: 512m
-    pids_limit: 100
+    mem_limit: 1024m
+    pids_limit: 250
     cap_drop:
       - ALL
     security_opt:
@@ -61,12 +61,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4567
+      HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4568/api}
     ports:
       - "4567:4567"
     cpus: 1.0
-    mem_limit: 768m
-    pids_limit: 100
+    mem_limit: 1024m
+    pids_limit: 250
     cap_drop:
       - ALL
     security_opt:

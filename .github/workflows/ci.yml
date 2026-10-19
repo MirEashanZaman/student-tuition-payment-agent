@@ -168,16 +168,29 @@ jobs:
           echo "Waiting for PostgreSQL, Backend, and Frontend to become responsive..."
           SUCCESS=0
           for i in {1..40}; do
-            if curl -s -f http://localhost:4568/api/rates > /dev/null 2>&1 && curl -s -f http://localhost:4567 > /dev/null 2>&1; then
-              echo "Services responsive after $i attempts."
+            BACKEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4568/api/rates 2>/dev/null || echo "000")
+            FRONTEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4567 2>/dev/null || echo "000")
+            if [ "$BACKEND_CODE" = "200" ] && [ "$FRONTEND_CODE" = "200" ]; then
+              echo "Services responsive after $i attempts (Backend: $BACKEND_CODE, Frontend: $FRONTEND_CODE)."
               SUCCESS=1
               break
             fi
-            echo "Attempt $i: waiting for services..."
+            echo "Attempt $i: Backend HTTP $BACKEND_CODE, Frontend HTTP $FRONTEND_CODE... waiting"
+            if [ $((i % 5)) -eq 0 ]; then
+              docker compose ps
+            fi
             sleep 3
           done
           if [ $SUCCESS -eq 0 ]; then
-            echo "Error: Services failed to become healthy within timeout."
+            echo "::error::Services failed to become healthy within timeout. Backend: $BACKEND_CODE, Frontend: $FRONTEND_CODE"
+            echo "=== DOCKER COMPOSE PS ==="
+            docker compose ps
+            echo "=== BACKEND LOGS ==="
+            docker compose logs backend --tail=50
+            echo "=== FRONTEND LOGS ==="
+            docker compose logs frontend --tail=50
+            echo "=== POSTGRES LOGS ==="
+            docker compose logs postgres --tail=50
             exit 1
           fi
 
@@ -219,11 +232,10 @@ jobs:
       - name: Output Container Logs on Failure
         if: always()
         run: |
-          echo "### Docker Container Logs" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          docker compose logs >> $GITHUB_STEP_SUMMARY || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          docker compose logs
+          echo "=== DOCKER COMPOSE PS ==="
+          docker compose ps || true
+          echo "=== CONTAINER LOGS ==="
+          docker compose logs --tail=100 || true
 
       - name: Teardown Containers
         if: always()

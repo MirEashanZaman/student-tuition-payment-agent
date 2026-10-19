@@ -201,7 +201,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         this.pool.on('error', (err) => {
           this.logger.error(`Unexpected idle PostgreSQL client error: ${err.message}`);
         });
-        const client = await this.pool.connect();
+        let client: any = null;
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          try {
+            client = await this.pool.connect();
+            break;
+          } catch (connErr: any) {
+            if (attempt === 5) throw connErr;
+            this.logger.warn(`PostgreSQL connect attempt ${attempt} failed (${connErr.message}). Retrying in 1.5s...`);
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        }
         client.release();
         this.logger.log('Connected to PostgreSQL successfully.');
         await this.runPostgresMigrations();

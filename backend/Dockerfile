@@ -12,6 +12,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --chown=node:node --from=builder /app/dist ./dist
+RUN chown -R node:node /app
 
 EXPOSE 4568
 USER node
