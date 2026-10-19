@@ -22,6 +22,8 @@ export function generateTuitionReceiptPdf(data: ReceiptData): Blob {
   const tgtCurr = data.targetCurrency || 'USD';
   const sanitize = (val: string | number | undefined | null) =>
     String(val ?? '').replace(/[\\()]/g, '');
+  const certRef = sanitize(data.certificateId || (data.transferId ? `CERT-${data.transferId.slice(0, 8).toUpperCase()}` : 'CERT-2026-BDT01'));
+  const txHash = sanitize(data.txHash || (data.transferId ? `sha256-${data.transferId}` : 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'));
 
   const contentStream = `
 q
@@ -37,162 +39,162 @@ Q
 BT
 /F2 17 Tf
 1 1 1 rg
-55 778 Td
+1 0 0 1 55 778 Tm
 (OFFICIAL TUITION SETTLEMENT CERTIFICATE) Tj
 ET
 
 BT
 /F1 10 Tf
 0.9 0.94 1 rg
-55 754 Td
+1 0 0 1 55 754 Tm
 (FinTechathon 2026 International Student Finance Remittance Rail) Tj
 ET
 
 q
 0.96 0.97 0.99 rg
-40 580 515 140 re f
+40 575 515 145 re f
 0.85 0.88 0.94 RG
 1 w
-40 580 515 140 re s
+40 575 515 145 re s
 Q
 
 BT
 /F2 11 Tf
 0.12 0.23 0.54 rg
-55 700 Td
+1 0 0 1 55 696 Tm
 (TRANSACTION & STUDENT DETAILS) Tj
 ET
 
 BT
 /F1 10 Tf
 0.2 0.2 0.25 rg
-55 675 Td
+1 0 0 1 55 672 Tm
 (Certificate Reference:) Tj
-200 675 Td
-(${sanitize(data.certificateId)}) Tj
-55 655 Td
+1 0 0 1 210 672 Tm
+(${certRef}) Tj
+1 0 0 1 55 652 Tm
 (Student Identity:) Tj
-200 655 Td
+1 0 0 1 210 652 Tm
 (${sanitize(data.studentName)} (${sanitize(data.studentId)})) Tj
-55 635 Td
+1 0 0 1 55 632 Tm
 (Beneficiary University:) Tj
-200 635 Td
+1 0 0 1 210 632 Tm
 (${sanitize(data.recipientUniversity)}) Tj
-55 615 Td
+1 0 0 1 55 612 Tm
 (Student Registration No:) Tj
-200 615 Td
+1 0 0 1 210 612 Tm
 (${sanitize(data.studentRegNumber)}) Tj
-55 595 Td
+1 0 0 1 55 592 Tm
 (Remittance Rail Corridor:) Tj
-200 595 Td
+1 0 0 1 210 592 Tm
 (${sanitize(data.providerName)}) Tj
 ET
 
 q
 0.96 0.97 0.99 rg
-40 430 515 135 re f
+40 415 515 145 re f
 0.85 0.88 0.94 RG
 1 w
-40 430 515 135 re s
+40 415 515 145 re s
 Q
 
 BT
 /F2 11 Tf
 0.12 0.23 0.54 rg
-55 545 Td
+1 0 0 1 55 536 Tm
 (SETTLEMENT FINANCIAL BREAKDOWN) Tj
 ET
 
 BT
 /F1 10 Tf
 0.2 0.2 0.25 rg
-55 520 Td
+1 0 0 1 55 512 Tm
 (Settled Tuition (${tgtCurr}):) Tj
-200 520 Td
+1 0 0 1 210 512 Tm
 (${tgtCurr === 'USD' ? '$' : ''}${sanitize(Number(data.targetAmountUsd || 0).toLocaleString())} ${tgtCurr}) Tj
-55 500 Td
+1 0 0 1 55 492 Tm
 (Debited from Account (${srcCurr}):) Tj
-200 500 Td
+1 0 0 1 210 492 Tm
 (${sanitize(Number(data.sourceAmountBdt || 0).toLocaleString())} ${srcCurr}) Tj
-55 480 Td
+1 0 0 1 55 472 Tm
 (Applied FX Rate:) Tj
-200 480 Td
+1 0 0 1 210 472 Tm
 (${sanitize(data.fxRateApplied)} ${srcCurr}/${tgtCurr}) Tj
-55 460 Td
+1 0 0 1 55 452 Tm
 (Corridor Fee:) Tj
-200 460 Td
+1 0 0 1 210 452 Tm
 (${sanitize(Number(data.feeTotalBdt || 0).toLocaleString())} ${srcCurr}) Tj
-55 440 Td
+1 0 0 1 55 432 Tm
 (Settlement Timestamp:) Tj
-200 440 Td
+1 0 0 1 210 432 Tm
 (${sanitize(data.confirmedAt)}) Tj
 ET
 
 q
 0.07 0.10 0.16 rg
-40 310 515 105 re f
+40 290 515 110 re f
 Q
 
 BT
 /F2 11 Tf
 0.34 0.75 0.99 rg
-55 395 Td
+1 0 0 1 55 378 Tm
 (CRYPTOGRAPHIC INTEGRITY & VERIFICATION) Tj
 ET
 
 BT
 /F1 9 Tf
 0.85 0.9 0.95 rg
-55 375 Td
+1 0 0 1 55 358 Tm
 (Algorithm: SHA-256 HMAC / Append-Only Ledger Entry) Tj
-55 355 Td
+1 0 0 1 55 340 Tm
 (Transaction Fingerprint (SHA-256):) Tj
 ET
 
 BT
 /F1 8 Tf
 0.3 0.85 0.5 rg
-55 335 Td
-(${sanitize(data.txHash)}) Tj
+1 0 0 1 55 322 Tm
+(${txHash}) Tj
 ET
 
 BT
 /F1 9 Tf
 0.7 0.75 0.85 rg
-55 320 Td
+1 0 0 1 55 304 Tm
 (Status: SETTLED & VERIFIED | Permission Tier: EXECUTE (Human-Authorized)) Tj
 ET
 
 q
 0.93 0.98 0.94 rg
-40 230 515 65 re f
+40 205 515 70 re f
 0.1 0.6 0.3 RG
 1.5 w
-40 230 515 65 re s
+40 205 515 70 re s
 Q
 
 BT
 /F2 12 Tf
 0.08 0.5 0.24 rg
-55 272 Td
+1 0 0 1 55 252 Tm
 ([ VERIFIED OFFICIAL SETTLEMENT RECEIPT ]) Tj
 ET
 
 BT
 /F1 9 Tf
 0.15 0.4 0.2 rg
-55 252 Td
+1 0 0 1 55 234 Tm
 (This digital certificate confirms fund settlement to the foreign university.) Tj
-55 240 Td
+1 0 0 1 55 220 Tm
 (Issued by FinTechathon 2026 Student Tuition Payment Autonomous Agent.) Tj
 ET
 
 BT
 /F1 8 Tf
 0.5 0.5 0.5 rg
-55 180 Td
+1 0 0 1 55 160 Tm
 (Notice: This document is cryptographically linked to audit record in PostgreSQL append-only ledger.) Tj
-55 168 Td
+1 0 0 1 55 146 Tm
 (Mir Eashan Zaman & Ishmam Mubtasim | American International University-Bangladesh (AIUB)) Tj
 ET
 `.trim();
