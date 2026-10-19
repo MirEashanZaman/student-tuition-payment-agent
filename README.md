@@ -138,7 +138,7 @@ When confirming a payment transfer draft in the UI:
 1. In the chat draft card under **2FA Step-Up Verification**, click **"Request Live OTP"**.
 2. The server dynamically issues a 6-digit OTP (`POST /api/auth/step-up-otp`), displays a notification with the issued code, and automatically auto-populates the OTP verification input.
 3. Click **"Authorize & Confirm Payment"** to finalize settlement.
-*(In Docker where `NODE_ENV=production`, the static developer test PINs `123456`/`000000` are disabled by default, but can be enabled if desired by setting `ALLOW_SANDBOX_MFA_BYPASS=true` in `.env`).*
+*(In Docker where `NODE_ENV=production`, the static developer test PINs `123456`/`000000` are disabled by default, but can be enabled if desired by setting `ALLOW_SANDBOX_MFA_BYPASS=true` in `.env`. In the sandbox, the OTP is shown in the UI as a stand-in for SMS or authenticator delivery; in production it would be delivered out-of-band).*
 
 ---
 
