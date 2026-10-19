@@ -5,6 +5,13 @@
 
 ---
 
+## Demo Video Walkthrough
+
+- **Official Demonstration Video:** [Watch FinTechathon 2026 Demo Video (Google Drive)](https://drive.google.com/drive/folders/1lggYZhSiE72cKdziaNC_jzMLKfl3iRHt?usp=drive_link)
+- **Companion Walkthrough Script:** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) (4 minutes 35 seconds, with exact Do/Say cues and timing breakdown)
+
+---
+
 ## Key Highlights & Scoring Alignment
 
 - **Task Completion (40%):** Complete end-to-end tuition settlement flow from natural language query (`"Pay my $3,000 tuition from BDT"`), corridor comparison, draft creation, to settlement confirmation and receipt generation.
@@ -320,7 +327,7 @@ All official FinTechathon submission documents are prepared in the repository:
 1. **Technical Documentation:** [docs/TECHNICAL_DOCUMENTATION.pdf](docs/TECHNICAL_DOCUMENTATION.pdf) (primary official submission document with rendered formulas and architecture diagrams; markdown source: [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md))
 2. **Security Self-Assessment:** [docs/SECURITY_REPORT.md](docs/SECURITY_REPORT.md)
 3. **Presentation Deck:** [docs/FINTECHATHON_2026_PRESENTATION.pptx](docs/FINTECHATHON_2026_PRESENTATION.pptx) (primary official PowerPoint deck) & [docs/PRESENTATION_DECK.md](docs/PRESENTATION_DECK.md)
-4. **Demo Video Script:** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
+4. **Demo Video & Walkthrough Script:** [Watch Demonstration Video (Google Drive)](https://drive.google.com/drive/folders/1lggYZhSiE72cKdziaNC_jzMLKfl3iRHt?usp=drive_link) & [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 5. **Execution Evidence:** [docs/EXECUTION_EVIDENCE.md](docs/EXECUTION_EVIDENCE.md) & [docs/execution-evidence.json](docs/execution-evidence.json)
 6. **Open-Source License:** [LICENSE](LICENSE) & [docs/LICENSE](docs/LICENSE)
 7. **Source Code & Tests:** [backend/](backend/) & [frontend/](frontend/)

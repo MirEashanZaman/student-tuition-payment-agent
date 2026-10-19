@@ -1,6 +1,7 @@
 # 5-Minute Demo Video Script & Walkthrough
 **FinTechathon 2026 | Topic C: Student Tuition Payment Agent**
 
+- **Demo Video Recording:** [Watch FinTechathon 2026 Demo Video (Google Drive)](https://drive.google.com/drive/folders/1lggYZhSiE72cKdziaNC_jzMLKfl3iRHt?usp=drive_link)
 - **Target Video Length:** 4 minutes 35 seconds (Strictly under 5 minutes)
 - **Presenters:** Mir Eashan Zaman & Ishmam Mubtasim (American International University-Bangladesh - AIUB)
 - **Evaluation Sandbox:** All accounts, exchange rates, and banking rails operate in sandbox mode with zero real money movement.
