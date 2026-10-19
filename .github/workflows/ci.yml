@@ -183,6 +183,12 @@ jobs:
           done
           if [ $SUCCESS -eq 0 ]; then
             echo "::error::Services failed to become healthy within timeout. Backend: $BACKEND_CODE, Frontend: $FRONTEND_CODE"
+            B_LOG=$(docker compose logs backend --tail=10 | tr '\r\n' ' ' | cut -c 1-250)
+            echo "::error title=Backend Log::$B_LOG"
+            P_LOG=$(docker compose logs postgres --tail=10 | tr '\r\n' ' ' | cut -c 1-250)
+            echo "::error title=Postgres Log::$P_LOG"
+            PS_LOG=$(docker compose ps | tr '\r\n' ' ' | cut -c 1-250)
+            echo "::error title=Compose PS::$PS_LOG"
             echo "=== DOCKER COMPOSE PS ==="
             docker compose ps
             echo "=== BACKEND LOGS ==="
