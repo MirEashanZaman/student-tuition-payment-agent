@@ -39,11 +39,6 @@ services:
       ALLOW_SANDBOX_MFA_BYPASS: "${ALLOW_SANDBOX_MFA_BYPASS:-false}"
     ports:
       - "4568:4568"
-    cpus: 1.0
-    mem_limit: 1024m
-    pids_limit: 250
-    cap_drop:
-      - ALL
     security_opt:
       - no-new-privileges:true
     depends_on:
@@ -65,11 +60,6 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4568/api}
     ports:
       - "4567:4567"
-    cpus: 1.0
-    mem_limit: 1024m
-    pids_limit: 250
-    cap_drop:
-      - ALL
     security_opt:
       - no-new-privileges:true
     depends_on:

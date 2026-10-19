@@ -59,7 +59,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 4568;
+  const port = Number(process.env.PORT) || 4568;
   const host = process.env.HOST || '0.0.0.0';
   await app.listen(port, host);
   logger.log(`================================================================`);
