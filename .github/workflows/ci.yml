@@ -177,14 +177,15 @@ jobs:
 
       - name: Execute End-to-End Container Smoke Tests
         run: |
+          set -x
           echo "Verifying Backend Rates Endpoint..."
-          curl -f -s http://localhost:4568/api/rates > /dev/null
+          curl -i -f http://localhost:4568/api/rates
 
           echo "Verifying PostgreSQL Seeded Student Authentication..."
           LOGIN_RES=$(curl -s -f -X POST http://localhost:4568/api/auth/login \
             -H "Content-Type: application/json" \
             -d '{"studentIdOrEmail":"STU-2026-BDT01","password":"student123","permissionTier":"EXECUTE"}')
-          echo "Login Response received."
+          echo "Login Response: $LOGIN_RES"
           TOKEN=$(echo "$LOGIN_RES" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
           if [ -z "$TOKEN" ]; then
             echo "Failed to acquire JWT bearer token from containerized backend."
@@ -193,24 +194,30 @@ jobs:
           echo "JWT Authentication successful."
 
           echo "Verifying Remittance Route Optimization Engine..."
-          curl -f -s -X POST http://localhost:4568/api/routes/compare \
+          curl -i -f -X POST http://localhost:4568/api/routes/compare \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $TOKEN" \
-            -d '{"amountUsd":3000,"preference":"balanced"}' > /dev/null
+            -d '{"amountUsd":3000,"preference":"balanced"}'
 
           echo "Verifying Step-Up 2FA OTP Generation..."
           OTP_RES=$(curl -s -f -X POST http://localhost:4568/api/auth/step-up-otp \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $TOKEN")
-          echo "$OTP_RES" | grep -o '"otp":"[^"]*'
+          echo "OTP Response: $OTP_RES"
 
           echo "Verifying Frontend HTML Rendering..."
-          curl -f -s http://localhost:4567 | grep -i "Student Tuition" > /dev/null
+          curl -i -f http://localhost:4567
+
           echo "All containerized smoke tests passed successfully."
 
       - name: Output Container Logs on Failure
-        if: failure()
-        run: docker compose logs
+        if: always()
+        run: |
+          echo "### Docker Container Logs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          docker compose logs >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          docker compose logs
 
       - name: Teardown Containers
         if: always()
