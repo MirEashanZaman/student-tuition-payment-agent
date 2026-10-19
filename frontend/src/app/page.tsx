@@ -55,11 +55,11 @@ import {
 import { downloadTuitionReceiptPdf, ReceiptData } from '../lib/pdf-generator';
 import { getFinancialBoundaries } from '../lib/formatters';
 
-const renderFormattedText = (content: string) => {
+const renderFormattedText = (content: string, isUser = false) => {
   return content.split('\n').map((line, idx) => {
     if (line.startsWith('### ')) {
       return (
-        <h3 key={idx} className="font-bold text-base text-[#1E3A8A] mt-2 mb-1">
+        <h3 key={idx} className={`font-bold text-base mt-2 mb-1 ${isUser ? 'text-white' : 'text-[#1E3A8A]'}`}>
           {line.replace('### ', '')}
         </h3>
       );
@@ -67,12 +67,12 @@ const renderFormattedText = (content: string) => {
     if (line.startsWith('• ')) {
       const parts = line.replace('• ', '').split('**');
       return (
-        <div key={idx} className="flex items-start gap-2 my-1 text-xs sm:text-sm text-slate-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0D9488] mt-2 shrink-0"></span>
+        <div key={idx} className={`flex items-start gap-2 my-1 text-xs sm:text-sm ${isUser ? 'text-white' : 'text-slate-800'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${isUser ? 'bg-white' : 'bg-[#0D9488]'}`}></span>
           <span>
             {parts.map((part, pIdx) =>
               pIdx % 2 === 1 ? (
-                <strong key={pIdx} className="font-bold text-slate-900">
+                <strong key={pIdx} className={`font-bold ${isUser ? 'text-white' : 'text-slate-900'}`}>
                   {part}
                 </strong>
               ) : (
@@ -85,10 +85,10 @@ const renderFormattedText = (content: string) => {
     }
     const parts = line.split('**');
     return (
-      <p key={idx} className="mb-1.5 last:mb-0 text-xs sm:text-sm text-slate-800 leading-relaxed">
+      <p key={idx} className={`mb-1.5 last:mb-0 text-xs sm:text-sm leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
         {parts.map((part, pIdx) =>
           pIdx % 2 === 1 ? (
-            <strong key={pIdx} className="font-bold text-slate-900">
+            <strong key={pIdx} className={`font-bold ${isUser ? 'text-white' : 'text-slate-900'}`}>
               {part}
             </strong>
           ) : (
@@ -1369,7 +1369,7 @@ export default function Home({
                             : 'bg-slate-100 border border-slate-200 text-[#0F172A] rounded-tl-sm shadow-sm'
                         }`}
                       >
-                        {renderFormattedText(msg.text)}
+                        {renderFormattedText(msg.text, msg.sender === 'user')}
 
                         {msg.comparisonData && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200">
