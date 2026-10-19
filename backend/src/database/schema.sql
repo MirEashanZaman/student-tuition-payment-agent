@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS rates (
   transfer_fee_flat_bdt NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
   transfer_fee_percent NUMERIC(6, 4) NOT NULL DEFAULT 0.00,
   speed_hours INTEGER NOT NULL,
-  speed_description VARCHAR(100) NOT NULL,
+  speed_description VARCHAR(255) NOT NULL,
   reliability_score NUMERIC(4, 2) NOT NULL DEFAULT 0.95,
-  compliance_rating VARCHAR(20) NOT NULL DEFAULT 'A+',
+  compliance_rating VARCHAR(100) NOT NULL DEFAULT 'A+',
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

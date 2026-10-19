@@ -120,9 +120,9 @@ CREATE TABLE IF NOT EXISTS rates (
   transfer_fee_flat_bdt NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
   transfer_fee_percent NUMERIC(6, 4) NOT NULL DEFAULT 0.00,
   speed_hours INTEGER NOT NULL,
-  speed_description VARCHAR(100) NOT NULL,
+  speed_description VARCHAR(255) NOT NULL,
   reliability_score NUMERIC(4, 2) NOT NULL DEFAULT 0.95,
-  compliance_rating VARCHAR(20) NOT NULL DEFAULT 'A+',
+  compliance_rating VARCHAR(100) NOT NULL DEFAULT 'A+',
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -267,6 +267,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         sql = EMBEDDED_SCHEMA_SQL;
       }
       await this.pool.query(sql);
+      try {
+        await this.pool.query(`
+          ALTER TABLE rates ALTER COLUMN compliance_rating TYPE VARCHAR(100);
+          ALTER TABLE rates ALTER COLUMN speed_description TYPE VARCHAR(255);
+        `);
+      } catch (alterErr: any) {
+        this.logger.warn(`Column alter notice: ${alterErr.message}`);
+      }
       this.logger.log('PostgreSQL schema migrations executed.');
     } catch (err) {
       this.logger.error(`Migration error: ${err.message}`);
