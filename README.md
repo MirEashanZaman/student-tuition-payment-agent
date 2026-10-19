@@ -140,6 +140,9 @@ When confirming a payment transfer draft in the UI:
 3. Click **"Authorize & Confirm Payment"** to finalize settlement.
 *(In Docker where `NODE_ENV=production`, the static developer test PINs `123456`/`000000` are disabled by default, but can be enabled if desired by setting `ALLOW_SANDBOX_MFA_BYPASS=true` in `.env`. In the sandbox, the OTP is shown in the UI as a stand-in for SMS or authenticator delivery; in production it would be delivered out-of-band).*
 
+> [!NOTE]
+> **Sandbox JWT Secret Notice:** The compose file ships a default sandbox JWT secret; it must be rotated outside the sandbox.
+
 ---
 
 ### Option 2: Running Locally Without Docker (Lightweight In-Memory Mode)
@@ -166,14 +169,14 @@ This mode runs the complete application using built production artifacts and the
    ```bash
    cd frontend
    npm install
-   npm run build
+   NEXT_PUBLIC_API_URL=http://localhost:4568/api npm run build
    PORT=4567 NEXT_PUBLIC_API_URL=http://localhost:4568/api npm start
    ```
    *Windows PowerShell:*
    ```powershell
    cd frontend
    npm install
-   npm run build
+   $env:NEXT_PUBLIC_API_URL="http://localhost:4568/api"; npm run build
    $env:PORT="4567"; $env:NEXT_PUBLIC_API_URL="http://localhost:4568/api"; npm start
    ```
    *Frontend starts at http://localhost:4567*
