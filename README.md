@@ -131,7 +131,14 @@ docker compose up --build
 Once started:
 - **Frontend UI:** [http://localhost:4567](http://localhost:4567)
 - **Backend API:** [http://localhost:4568](http://localhost:4568)
-- **PostgreSQL Database:** `localhost:5432`
+- **PostgreSQL Database:** `localhost:5433` (internal container port 5432, preventing conflicts with local PostgreSQL)
+
+#### Step-Up 2FA in Docker & Local Runs
+When confirming a payment transfer draft in the UI:
+1. In the chat draft card under **2FA Step-Up Verification**, click **"Request Live OTP"**.
+2. The server dynamically issues a 6-digit OTP (`POST /api/auth/step-up-otp`), displays a notification with the issued code, and automatically auto-populates the OTP verification input.
+3. Click **"Authorize & Confirm Payment"** to finalize settlement.
+*(In Docker where `NODE_ENV=production`, the static developer test PINs `123456`/`000000` are disabled by default, but can be enabled if desired by setting `ALLOW_SANDBOX_MFA_BYPASS=true` in `.env`).*
 
 ---
 
@@ -290,6 +297,7 @@ All official FinTechathon submission documents are prepared in the repository:
 5. **Execution Evidence:** [docs/EXECUTION_EVIDENCE.md](docs/EXECUTION_EVIDENCE.md) & [docs/execution-evidence.json](docs/execution-evidence.json)
 6. **Open-Source License:** [LICENSE](LICENSE) & [docs/LICENSE](docs/LICENSE)
 7. **Source Code & Tests:** [backend/](backend/) & [frontend/](frontend/)
+8. **Automated Evidence Generator Script:** [scratch/run_demo_and_export.js](scratch/run_demo_and_export.js)
 
 ---
 
