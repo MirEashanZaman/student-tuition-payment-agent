@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { PromptInjectionFilter } from './prompt-injection.filter';
 import { FinancialLimitsGuard } from './financial-limits.guard';
 import { PermissionTierValidator } from './permission-tier.guard';
@@ -9,11 +9,14 @@ export interface SafetyCheckContext {
   amountBdt?: number;
   dailySpentBdt?: number;
   currentBalanceBdt?: number;
+  annualSpentBdt?: number;
   userConsent?: boolean;
   confirmationToken?: string;
   expectedToken?: string;
   tokenExpiresAt?: Date;
   userPrompt?: string;
+  recipientUniversity?: string;
+  studentId?: string;
 }
 
 export interface SafetyCheckResult {
@@ -93,7 +96,12 @@ export class FinancialLimitCheckHandler extends SafetyCheckHandler {
     const dailySpent = context.dailySpentBdt || 0;
     const balance = context.currentBalanceBdt || 0;
 
-    const result = FinancialLimitsGuard.validateTransfer(context.amountBdt, balance, dailySpent);
+    const result = FinancialLimitsGuard.validateTransfer(
+      context.amountBdt,
+      balance,
+      dailySpent,
+      context.annualSpentBdt,
+    );
     if (!result.isValid) {
       return {
         passed: false,
@@ -163,12 +171,38 @@ export class AnomalyCheckHandler extends SafetyCheckHandler {
       }
       const envCeiling = parseFloat(process.env.ANOMALY_CEILING_LIMIT || '');
       const anomalyCeiling = !isNaN(envCeiling) && envCeiling > 0 ? envCeiling : 5000000;
+      const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
       if (context.amountBdt > anomalyCeiling) {
         return {
           passed: false,
           blockedBy: 'AnomalyCheckHandler',
-          reason: `Flagged suspicious anomaly: Requested amount exceeds hard safety ceiling of ${anomalyCeiling.toLocaleString()} BDT.`,
+          reason: `Flagged suspicious anomaly: Requested amount exceeds hard safety ceiling of ${anomalyCeiling.toLocaleString()} ${currency}.`,
         };
+      }
+    }
+    return { passed: true };
+  }
+}
+
+@Injectable()
+export class AmlSanctionsCheckHandler extends SafetyCheckHandler {
+  private readonly prohibitedEntities = [
+    'SANCTIONED_ENTITY',
+    'BLOCKED_TERRORIST_ORGANIZATION',
+    'PROHIBITED_ACADEMIC_SYNDICATE',
+  ];
+
+  protected async check(context: SafetyCheckContext): Promise<SafetyCheckResult> {
+    if (context.recipientUniversity) {
+      const normalized = context.recipientUniversity.toUpperCase();
+      for (const entity of this.prohibitedEntities) {
+        if (normalized.includes(entity)) {
+          return {
+            passed: false,
+            blockedBy: 'AmlSanctionsCheckHandler',
+            reason: `Transfer blocked by AML / Sanctions screening: Prohibited entity match (${entity})`,
+          };
+        }
       }
     }
     return { passed: true };
@@ -185,10 +219,13 @@ export class SafetyChainCoordinator {
     financialLimit: FinancialLimitCheckHandler,
     confirmationCheck: ConfirmationCheckHandler,
     anomalyCheck: AnomalyCheckHandler,
+    @Optional() amlSanctions?: AmlSanctionsCheckHandler,
   ) {
+    const amlHandler = amlSanctions || new AmlSanctionsCheckHandler();
     promptInjection
       .setNext(permissionTier)
       .setNext(anomalyCheck)
+      .setNext(amlHandler)
       .setNext(financialLimit)
       .setNext(confirmationCheck);
 

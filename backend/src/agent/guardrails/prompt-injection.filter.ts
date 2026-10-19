@@ -39,11 +39,12 @@ export class PromptInjectionFilter {
   ];
 
   private static normalizeUserText(userInput: string): string {
-    if (!userInput) {
+    if (!userInput || typeof userInput !== 'string') {
       return '';
     }
 
-    const normalized = userInput
+    const capped = userInput.length > 20000 ? userInput.slice(0, 20000) : userInput;
+    const normalized = capped
       .normalize('NFKC')
       .replace(/[\u200B-\u200D\u2060\uFEFF\u202A-\u202E\u2066-\u2069]/g, '')
       .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, '')

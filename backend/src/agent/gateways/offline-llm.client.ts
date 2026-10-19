@@ -23,6 +23,14 @@ export class OfflineLlmClient implements ILlmClient {
       }
     }
 
+    if (lower.includes('installment') || lower.includes('split') || lower.includes('milestone')) {
+      const parts = lower.includes('3') ? 3 : 2;
+      const partAmount = +(amountUsd / parts).toFixed(2);
+      return {
+        reply: `I have formulated a smart ${parts}-part installment payment plan for your $${amountUsd.toLocaleString()} USD tuition. Splitting into ${parts} installments of ~$${partAmount.toLocaleString()} USD keeps each settlement well within your 400,000 BDT per-transfer limit while meeting your university course registration deadlines.`,
+      };
+    }
+
     if (lower.includes('compare') || lower.includes('rate') || lower.includes('cheapest') || lower.includes('fastest') || lower.includes('route')) {
       return {
         reply: `I have analyzed and ranked the live tuition remittance corridors for $${amountUsd.toLocaleString()} USD from Bangladesh (BDT). EduPay Prime currently offers the optimal rate with Tier-1 direct university clearing.`,

@@ -33,7 +33,7 @@ export interface ChatResponse {
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
   private genAI: GoogleGenerativeAI | null = null;
-  private readonly defaultStudentId = 'STU-2026-BDT01';
+  private readonly defaultStudentId = process.env.DEFAULT_DEMO_STUDENT_ID || 'STU-2026-BDT01';
 
   constructor(
     private readonly toolsService: AgentToolsService,
@@ -143,10 +143,11 @@ export class AgentService {
     studentId: string,
     injectionCheck: any,
   ): Promise<ChatResponse> {
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
     const model = this.genAI!.getGenerativeModel({
       model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
       systemInstruction: `You are the FinTechathon 2026 Student Tuition Payment Agent.
-You assist university students in paying foreign tuition from Bangladesh (BDT).
+You assist university students in paying foreign tuition from Bangladesh (${currency}).
 Your duties:
 1. Provide accurate tuition remittance options by comparing fees, exchange rates, and speed.
 2. Enforce financial safety: Transfers require explicit user confirmation.
@@ -356,7 +357,26 @@ Your duties:
       };
     }
 
-    if (lower.includes('balance') || lower.includes('how much money') || lower.includes('account status')) {
+    if (lower.includes('invoice') || lower.includes('tuition bill') || lower.includes('fee statement') || lower.includes('extract invoice')) {
+      const extracted = await this.toolsService.parseInvoiceDocument(userMessage);
+      executedCalls.push({
+        toolName: 'parseInvoiceDocument',
+        params: { invoiceText: userMessage },
+        result: extracted,
+      });
+      replyText =
+        `Successfully extracted tuition invoice details:\n\n` +
+        `• **University:** ${extracted.recipientUniversity}\n` +
+        `• **Tuition Amount:** $${extracted.amountUsd.toLocaleString()} ${extracted.targetCurrency}\n` +
+        `• **Registration Number:** ${extracted.studentRegNumber}\n` +
+        `• **Due Date:** ${extracted.tuitionDeadline}\n\n` +
+        `Would you like me to compare available remittance corridors for this tuition payment?`;
+      suggestedActions.push({
+        label: `Compare Corridors for $${extracted.amountUsd.toLocaleString()} ${extracted.targetCurrency}`,
+        actionType: 'SELECT_ROUTE',
+        payload: { amountUsd: extracted.amountUsd, recipientUniversity: extracted.recipientUniversity, targetCurrency: extracted.targetCurrency },
+      });
+    } else if (lower.includes('balance') || lower.includes('how much money') || lower.includes('account status')) {
       const balanceData = await this.toolsService.getBalance(studentId);
       await this.logAgentAction(
         'AGENT_BALANCE_CHECK',
@@ -393,6 +413,112 @@ Your duties:
       if (parsed > 50) {
         amountUsd = parsed;
       }
+    }
+
+    if (lower.includes('installment') || lower.includes('split') || lower.includes('milestone')) {
+      const parts = lower.includes('3') ? 3 : 2;
+      let tuitionDeadline: string | undefined;
+      if (lower.includes('urgent') || lower.includes('tomorrow') || lower.includes('24h')) {
+        const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+        tuitionDeadline = tomorrow.toISOString();
+      }
+
+      const installmentPlan = await this.toolsService.planInstallment(
+        amountUsd,
+        parts,
+        tuitionDeadline,
+      );
+
+      await this.logAgentAction(
+        'AGENT_INSTALLMENT_PLAN',
+        `Installment payment plan created for student ${studentId}`,
+        { studentId, amountUsd, numInstallments: parts },
+        studentId,
+        'READ_ONLY',
+      );
+
+      executedCalls.push({
+        toolName: 'planInstallment',
+        params: { studentId, totalAmountUsd: amountUsd, numInstallments: parts },
+        result: installmentPlan,
+      });
+
+      replyText =
+        `I have structured a smart **${parts}-part milestone installment plan** for your tuition of **$${amountUsd.toLocaleString()} USD**.\n\n` +
+        `• **Settlement Provider:** ${installmentPlan.providerName}\n` +
+        `• **Total Source Cost:** ${installmentPlan.totalBdtWithFees.toLocaleString()} BDT\n` +
+        `• **Transfer Cap Status:** ${installmentPlan.allWithinTransferCap ? 'All milestones are within the 400,000 BDT per-transfer limit' : 'Requires adjustment'}\n\n` +
+        `Each milestone is scheduled to ensure your university course registration remains active while staying within safety limits.`;
+
+      for (const ms of installmentPlan.milestones) {
+        suggestedActions.push({
+          label: `Draft Milestone ${ms.installmentNumber} ($${ms.amountUsd.toLocaleString()} USD)`,
+          actionType: 'PLAN_INSTALLMENT',
+          payload: {
+            amountUsd: ms.amountUsd,
+            milestone: ms.installmentNumber,
+            routeId: installmentPlan.routeId,
+          },
+        });
+      }
+
+      return {
+        message: replyText,
+        toolCallsExecuted: executedCalls,
+        suggestedActions,
+        securityFlags: { isSuspicious: false, flaggedPatterns: [] },
+      };
+    }
+
+    if (lower.startsWith('select route') || lower.startsWith('choose route') || lower.startsWith('use route')) {
+      const allRates = await this.db.getAllRates();
+      const activeRates = allRates.filter((r) => r.is_active);
+      const rates = activeRates.length > 0 ? activeRates : allRates;
+      const matched = rates.find((r) =>
+        lower.includes(r.provider_name.toLowerCase()) ||
+        lower.includes(r.provider_name.split(' ')[0].toLowerCase())
+      ) || rates[0];
+
+      const university = 'University of Toronto (Tuition Office)';
+      const targetUsd = amountUsd > 0 ? amountUsd : 3000;
+      const draft = await this.toolsService.createTransferDraft(
+        studentId,
+        matched.id,
+        targetUsd,
+        university,
+        'REG-FALL-2026',
+      );
+
+      executedCalls.push({
+        toolName: 'createTransferDraft',
+        params: { studentId, routeId: matched.id, amountUsd: targetUsd, recipientUniversity: university },
+        result: draft,
+      });
+
+      replyText =
+        `### Transfer Draft Generated: \`${draft.transferId}\`\n\n` +
+        `• **Settlement Corridor:** ${draft.providerName}\n` +
+        `• **Recipient University:** ${draft.recipientUniversity}\n` +
+        `• **Target Amount:** $${draft.targetAmountUsd.toLocaleString()} USD\n` +
+        `• **Total Landed Cost:** **${draft.sourceAmountBdt.toLocaleString()} BDT** (Includes ${draft.totalFeeBdt.toLocaleString()} BDT fee + FX spread)\n` +
+        `• **Estimated Arrival:** ${new Date(draft.estimatedDeliveryDate).toLocaleString()}\n\n` +
+        `**Permission Tier Notice:** Autonomous agents cannot unilaterally execute fund movements. Explicit human confirmation is required below:`;
+
+      return {
+        message: replyText,
+        toolCallsExecuted: executedCalls,
+        suggestedActions: [
+          {
+            label: `Confirm Transfer (${draft.transferId.slice(0, 8)})`,
+            actionType: 'CONFIRM_DRAFT',
+            payload: {
+              transferId: draft.transferId,
+              confirmationToken: draft.confirmationToken,
+            },
+          },
+        ],
+        securityFlags: { isSuspicious: false, flaggedPatterns: [] },
+      };
     }
 
     if (
@@ -512,7 +638,7 @@ Your duties:
         `1. *"Pay my $3,000 tuition from BDT"* (Compares all remittance routes)\n` +
         `2. *"What is my account balance?"* (Checks BDT balance and daily limit)\n` +
         `3. *"Compare routes with an urgent 24-hour deadline"* (Demonstrates deadline safety warnings)\n` +
-        `4. *"Show recent audit logs"* (Examines tamper-evident security records)`,
+        `4. *"Show recent audit logs"* (Examines append-only security records)`,
       securityFlags: { isSuspicious: false, flaggedPatterns: [] },
     };
   }

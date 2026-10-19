@@ -28,6 +28,7 @@ export const ConfirmTransferInputSchema = z.object({
   transferId: z.string().min(1, 'Transfer ID is required'),
   confirmationToken: z.string().min(8, 'Confirmation token is required'),
   userConsent: z.boolean().default(true),
+  twoFactorPin: z.string().max(6).optional(),
 });
 
 export const UpdateDailyLimitInputSchema = z.object({
@@ -37,7 +38,11 @@ export const UpdateDailyLimitInputSchema = z.object({
 
 export const DepositFundsInputSchema = z.object({
   studentId: z.string().min(1, 'Student ID is required'),
-  amountBdt: z.number().positive('Deposit amount must be greater than zero'),
+  amountBdt: z.number().positive('Deposit amount must be greater than zero').max(10000000, 'Deposit exceeds safety threshold'),
+  cardNumber: z.string().max(24).regex(/^[\d\s-]*$/, 'Card number may only contain digits and separators').optional(),
+  cardHolder: z.string().max(100).optional(),
+  expiryDate: z.string().max(10).optional(),
+  cvv: z.string().max(4).regex(/^\d*$/, 'CVV must be numeric').optional(),
 });
 
 export const LoginInputSchema = z.object({

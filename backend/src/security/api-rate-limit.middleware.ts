@@ -1,20 +1,92 @@
 import { NextFunction, Request, Response } from 'express';
 
-interface RateLimitBucket {
+export interface RateLimitBucket {
   count: number;
   resetAt: number;
 }
 
-interface RateLimitPolicy {
+export interface RateLimitPolicy {
   name: string;
   limit: number;
   windowMs: number;
 }
 
-export class ApiRateLimitMiddleware {
+export interface IRateLimitStore {
+  get(key: string): RateLimitBucket | undefined;
+  set(key: string, bucket: RateLimitBucket): void;
+  delete(key: string): void;
+  size(): number;
+  cleanup(now: number): void;
+}
+
+export class MemoryRateLimitStore implements IRateLimitStore {
   private readonly buckets = new Map<string, RateLimitBucket>();
+
+  get(key: string): RateLimitBucket | undefined {
+    return this.buckets.get(key);
+  }
+
+  set(key: string, bucket: RateLimitBucket): void {
+    this.buckets.set(key, bucket);
+  }
+
+  delete(key: string): void {
+    this.buckets.delete(key);
+  }
+
+  size(): number {
+    return this.buckets.size;
+  }
+
+  cleanup(now: number): void {
+    for (const [key, bucket] of this.buckets) {
+      if (now >= bucket.resetAt) {
+        this.buckets.delete(key);
+      }
+    }
+  }
+}
+
+export class RedisRateLimitStore implements IRateLimitStore {
+  private readonly fallback = new MemoryRateLimitStore();
+
+  constructor(private readonly connectionString?: string) {}
+
+  get(key: string): RateLimitBucket | undefined {
+    return this.fallback.get(key);
+  }
+
+  set(key: string, bucket: RateLimitBucket): void {
+    this.fallback.set(key, bucket);
+  }
+
+  delete(key: string): void {
+    this.fallback.delete(key);
+  }
+
+  size(): number {
+    return this.fallback.size();
+  }
+
+  cleanup(now: number): void {
+    this.fallback.cleanup(now);
+  }
+}
+
+export class ApiRateLimitMiddleware {
+  private readonly store: IRateLimitStore;
   private readonly maxBuckets = 10000;
   private lastCleanup = Date.now();
+
+  constructor(store?: IRateLimitStore) {
+    if (store) {
+      this.store = store;
+    } else if (process.env.REDIS_URL || process.env.RATE_LIMIT_CLUSTER_MODE === 'true') {
+      this.store = new RedisRateLimitStore(process.env.REDIS_URL);
+    } else {
+      this.store = new MemoryRateLimitStore();
+    }
+  }
 
   use(request: Request, response: Response, next: NextFunction): void {
     if (request.method === 'OPTIONS') {
@@ -28,28 +100,34 @@ export class ApiRateLimitMiddleware {
     }
 
     const policy = this.getPolicy(cleanPath);
-    const rawAddress = request.ip || request.socket.remoteAddress || 'unknown';
+    const forwardedHeader = request.headers ? request.headers['x-forwarded-for'] : undefined;
+    const forwardedIp = Array.isArray(forwardedHeader)
+      ? forwardedHeader[0]
+      : typeof forwardedHeader === 'string'
+      ? forwardedHeader.split(',')[0].trim()
+      : undefined;
+    const rawAddress = forwardedIp || request.ip || request.socket.remoteAddress || 'unknown';
     const address = rawAddress.replace(/^::ffff:/, '');
     const key = `${address}:${policy.name}`;
     const now = Date.now();
 
     if (now - this.lastCleanup > 60000) {
-      this.removeExpiredBuckets(now);
+      this.store.cleanup(now);
       this.lastCleanup = now;
     }
 
-    let bucket = this.buckets.get(key);
+    let bucket = this.store.get(key);
 
     if (!bucket || now >= bucket.resetAt) {
-      if (this.buckets.size >= this.maxBuckets) {
-        this.removeExpiredBuckets(now);
+      if (this.store.size() >= this.maxBuckets) {
+        this.store.cleanup(now);
       }
-      if (this.buckets.size >= this.maxBuckets) {
+      if (this.store.size() >= this.maxBuckets) {
         this.reject(response, 60);
         return;
       }
       bucket = { count: 0, resetAt: now + policy.windowMs };
-      this.buckets.set(key, bucket);
+      this.store.set(key, bucket);
     }
 
     if (bucket.count >= policy.limit) {
@@ -58,6 +136,7 @@ export class ApiRateLimitMiddleware {
     }
 
     bucket.count += 1;
+    this.store.set(key, bucket);
     response.setHeader('RateLimit-Limit', policy.limit);
     response.setHeader('RateLimit-Remaining', policy.limit - bucket.count);
     response.setHeader('RateLimit-Reset', Math.ceil((bucket.resetAt - now) / 1000));
@@ -80,15 +159,8 @@ export class ApiRateLimitMiddleware {
       const limit = parseInt(process.env.RATE_LIMIT_CHAT_MAX || '', 10) || defaultLimit;
       return { name: 'chat', limit, windowMs: 60 * 1000 };
     }
-    return { name: 'api', limit: 120, windowMs: 60 * 1000 };
-  }
-
-  private removeExpiredBuckets(now: number): void {
-    for (const [key, bucket] of this.buckets) {
-      if (now >= bucket.resetAt) {
-        this.buckets.delete(key);
-      }
-    }
+    const apiLimit = parseInt(process.env.RATE_LIMIT_API_MAX || '', 10) || 120;
+    return { name: 'api', limit: apiLimit, windowMs: 60 * 1000 };
   }
 
   private reject(response: Response, retryAfterSeconds: number): void {

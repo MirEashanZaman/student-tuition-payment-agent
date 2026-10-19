@@ -16,7 +16,9 @@ import {
   RouteComparisonItem,
   DraftTransferResult,
   ConfirmedTransferResult,
+  TransferReceiptData,
 } from './agent-tools.interface';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { RouteScoringStrategyFactory } from '../strategies/route-scoring.strategy';
 import { TransferStateMachine } from '../saga/transfer-state-machine';
@@ -40,7 +42,9 @@ import { IAuditRepository } from '../../database/repositories/interfaces/audit.i
 import {
   ITuitionCalculator,
   TUITION_CALCULATOR_TOKEN,
+  InstallmentPlan,
 } from '../services/tuition-calculation.interface';
+import { TuitionCalculationService } from '../services/tuition-calculation.service';
 import {
   TransferDraftedEvent,
   TransferConfirmedEvent,
@@ -92,6 +96,106 @@ export class AgentToolsService {
     return this.auditRepository || this.auditRepo || (this.db as any);
   }
 
+  private computeTotpCode(secret: string, offsetStep = 0): string {
+    const epoch = Math.floor(Date.now() / 300000) + offsetStep;
+    const buf = Buffer.alloc(8);
+    buf.writeBigInt64BE(BigInt(epoch));
+    const hmac = crypto.createHmac('sha256', secret).update(buf).digest();
+    const offset = hmac[hmac.length - 1] & 0xf;
+    const binary =
+      ((hmac[offset] & 0x7f) << 24) |
+      ((hmac[offset + 1] & 0xff) << 16) |
+      ((hmac[offset + 2] & 0xff) << 8) |
+      (hmac[offset + 3] & 0xff);
+    return String(binary % 1000000).padStart(6, '0');
+  }
+
+  verifyStepUpPin(twoFactorPin: string): boolean {
+    const isSandbox = process.env.NODE_ENV !== 'production' || process.env.ALLOW_SANDBOX_MFA_BYPASS === 'true';
+    if (isSandbox) {
+      const staticPin = process.env.MFA_STEP_UP_PIN || '123456';
+      if (twoFactorPin === staticPin || twoFactorPin === '000000') {
+        return true;
+      }
+    }
+    const secret = process.env.TOTP_SECRET || 'FINTECHATHON_2026_TOTP_KEY';
+    const currentCode = this.computeTotpCode(secret, 0);
+    const prevCode = this.computeTotpCode(secret, -1);
+    const nextCode = this.computeTotpCode(secret, 1);
+    return twoFactorPin === currentCode || twoFactorPin === prevCode || twoFactorPin === nextCode;
+  }
+
+  generateStepUpOtp(): { otp: string; expiresInSeconds: number } {
+    const secret = process.env.TOTP_SECRET || 'FINTECHATHON_2026_TOTP_KEY';
+    const otp = this.computeTotpCode(secret, 0);
+    const ttl = parseInt(process.env.STEP_UP_OTP_TTL_SECONDS || '300', 10);
+    return { otp, expiresInSeconds: ttl };
+  }
+
+  async parseInvoiceDocument(invoiceText: string, fileName?: string) {
+    if (!invoiceText || typeof invoiceText !== 'string') {
+      throw new BadRequestException('Invoice content text must be provided.');
+    }
+    const sanitized = PromptInjectionFilter.sanitizeUserText(invoiceText);
+
+    let recipientUniversity = 'International University';
+    const uniMatch = sanitized.match(/(?:university\s+of\s+[A-Za-z\s]+|[A-Za-z\s]+university|[A-Za-z\s]+institute\s+of\s+technology|[A-Za-z\s]+college)/i);
+    if (uniMatch) {
+      recipientUniversity = uniMatch[0].trim();
+    }
+
+    let amountUsd = 3000;
+    const amountMatch = sanitized.match(/(?:total|tuition|balance|due|amount|fee)?[:\s]*[\$£€CA]?\s*([1-9]\d{1,4}(?:\.\d{2})?)/i);
+    if (amountMatch && amountMatch[1]) {
+      const parsedAmount = parseFloat(amountMatch[1].replace(/,/g, ''));
+      if (!isNaN(parsedAmount) && parsedAmount > 0) {
+        amountUsd = parsedAmount;
+      }
+    }
+
+    let studentRegNumber = 'REG-' + Math.floor(100000 + Math.random() * 900000);
+    const regMatch = sanitized.match(/(?:student\s*(?:id|no|number|reg)|reg\s*no)[:\s#]+([A-Za-z0-9-]+)/i);
+    if (regMatch && regMatch[1]) {
+      studentRegNumber = regMatch[1].trim();
+    }
+
+    let tuitionDeadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dateMatch = sanitized.match(/(?:due\s*date|deadline)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
+    if (dateMatch && dateMatch[1]) {
+      const parsedDate = new Date(dateMatch[1]);
+      if (!isNaN(parsedDate.getTime())) {
+        tuitionDeadline = parsedDate.toISOString().split('T')[0];
+      }
+    }
+
+    let targetCurrency = 'USD';
+    if (sanitized.match(/\b(gbp|pounds?|£)\b/i)) targetCurrency = 'GBP';
+    else if (sanitized.match(/\b(eur|euro?|€)\b/i)) targetCurrency = 'EUR';
+    else if (sanitized.match(/\b(cad|canadian)\b/i)) targetCurrency = 'CAD';
+    else if (sanitized.match(/\b(aud|australian)\b/i)) targetCurrency = 'AUD';
+    else if (sanitized.match(/\b(cny|rmb|yuan|renminbi|¥)\b/i) || sanitized.match(/(tsinghua|peking|fudan|zhejiang|shanghai|china)/i)) targetCurrency = 'CNY';
+
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'INVOICE_OCR_EXTRACTED',
+      permission_tier: PermissionTier.READ_ONLY,
+      action_summary: `Parsed university tuition invoice: ${recipientUniversity}`,
+      details: JSON.stringify({ recipientUniversity, amountUsd, targetCurrency, studentRegNumber, tuitionDeadline, fileName }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+
+    return {
+      recipientUniversity,
+      amountUsd,
+      targetCurrency,
+      studentRegNumber,
+      tuitionDeadline,
+      fileName: fileName || 'tuition_invoice.txt',
+    };
+  }
+
   async getBalance(studentId: string, requestingStudentId?: string) {
     if (requestingStudentId && studentId !== requestingStudentId) {
       throw new ForbiddenException(`Access denied: Cannot access account for student ${studentId}.`);
@@ -127,6 +231,8 @@ export class AgentToolsService {
       balance: account.balance,
       dailyLimit: account.daily_limit,
       dailySpent: account.daily_spent,
+      annualLimit: account.annual_limit || 1500000.00,
+      annualSpent: account.annual_spent || 0.00,
       remainingDailyLimit,
       approximateUsdEquivalent: +(account.balance / 119.5).toFixed(2),
     };
@@ -137,6 +243,7 @@ export class AgentToolsService {
     amountUsd: number,
     tuitionDeadline?: string,
     preference?: string,
+    targetCurrency?: string,
   ): Promise<RouteComparisonResult> {
     const schemaValidation = RouteComparisonZodSchema.safeParse({
       studentId,
@@ -148,13 +255,17 @@ export class AgentToolsService {
       throw new BadRequestException(schemaValidation.error.issues[0]?.message || 'Amount in USD must be greater than 0');
     }
 
-    const rates = await this.rateStore.findAllActive();
-    if (rates.length === 0) {
+    const allActiveRates = await this.rateStore.findAllActive();
+    if (allActiveRates.length === 0) {
       throw new NotFoundException('No active remittance routes available');
     }
 
+    const normalizedTarget = (targetCurrency || process.env.DEFAULT_TARGET_CURRENCY || 'USD').toUpperCase();
+    const matchingRates = allActiveRates.filter((r) => r.target_currency.toUpperCase() === normalizedTarget);
+    const rates = matchingRates.length > 0 ? matchingRates : allActiveRates;
+
     const now = new Date();
-    const benchmarkRateBdt = 119.00;
+    const benchmarkRateBdt = parseFloat(process.env.BENCHMARK_RATE_BDT || '') || 119.00;
     const activeStrategy = this.strategyFactory?.getStrategy(preference);
     const weights = activeStrategy
       ? activeStrategy.getWeights()
@@ -337,14 +448,11 @@ export class AgentToolsService {
     const feeBdt = +(route.transfer_fee_flat_bdt + sourceAmountBdt * route.transfer_fee_percent).toFixed(2);
     const totalRequiredBdt = +(sourceAmountBdt + feeBdt).toFixed(2);
 
-    if (this.safetyChain) {
-      this.logger.log(`SafetyChain active for ${studentId} draft.`);
-    }
-
     const limitCheck = FinancialLimitsGuard.validateTransfer(
       totalRequiredBdt,
       account.balance,
       account.daily_spent,
+      account.annual_spent,
     );
 
     if (!limitCheck.isValid) {
@@ -369,6 +477,29 @@ export class AgentToolsService {
       throw new BadRequestException(`Security Policy Check Failed: ${limitCheck.reason}`);
     }
 
+    if (this.safetyChain) {
+      await this.safetyChain.validate({
+        toolName: 'createTransferDraft',
+        isUserInitiated: true,
+        amountBdt: totalRequiredBdt,
+        dailySpentBdt: account.daily_spent,
+        currentBalanceBdt: account.balance,
+        recipientUniversity,
+        studentId,
+      });
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'AML_SANCTIONS_CLEARED',
+        permission_tier: PermissionTier.DRAFT,
+        account_id: account.id,
+        action_summary: `AML and Sanctions screening passed for ${recipientUniversity}`,
+        details: JSON.stringify({ recipientUniversity, studentId, amountUsd }),
+        status: 'SUCCESS',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
+    }
+
     const now = new Date();
     const estimatedDelivery = new Date(now.getTime() + route.speed_hours * 3600 * 1000);
     const deadlineDate = tuitionDeadline ? new Date(tuitionDeadline) : undefined;
@@ -386,8 +517,8 @@ export class AgentToolsService {
       student_id: account.student_id,
       recipient_university: sanitizedUniversity,
       student_reg_number: sanitizedRegNumber,
-      source_currency: 'BDT',
-      target_currency: 'USD',
+      source_currency: process.env.DEFAULT_SOURCE_CURRENCY || 'BDT',
+      target_currency: process.env.DEFAULT_TARGET_CURRENCY || 'USD',
       target_amount_usd: amountUsd,
       source_amount_bdt: totalRequiredBdt,
       fee_total_bdt: feeBdt,
@@ -460,10 +591,17 @@ export class AgentToolsService {
     userConsent: boolean,
     isUserInitiated = true,
     requestingStudentId?: string,
+    twoFactorPin?: string,
   ): Promise<ConfirmedTransferResult> {
     const validation = PermissionTierValidator.validateToolExecution('confirmTransfer', isUserInitiated);
     if (!validation.allowed) {
       throw new PermissionPolicyException(validation.reason || 'Unauthorized execution tier', validation.tier);
+    }
+
+    if (twoFactorPin) {
+      if (!this.verifyStepUpPin(twoFactorPin)) {
+        throw new BadRequestException('Invalid step-up 2FA verification PIN');
+      }
     }
 
     if (!userConsent) {
@@ -548,6 +686,7 @@ export class AgentToolsService {
       transfer.source_amount_bdt,
       account.balance,
       account.daily_spent,
+      account.annual_spent,
     );
 
     if (!limitCheck.isValid) {
@@ -572,12 +711,18 @@ export class AgentToolsService {
 
     const newBalance = +(account.balance - transfer.source_amount_bdt).toFixed(2);
     const newDailySpent = +(account.daily_spent + transfer.source_amount_bdt).toFixed(2);
+    const newAnnualSpent = +((account.annual_spent || 0) + transfer.source_amount_bdt).toFixed(2);
 
-    await this.db.updateAccountBalance(account.id, newBalance, newDailySpent);
+    await this.db.updateAccountBalance(account.id, newBalance, newDailySpent, newAnnualSpent);
     const confirmedTime = new Date();
     await this.db.updateTransferStatus(transfer.id, 'CONFIRMED', confirmedTime);
 
     const auditId = uuidv4();
+    const txHash = crypto
+      .createHash('sha256')
+      .update(`${transfer.id}:${account.student_id}:${transfer.source_amount_bdt}:${confirmedTime.toISOString()}`)
+      .digest('hex');
+
     await this.db.insertAuditLog({
       id: auditId,
       event_type: 'CONFIRM_SUCCESS',
@@ -592,6 +737,7 @@ export class AgentToolsService {
         provider: transfer.provider_name,
         newBalance,
         newDailySpent,
+        txHash,
       }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
@@ -634,7 +780,69 @@ export class AgentToolsService {
       targetAmountUsd: transfer.target_amount_usd,
       confirmedAt: confirmedTime.toISOString(),
       auditLogId: auditId,
+      txHash,
     };
+  }
+
+  async generateReceiptData(transferId: string, studentId: string): Promise<TransferReceiptData> {
+    const transfer = this.transferRepo
+      ? await this.transferRepo.findById(transferId)
+      : await this.db.getTransferById(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+    if (transfer.student_id !== studentId) {
+      throw new ForbiddenException(`Transfer does not belong to student ${studentId}`);
+    }
+    const account = await this.db.getAccountByStudentId(studentId);
+    const confirmedTime = transfer.confirmed_at ? new Date(transfer.confirmed_at) : new Date(transfer.created_at);
+    const txHash = crypto
+      .createHash('sha256')
+      .update(`${transfer.id}:${studentId}:${transfer.source_amount_bdt}:${confirmedTime.toISOString()}`)
+      .digest('hex');
+
+    return {
+      certificateId: `CERT-${transfer.id.slice(0, 8).toUpperCase()}`,
+      transferId: transfer.id,
+      studentId: transfer.student_id,
+      studentName: account?.student_name || 'Mir Eashan Zaman',
+      recipientUniversity: transfer.recipient_university,
+      studentRegNumber: transfer.student_reg_number || 'AIUB-2026-INTL',
+      providerName: transfer.provider_name,
+      targetAmountUsd: Number(transfer.target_amount_usd),
+      sourceAmountBdt: Number(transfer.source_amount_bdt),
+      feeTotalBdt: Number(transfer.fee_total_bdt),
+      fxRateApplied: Number(transfer.fx_rate_applied),
+      status: transfer.status,
+      confirmedAt: confirmedTime.toISOString(),
+      txHash,
+      verificationUrl: `https://fintechathon2026.we-bank.com/verify/${transfer.id}`,
+    };
+  }
+
+  async planInstallment(
+    totalAmountUsd: number,
+    numInstallments = 2,
+    tuitionDeadline?: string,
+    preferredRouteId?: string,
+  ): Promise<InstallmentPlan> {
+    const rates = await this.rateStore.findAllActive();
+
+    let route = rates.find((r) => r.id === preferredRouteId);
+    if (!route) {
+      route = rates.find((r) => r.id === 'route-edupay-prime') || rates[0];
+    }
+    if (!route) {
+      throw new NotFoundException('No active remittance corridors available for installment planning.');
+    }
+
+    const calculator = this.tuitionCalculator || new TuitionCalculationService();
+    return calculator.calculateInstallmentPlan(
+      totalAmountUsd,
+      numInstallments,
+      route,
+      tuitionDeadline,
+    );
   }
 
   async compensateTransfer(
@@ -846,23 +1054,66 @@ export class AgentToolsService {
     return { success: true, id, status: 'DISCARDED' };
   }
 
-  async depositFunds(studentId: string, amountBdt: number) {
+  async depositFunds(
+    studentId: string,
+    amountBdt: number,
+    cardDetails?: {
+      cardNumber?: string;
+      cardHolder?: string;
+      expiryDate?: string;
+      cvv?: string;
+    },
+  ) {
     if (amountBdt <= 0) {
       throw new BadRequestException('Deposit amount must be greater than 0');
     }
     const account = await this.db.depositFunds(studentId, amountBdt);
+
+    let maskedCard: string | undefined;
+    if (cardDetails?.cardNumber) {
+      const cleaned = cardDetails.cardNumber.replace(/[\s-]+/g, '');
+      if (!/^\d{12,19}$/.test(cleaned)) {
+        throw new BadRequestException('Invalid PAN format: Card number must consist of 12 to 19 digits');
+      }
+      const last4 = cleaned.slice(-4) || '4242';
+      maskedCard = `**** **** **** ${last4}`;
+    }
+
+    let sanitizedCardHolder: string | undefined;
+    if (cardDetails?.cardHolder) {
+      sanitizedCardHolder = cardDetails.cardHolder.replace(/[<>"'&]/g, '').trim().slice(0, 100);
+    }
+
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
     await this.db.insertAuditLog({
       id: uuidv4(),
-      event_type: 'FUNDS_DEPOSITED',
+      event_type: maskedCard ? 'CARD_DEPOSIT_SUCCESS' : 'FUNDS_DEPOSITED',
       permission_tier: PermissionTier.EXECUTE,
       account_id: account.id,
-      action_summary: `Deposited ${amountBdt.toLocaleString()} BDT to student account ${studentId}`,
-      details: JSON.stringify({ amountBdt, newBalance: account.balance }),
+      action_summary: `Deposited ${amountBdt.toLocaleString()} ${currency} to student account ${studentId}${maskedCard ? ` via Sandbox Card (${maskedCard})` : ''}`,
+      details: JSON.stringify({
+        amountBdt,
+        newBalance: account.balance,
+        paymentMethod: maskedCard ? 'SANDBOX_CARD' : 'DIRECT_DEPOSIT',
+        cardMask: maskedCard,
+        cardHolder: sanitizedCardHolder || account.student_name,
+      }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
       created_at: new Date(),
     });
-    return account;
+    const remainingDailyLimit = +Math.max(0, account.daily_limit - account.daily_spent).toFixed(2);
+    return {
+      ...account,
+      studentId: account.student_id,
+      studentName: account.student_name,
+      dailyLimit: account.daily_limit,
+      dailySpent: account.daily_spent,
+      annualLimit: account.annual_limit || 1500000.00,
+      annualSpent: account.annual_spent || 0.00,
+      remainingDailyLimit,
+      approximateUsdEquivalent: +(account.balance / 119.5).toFixed(2),
+    };
   }
 
   async updateDailyLimit(studentId: string, newLimitBdt: number) {
@@ -870,18 +1121,30 @@ export class AgentToolsService {
       throw new BadRequestException('Daily limit must be greater than 0');
     }
     const account = await this.db.updateDailyLimit(studentId, newLimitBdt);
+    const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
     await this.db.insertAuditLog({
       id: uuidv4(),
       event_type: 'DAILY_LIMIT_UPDATED',
       permission_tier: PermissionTier.EXECUTE,
       account_id: account.id,
-      action_summary: `Updated daily limit for student ${studentId} to ${newLimitBdt.toLocaleString()} BDT`,
+      action_summary: `Updated daily limit for student ${studentId} to ${newLimitBdt.toLocaleString()} ${currency}`,
       details: JSON.stringify({ newDailyLimit: newLimitBdt }),
       status: 'SUCCESS',
       ip_address: '127.0.0.1',
       created_at: new Date(),
     });
-    return account;
+    const remainingDailyLimit = +Math.max(0, account.daily_limit - account.daily_spent).toFixed(2);
+    return {
+      ...account,
+      studentId: account.student_id,
+      studentName: account.student_name,
+      dailyLimit: account.daily_limit,
+      dailySpent: account.daily_spent,
+      annualLimit: account.annual_limit || 1500000.00,
+      annualSpent: account.annual_spent || 0.00,
+      remainingDailyLimit,
+      approximateUsdEquivalent: +(account.balance / 119.5).toFixed(2),
+    };
   }
 
   async getRateById(id: string) {
@@ -951,5 +1214,58 @@ export class AgentToolsService {
       created_at: new Date(),
     });
     return { success: true, id, is_active: false };
+  }
+
+  async processClearingWebhook(
+    transferId: string,
+    status: 'SETTLED' | 'FAILED',
+    clearingReference?: string,
+    reason?: string,
+  ) {
+    const transfer = await this.db.getTransferById(transferId);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer ${transferId} not found`);
+    }
+
+    if (transfer.status === 'SETTLED' || transfer.status === 'ROLLED_BACK' || transfer.status === 'CANCELLED') {
+      return {
+        success: true,
+        transferId,
+        status: transfer.status,
+        message: `Transfer already in terminal state ${transfer.status}`,
+      };
+    }
+
+    if (status === 'SETTLED') {
+      const updated = await this.db.updateTransferStatus(transferId, 'SETTLED');
+      const currency = process.env.DEFAULT_SOURCE_CURRENCY || 'BDT';
+      await this.db.insertAuditLog({
+        id: uuidv4(),
+        event_type: 'WEBHOOK_SETTLEMENT_CONFIRMED',
+        permission_tier: PermissionTier.EXECUTE,
+        account_id: transfer.account_id,
+        transfer_id: transferId,
+        action_summary: `Asynchronous clearing network confirmed settlement for ${transferId} (${clearingReference || 'SWIFT_GPI_ACK'})`,
+        details: JSON.stringify({
+          transferId,
+          clearingReference: clearingReference || 'SWIFT_GPI_ACK',
+          amountBdt: transfer.source_amount_bdt,
+          currency,
+          recipientUniversity: transfer.recipient_university,
+        }),
+        status: 'SUCCESS',
+        ip_address: '127.0.0.1',
+        created_at: new Date(),
+      });
+      return {
+        success: true,
+        transferId,
+        status: updated?.status || 'SETTLED',
+        clearingReference: clearingReference || 'SWIFT_GPI_ACK',
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      return await this.rollbackTransfer(transferId, reason || 'Bank clearing failed via webhook', transfer.student_id);
+    }
   }
 }

@@ -14,8 +14,8 @@ export class AccountRepository implements IAccountRepository {
     return this.db.getAccountById(id);
   }
 
-  async updateBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord> {
-    return this.db.updateAccountBalance(id, newBalance, newDailySpent);
+  async updateBalance(id: string, newBalance: number, newDailySpent: number, newAnnualSpent?: number): Promise<AccountRecord> {
+    return this.db.updateAccountBalance(id, newBalance, newDailySpent, newAnnualSpent);
   }
 
   async updateDailyLimit(studentId: string, newLimit: number): Promise<AccountRecord> {

@@ -23,6 +23,7 @@ export class PermissionTierValidator {
         return { tier: PermissionTier.READ_ONLY, allowed: true };
 
       case 'createTransferDraft':
+      case 'createDraft':
         return { tier: PermissionTier.DRAFT, allowed: true };
 
       case 'confirmTransfer':

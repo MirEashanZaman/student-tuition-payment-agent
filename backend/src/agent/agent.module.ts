@@ -12,6 +12,7 @@ import {
   FinancialLimitCheckHandler,
   ConfirmationCheckHandler,
   AnomalyCheckHandler,
+  AmlSanctionsCheckHandler,
   SafetyChainCoordinator,
 } from './guardrails/safety-chain';
 import {
@@ -59,6 +60,7 @@ import {
     FinancialLimitCheckHandler,
     ConfirmationCheckHandler,
     AnomalyCheckHandler,
+    AmlSanctionsCheckHandler,
     SafetyChainCoordinator,
     BalancedScoringStrategy,
     CheapestScoringStrategy,
@@ -85,6 +87,7 @@ import {
   exports: [
     AgentService,
     AgentToolsService,
+    AmlSanctionsCheckHandler,
     SafetyChainCoordinator,
     RouteScoringStrategyFactory,
     TransferStateMachine,

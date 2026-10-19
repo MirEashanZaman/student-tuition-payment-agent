@@ -8,6 +8,7 @@ import {
   AuthSession,
   LoginCredentials,
   RegistrationData,
+  InstallmentPlan,
 } from '../types';
 import {
   ChatMessageInputSchema,
@@ -47,7 +48,7 @@ function handleApiError(error: unknown, fallbackMessage: string): never {
       throw new Error('Connection timed out. The server took too long to respond. Please try again.');
     }
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      throw new Error('Unable to connect to the Tuition Payment server. Please verify the backend is online at http://localhost:4568.');
+      throw new Error(`Unable to connect to the Tuition Payment server. Please verify the backend is online at ${API_BASE}.`);
     }
     const serverMessage = error.response?.data?.message;
     if (typeof serverMessage === 'string' && serverMessage.length > 0) {
@@ -160,12 +161,27 @@ export const api = {
     }
   },
 
-  async depositFunds(studentId: string, amountBdt: number): Promise<Account> {
+  async depositFunds(
+    studentId: string,
+    amountBdt: number,
+    cardDetails?: {
+      cardNumber?: string;
+      cardHolder?: string;
+      expiryDate?: string;
+      cvv?: string;
+    },
+  ): Promise<Account> {
     try {
-      const validated = DepositFundsInputSchema.parse({ studentId, amountBdt });
-      const response = await apiClient.post<Account>(`/accounts/${validated.studentId}/deposit`, {
-        amountBdt: validated.amountBdt,
+      const validated = DepositFundsInputSchema.parse({
+        studentId,
+        amountBdt,
+        ...cardDetails,
       });
+      const { studentId: targetStudentId, ...bodyPayload } = validated;
+      const response = await apiClient.post<Account>(
+        `/accounts/${targetStudentId}/card-deposit`,
+        bodyPayload,
+      );
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to deposit funds');
@@ -186,13 +202,36 @@ export const api = {
     amountUsd: number,
     tuitionDeadline?: string,
     studentId = 'STU-2026-BDT01',
+    targetCurrency?: string,
   ): Promise<RouteComparisonResult> {
     try {
       const validated = CompareRoutesInputSchema.parse({ amountUsd, tuitionDeadline, studentId });
-      const response = await apiClient.post<RouteComparisonResult>('/routes/compare', validated);
+      const response = await apiClient.post<RouteComparisonResult>('/routes/compare', {
+        ...validated,
+        ...(targetCurrency ? { targetCurrency } : {}),
+      });
       return response.data;
     } catch (error) {
       handleApiError(error, 'Failed to compare routes');
+    }
+  },
+
+  async planInstallments(
+    totalAmountUsd: number,
+    numInstallments = 2,
+    tuitionDeadline?: string,
+    routeId?: string,
+  ): Promise<InstallmentPlan> {
+    try {
+      const response = await apiClient.post<InstallmentPlan>('/routes/installments', {
+        totalAmountUsd,
+        numInstallments,
+        tuitionDeadline,
+        routeId,
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to generate installment plan');
     }
   },
 
@@ -272,12 +311,13 @@ export const api = {
     }
   },
 
-  async confirmTransfer(transferId: string, confirmationToken: string, userConsent = true): Promise<any> {
+  async confirmTransfer(transferId: string, confirmationToken: string, userConsent = true, twoFactorPin?: string): Promise<any> {
     try {
-      const validated = ConfirmTransferInputSchema.parse({ transferId, confirmationToken, userConsent });
+      const validated = ConfirmTransferInputSchema.parse({ transferId, confirmationToken, userConsent, twoFactorPin });
       const response = await apiClient.post(`/transfers/${validated.transferId}/confirm`, {
         confirmationToken: validated.confirmationToken,
         userConsent: validated.userConsent,
+        ...(validated.twoFactorPin ? { twoFactorPin: validated.twoFactorPin } : {}),
       });
       return response.data;
     } catch (error) {
@@ -321,6 +361,15 @@ export const api = {
       return response.data;
     } catch (error) {
       handleApiError(error, `Transfer ${id} not found`);
+    }
+  },
+
+  async getTransferReceipt(transferId: string): Promise<any> {
+    try {
+      const response = await apiClient.get(`/transfers/${transferId}/receipt`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch transfer receipt');
     }
   },
 
@@ -414,6 +463,33 @@ export const api = {
         studentId: 'STU-2026-BDT01',
         password: 'student123',
       };
+    }
+  },
+
+  async extractInvoice(invoiceText: string, fileName?: string): Promise<any> {
+    try {
+      const response = await apiClient.post('/invoice/extract', { invoiceText, fileName });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to extract invoice data');
+    }
+  },
+
+  async getLiveRateFeed(): Promise<any> {
+    try {
+      const response = await apiClient.get('/rates/live-feed');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch live corridor rate feed');
+    }
+  },
+
+  async requestStepUpOtp(): Promise<{ otp: string; expiresInSeconds: number }> {
+    try {
+      const response = await apiClient.post('/auth/step-up-otp');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Failed to issue step-up OTP');
     }
   },
 };

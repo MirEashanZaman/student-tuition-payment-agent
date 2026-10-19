@@ -21,7 +21,7 @@ export interface DecodedToken {
 @Injectable()
 export class JwtService {
   private readonly defaultSecret = this.getSigningSecret();
-  private readonly defaultExpiresInSeconds = 86400;
+  private readonly defaultExpiresInSeconds = parseInt(process.env.JWT_EXPIRES_IN_SECONDS || '', 10) || 86400;
 
   private getSigningSecret(): string {
     const secret = process.env.JWT_SECRET;
@@ -92,6 +92,16 @@ export class JwtService {
       throw new UnauthorizedException('Invalid JWT signature.');
     }
 
+    let header: { alg?: string; typ?: string };
+    try {
+      header = JSON.parse(this.base64UrlDecode(encodedHeader));
+    } catch {
+      throw new UnauthorizedException('Failed to decode JWT header.');
+    }
+    if (header.alg !== 'HS256') {
+      throw new UnauthorizedException('Unsupported JWT algorithm.');
+    }
+
     let payload: JwtPayload;
     try {
       payload = JSON.parse(this.base64UrlDecode(encodedPayload));
@@ -102,6 +112,9 @@ export class JwtService {
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) {
       throw new UnauthorizedException('JWT session token has expired. Please log in again.');
+    }
+    if (payload.iat && payload.iat > now + 300) {
+      throw new UnauthorizedException('JWT issued in the future.');
     }
 
     return payload;

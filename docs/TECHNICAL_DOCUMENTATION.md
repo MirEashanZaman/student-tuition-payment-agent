@@ -19,16 +19,17 @@ graph TD
         UI_Chat["Agent Chat Studio"]
         UI_Dash["Financial Dashboard & Explainability"]
         UI_Audit["Security & Audit Inspector"]
-        UI_Consent["Human-in-the-Loop Confirmation Modal"]
+        UI_Consent["Human-in-the-Loop Confirmation & 2FA Modal"]
     end
 
-    subgraph Backend["NestJS Enterprise Backend API"]
-        Controller["Agent & Transfer Controller"]
+    subgraph Backend["NestJS Hardened Backend API"]
+        Controller["Agent, Auth & Transfer Controller"]
         
         subgraph Guardrails["Security & Policy Guardrails"]
             TierGuard["Permission Tier Validator\n(READ_ONLY | DRAFT | EXECUTE)"]
             LimitGuard["Financial Limits Guard\n(Per-Transfer: 400k BDT | Daily: 1M BDT)"]
             InjectionFilter["Prompt Injection Sanitizer & Flag"]
+            OtpVerifier["Step-Up 2FA OTP Verifier\n(300s TTL | 6-Digit PIN)"]
         end
 
         subgraph CoreAgent["Agentic Engine"]
@@ -54,7 +55,8 @@ graph TD
     LimitGuard --> Storage
     Tools --> Scoring
     Scoring --> Rates
-    UI_Consent -->|"Cryptographic Token & Consent"| Controller
+    UI_Consent -->|"One-Time Token, 2FA OTP & Human Consent"| Controller
+    Controller --> OtpVerifier
 ```
 
 ---
@@ -83,16 +85,19 @@ sequenceDiagram
     Agent->>Agent: Compute Multi-Objective Route Score & Deadline Check
     Agent-->>UI: Route Comparison Cards & Explanations (READ_ONLY Tier)
     
-    Student->>UI: Clicks "Select & Prepare Transfer Draft"
-    UI->>Controller: POST /api/transfers/draft
+    Student->>UI: Clicks "Select & Prepare Transfer Draft" (SELECT_ROUTE action)
+    UI->>Controller: POST /api/transfers/draft { routeId, amountUsd, ... }
     Controller->>Guard: Validate per-transfer & daily limits
     Guard->>DB: Persist Transfer in PENDING_CONFIRMATION status
     DB-->>UI: Draft receipt + Secure confirmationToken (DRAFT Tier)
     
-    Note over Student, UI: Human-In-The-Loop Consent Barrier
+    Note over Student, UI: Dual-Layer Human-In-The-Loop Verification Barrier
+    UI->>Controller: POST /api/auth/step-up-otp
+    Controller-->>UI: Dynamic 6-digit Step-Up 2FA OTP issued
+    Student->>UI: Inputs 6-digit OTP & confirms consent
     Student->>UI: Clicks [Authorize & Confirm Payment]
-    UI->>Controller: POST /api/transfers/:id/confirm { token, userConsent: true }
-    Controller->>Guard: Verify PermissionTierValidator(EXECUTE, isUserInitiated=true)
+    UI->>Controller: POST /api/transfers/:id/confirm { token, userConsent: true, twoFactorPin }
+    Controller->>Guard: Verify PermissionTierValidator(EXECUTE, isUserInitiated=true, 2FA OTP)
     Guard->>DB: Deduct funds from student account, mark CONFIRMED
     Guard->>DB: Write permanent audit_log entry
     Controller-->>UI: Confirmation receipt & settled transaction hash
@@ -141,7 +146,7 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| **Backend Framework** | **NestJS (Node.js/TypeScript)** | Enterprise-grade modular architecture, dependency injection, strict validation pipes, built-in exception filters. |
+| **Backend Framework** | **NestJS (Node.js/TypeScript)** | Modular architecture, dependency injection, strict validation pipes, built-in exception filters. |
 | **Frontend Framework** | **Next.js 14 (React 18)** | High-performance React SSR/client, componentized structure, instant state synchronization. |
 | **Styling & Design** | **Vanilla CSS (Design System Tokens)** | Sleek dark fintech mode, frosted glassmorphism, responsive grid, zero external CSS runtime overhead. |
 | **Database** | **PostgreSQL 14+ (pg driver)** | ACID-compliant relational storage for financial accounts, transactions, and append-only audit logs. |
@@ -152,8 +157,11 @@ $$\text{FXMarkupLoss}_{\text{BDT}} = \max\left(0, (\text{EffectiveRate} - \text{
 ### AI Agent Engine & Evaluator Offline Sandbox
 
 The agent defaults to `gemini-1.5-flash` (configurable via `GEMINI_MODEL`), Google's low-latency multimodal LLM. The system is designed to provide immediate evaluation without external network or API prerequisites:
-- **Offline Sandbox Fallback (`OfflineLlmClient`):** When `GEMINI_API_KEY` is omitted or set to the default mock key (`mock_key_offline_agent`), the system automatically activates a deterministic offline LLM client. This processes student queries, executes corridor ranking calculations, flags prompt injections, and generates drafts with 100% predictable fidelity and zero network latency.
+- **Offline Sandbox Fallback (`OfflineLlmClient`):** When `GEMINI_API_KEY` is omitted or set to the default mock key (`mock_key_offline_agent`), the system automatically activates a deterministic offline LLM client. This processes student queries, executes corridor ranking calculations, flags prompt injections, and generates drafts with high-fidelity deterministic simulation and zero network latency.
 - **Live Google Gemini Engine (`GeminiLlmClient`):** When an evaluator supplies their own Gemini API key, the client connects to Google Generative AI using the configured model (`gemini-1.5-flash`). Calls are wrapped in defensive try/catch blocks with automatic fallback to the offline client on any rate limit, network timeout, or quota error.
+
+> [!NOTE]
+> **Sandbox Environment Notice:** All remittance corridors, exchange rates, bank clearing gateways, and account balances run in a simulated sandbox environment for demonstration and algorithmic evaluation (not connected to live production SWIFT or banking rails).
 
 ---
 
@@ -161,14 +169,20 @@ The agent defaults to `gemini-1.5-flash` (configurable via `GEMINI_MODEL`), Goog
 
 To comply with the FinTechathon 30% Security & Compliance criterion:
 - **READ_ONLY Tier**: Executable without risk (`getBalance`, `compareRoutes`, `getAuditLog`).
-- **DRAFT Tier**: Generates a pending state transfer record (`createTransferDraft`). No funds are moved. Produces a single-use `confirmationToken`.
-- **EXECUTE Tier**: Fund settlement (`confirmTransfer`). **Strictly blocked from autonomous LLM execution.** Must originate from a human user confirmation action supplying the matching cryptographic token.
+- **DRAFT Tier**: Generates a pending state transfer record (`createTransferDraft`). No funds are moved. Produces a single-use one-time `confirmationToken` (15-minute expiration).
+- **EXECUTE Tier**: Fund settlement (`confirmTransfer`). **Strictly blocked from autonomous LLM execution.** Must originate from a human user confirmation action supplying the matching one-time confirmation token.
+
+### Defense-in-Depth vs Heuristics
+Prompt injection filters (`PromptInjectionFilter`) and perimeter WAF rules (`SecurityArmorMiddleware`) operate as first-line heuristic pattern matchers. The true, foundational financial guarantee is enforced in compiled NestJS code via `PermissionTierGuard`, `StudentScopeGuard`, and `FinancialLimitsGuard`. Even if an adversarial prompt bypasses regex keyword heuristics, the autonomous agent is physically prevented by code from executing settlements or raising transaction thresholds.
+
+### Audit Ledger & Admin Endpoints
+The audit trail operates strictly as an append-only ledger during standard student and agent workflows. Students and AI tools have zero capability to mutate or delete logs. The restricted `DELETE /api/audit/:id` endpoint requires the `AdminRoleGuard` and is reserved strictly for sandbox environment resets, automated Jest test suite teardown, and regulatory right-to-erasure compliance testing.
 
 ---
 
-## 6. Enterprise Architectural Design Patterns
+## 6. Architectural Design Patterns
 
-The backend is engineered with production-grade software design patterns that isolate responsibilities and enforce financial safety:
+The backend is engineered with software design patterns that isolate responsibilities and enforce financial safety:
 
 | Feature | Pattern | Implementation Details |
 |---|---|---|
@@ -189,26 +203,40 @@ The backend controller exposes full RESTful lifecycle operations incorporating `
 
 | Method | Endpoint | Decorators Used | Parameters / Request Body | Description |
 |---|---|---|---|---|
-| POST | `/api/chat` | `@Body()` | `ChatDto { message, studentId }` | Autonomous conversational reasoning with tool calling |
-| GET | `/api/accounts/:id` | `@Param('id')` | `id: string` | Retrieve student account balance and daily limits |
-| PUT | `/api/accounts/:id/limits` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDailyLimitDto { dailyLimitBdt }` | Update daily financial limit threshold |
-| POST | `/api/accounts/:id/deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto { amountBdt }` | Deposit BDT funds to student account |
+| POST | `/api/auth/registration` | `@Body()`, `@Req()` | `RegistrationDto` | Register a new student account & auto-provision sandbox balance (aliases `/api/auth/register`) |
+| POST | `/api/auth/login` | `@Body()`, `@Req()` | `LoginDto` | Authenticate credentials with scrypt password verification and receive signed JWT |
+| GET | `/api/auth/session` | `@Headers()` | Bearer token | Verify active JWT session token and retrieve student profile (aliases `/api/auth/me`) |
+| POST | `/api/auth/logout` | `@Headers()`, `@Req()` | Bearer token | Terminate active student session and log audit event |
+| GET | `/api/auth/demo-credentials` | None | None | Retrieve sandbox test persona credentials (non-production only) |
+| POST | `/api/auth/step-up-otp` | `@Req()` | None | Issue time-sensitive 6-digit Step-Up 2FA OTP for settlement authorization |
+| POST | `/api/chat` | `@Body()`, `@Req()` | `ChatDto { message, studentId }` | Autonomous conversational reasoning with tool calling |
+| POST | `/api/invoice/extract` | `@Body()` | `ExtractInvoiceDto { invoiceText, fileName }` | University tuition invoice document parsing & parameter extraction |
+| GET | `/api/accounts/:id` | `@Param('id')`, `@Req()` | `id: string` | Retrieve student account balance and daily limits |
+| PUT | `/api/accounts/:id/limits` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDailyLimitDto { dailyLimitBdt }` | Update daily financial limit threshold (AdminRoleGuard only) |
+| POST | `/api/accounts/:id/deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto { amountBdt }` | Deposit BDT funds to student account (AdminRoleGuard only) |
+| POST | `/api/accounts/:id/card-deposit` | `@Param('id')`, `@Body()` | `id: string`, `DepositDto` | Student virtual credit card sandbox deposit with automated card number masking |
 | GET | `/api/rates` | `@Query('activeOnly')`, `@Query('targetCurrency')` | Query filters | List active remittance corridors |
+| GET | `/api/rates/stream` | None | SSE Stream | Server-Sent Events (SSE) live rate ticker stream |
+| GET | `/api/rates/live-feed` | None | None | Real-time market feed with spread calculations |
 | GET | `/api/rates/:id` | `@Param('id')` | `id: string` | Retrieve remittance route details |
-| PUT | `/api/rates/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateRateDto` | Update route rate or active status |
-| DELETE | `/api/rates/:id` | `@Param('id')` | `id: string` | Deactivate remittance route |
-| POST | `/api/routes/compare` | `@Body()` | `CompareRoutesDto` | Multi-objective corridor comparison and ranking |
-| GET | `/api/transfers` | `@Query('studentId')`, `@Query('status')` | Query filters | Retrieve transfers with optional status filter |
-| GET | `/api/transfers/:id` | `@Param('id')` | `id: string` | Fetch single transfer record by ID |
-| POST | `/api/transfers/draft` | `@Body()` | `CreateDraftDto` | Create transfer draft (DRAFT tier) |
-| PUT | `/api/transfers/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDraftDto` | Update draft details prior to confirmation |
-| PATCH | `/api/transfers/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateDraftDto` | Partial update of unconfirmed transfer draft |
-| DELETE | `/api/transfers/:id` | `@Param('id')` | `id: string` | Discard transfer draft |
-| POST | `/api/transfers/:id/confirm` | `@Param('id')`, `@Body()` | `id: string`, `ConfirmTransferDto` | Human-in-the-loop transfer execution (EXECUTE tier) |
-| POST | `/api/transfers/:id/compensate` | `@Param('id')`, `@Body()` | `id: string`, `CompensateTransferDto` | Saga compensating rollback transaction |
-| POST | `/api/transfers/:id/cancel` | `@Param('id')` | `id: string` | Cancel transfer draft |
-| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')` | Query filters | Fetch append-only audit logs with multi-field filtering |
-| GET | `/api/audit/:id` | `@Param('id')` | `id: string` | Fetch specific audit log by ID |
+| PUT | `/api/rates/:id` | `@Param('id')`, `@Body()` | `id: string`, `UpdateRateDto` | Update route rate or active status (AdminRoleGuard only) |
+| DELETE | `/api/rates/:id` | `@Param('id')` | `id: string` | Deactivate remittance route (AdminRoleGuard only) |
+| POST | `/api/routes/compare` | `@Body()`, `@Req()` | `CompareRoutesDto` | Multi-objective corridor comparison and ranking |
+| POST | `/api/routes/installments` | `@Body()` | `PlanInstallmentDto` | Smart tuition installment split planner respecting transfer caps |
+| GET | `/api/transfers` | `@Query('studentId')`, `@Query('status')`, `@Req()` | Query filters | Retrieve transfers with optional status filter |
+| GET | `/api/transfers/:id` | `@Param('id')`, `@Req()` | `id: string` | Fetch single transfer record by ID |
+| GET | `/api/transfers/:id/receipt` | `@Param('id')`, `@Req()` | `id: string` | Fetch official verification receipt data and integrity checksum |
+| POST | `/api/transfers/draft` | `@Body()`, `@Req()` | `CreateDraftDto` | Create transfer draft (DRAFT tier) |
+| PUT | `/api/transfers/:id` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `UpdateDraftDto` | Update draft details prior to confirmation |
+| PATCH | `/api/transfers/:id` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `UpdateDraftDto` | Partial update of unconfirmed transfer draft |
+| DELETE | `/api/transfers/:id` | `@Param('id')`, `@Req()` | `id: string` | Discard transfer draft |
+| POST | `/api/transfers/:id/confirm` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `ConfirmTransferDto` | Human-in-the-loop transfer execution with 2FA OTP verification (EXECUTE tier) |
+| POST | `/api/webhooks/bank-clearing` | `@Body()`, `@Headers()` | `ClearingWebhookDto` | Inbound bank clearing settlement rail callback with webhook secret validation |
+| POST | `/api/transfers/:id/compensate` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `CompensateTransferDto` | Saga compensating rollback transaction |
+| POST | `/api/transfers/:id/rollback` | `@Param('id')`, `@Body()`, `@Req()` | `id: string`, `CompensateTransferDto` | Unified Saga rollback restoring student balance and unreserving gateway funds |
+| POST | `/api/transfers/:id/cancel` | `@Param('id')`, `@Req()` | `id: string` | Cancel transfer draft |
+| GET | `/api/audit` | `@Query('limit')`, `@Query('tier')`, `@Query('status')`, `@Req()` | Query filters | Fetch append-only audit logs with multi-field filtering |
+| GET | `/api/audit/:id` | `@Param('id')`, `@Req()` | `id: string` | Fetch specific audit log by ID |
 | DELETE | `/api/audit/:id` | `@Param('id')` | `id: string` | Sandbox development audit log pruning (AdminRoleGuard only) |
 | POST | `/api/sandbox/reset` | None | None | Reset database to initial seed state (AdminRoleGuard & non-production only) |
 | GET | `/api/sandbox/export-logs` | None | None | Export audit log archive (AdminRoleGuard only) |
@@ -261,7 +289,7 @@ The codebase adheres strictly to all five Object-Oriented SOLID design principle
 
 ## 9. CI/CD Pipeline Architecture
 
-The repository incorporates an enterprise-grade automated CI/CD pipeline implemented via GitHub Actions (`.github/workflows/ci.yml`):
+The repository incorporates an automated CI/CD pipeline implemented via GitHub Actions (`.github/workflows/ci.yml`):
 
 ### Pipeline Stages
 
@@ -295,11 +323,16 @@ The application provides a complete authentication, session management, and stud
 - **Demo Persona:** `STU-2026-BDT01` (Mir Eashan Zaman), password: `student123`.
 - **Login Showcase Card:** Prominently displays the demo credentials and includes a one-click auto-fill button on `/login` for evaluation.
 
+### Step-Up 2FA & Dynamic OTP Verification Architecture
+- **Verification Endpoint:** `POST /api/auth/step-up-otp` generates a time-sensitive 6-digit one-time password (OTP) with a strict 300-second validity window.
+- **Audit Logging:** Each OTP issuance records an append-only `STEP_UP_OTP_ISSUED` audit event with client IP, timestamp, and student context.
+- **Dual-Factor Settlement Guard:** `AgentToolsService.confirmTransfer` requires both the matching single-use `confirmationToken` and valid `twoFactorPin` (`verifyStepUpPin`) along with explicit user consent boolean (`userConsent: true`). Any invalid, expired, or missing PIN immediately rejects settlement, preventing automated bot executions or hijacked session debits.
+
 ---
 
 ## 11. Next.js 14 Hybrid Rendering Architecture: SSG, ISR, SSR, and CSR
 
-The frontend implements an enterprise-grade hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:
+The frontend implements a hybrid rendering strategy across Next.js 14 App Router, selecting the optimal rendering paradigm (SSG, ISR, SSR, or CSR) for each route based on performance, freshness, and security requirements:
 
 | Route | Strategy | Config / Implementation | Architectural Rationale & Why |
 |---|---|---|---|

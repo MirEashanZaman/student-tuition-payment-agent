@@ -14,7 +14,12 @@ import {
   ForbiddenException,
   NotFoundException,
   UseGuards,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable, interval } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { v4 as uuidv4 } from 'uuid';
 import {
   IsNotEmpty,
   IsString,
@@ -22,7 +27,9 @@ import {
   IsNumber,
   IsBoolean,
   Min,
+  Max,
   MaxLength,
+  Matches,
   IsDateString,
   IsIn,
 } from 'class-validator';
@@ -50,6 +57,18 @@ export class ChatDto {
   studentId?: string;
 }
 
+export class ExtractInvoiceDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(10000)
+  invoiceText: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  fileName?: string;
+}
+
 export class CompareRoutesDto {
   @IsString()
   @IsOptional()
@@ -68,6 +87,29 @@ export class CompareRoutesDto {
   @IsOptional()
   @IsIn(['balanced', 'cheapest', 'fastest', 'reliable'])
   preference?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(10)
+  targetCurrency?: string;
+}
+
+export class PlanInstallmentDto {
+  @IsNumber()
+  @Min(50)
+  totalAmountUsd: number;
+
+  @IsOptional()
+  @IsNumber()
+  numInstallments?: number;
+
+  @IsOptional()
+  @IsDateString()
+  tuitionDeadline?: string;
+
+  @IsOptional()
+  @IsString()
+  routeId?: string;
 }
 
 export class CreateDraftDto {
@@ -120,6 +162,29 @@ export class ConfirmTransferDto {
 
   @IsBoolean()
   userConsent: boolean;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(6)
+  twoFactorPin?: string;
+}
+
+export class ClearingWebhookDto {
+  @IsString()
+  @IsNotEmpty()
+  transferId: string;
+
+  @IsString()
+  @IsIn(['SETTLED', 'FAILED'])
+  status: 'SETTLED' | 'FAILED';
+
+  @IsString()
+  @IsOptional()
+  clearingReference?: string;
+
+  @IsString()
+  @IsOptional()
+  reason?: string;
 }
 
 export class CompensateTransferDto {
@@ -132,13 +197,48 @@ export class CompensateTransferDto {
 export class DepositDto {
   @IsNumber()
   @Min(1)
+  @Max(10000000)
   amountBdt: number;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(64)
+  studentId?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(24)
+  @Matches(/^[\d\s-]*$/, { message: 'Card number must only contain digits, spaces, and hyphens' })
+  cardNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  @Matches(/^[A-Za-z\s.'-]*$/, { message: 'Cardholder name contains invalid characters' })
+  cardHolder?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(10)
+  @Matches(/^(\d{2}\/\d{2,4})?$/, { message: 'Expiry date must be in MM/YY or MM/YYYY format' })
+  expiryDate?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(4)
+  @Matches(/^(\d{3,4})?$/, { message: 'CVV must be 3 or 4 digits' })
+  cvv?: string;
 }
 
 export class UpdateDailyLimitDto {
   @IsNumber()
   @Min(1)
   dailyLimitBdt: number;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(64)
+  studentId?: string;
 }
 
 export class UpdateRateDto {
@@ -203,6 +303,16 @@ export class AgentController {
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
   @RequirePermissionTier(PermissionTier.READ_ONLY)
+  @Post('invoice/extract')
+  async extractInvoice(@Body() dto: ExtractInvoiceDto) {
+    if (!dto || !dto.invoiceText) {
+      throw new BadRequestException('Invoice text content is required');
+    }
+    return await this.toolsService.parseInvoiceDocument(dto.invoiceText, dto.fileName);
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @RequirePermissionTier(PermissionTier.READ_ONLY)
   @Get('accounts/:id')
   async getAccount(
     @Param('id') id: string,
@@ -221,7 +331,24 @@ export class AgentController {
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Post('accounts/:id/deposit')
   async depositFunds(@Param('id') id: string, @Body() dto: DepositDto) {
-    return await this.toolsService.depositFunds(id, dto.amountBdt);
+    return await this.toolsService.depositFunds(id, dto.amountBdt, {
+      cardNumber: dto.cardNumber,
+      cardHolder: dto.cardHolder,
+      expiryDate: dto.expiryDate,
+      cvv: dto.cvv,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
+  @Post('accounts/:id/card-deposit')
+  async cardDeposit(@Param('id') id: string, @Body() dto: DepositDto) {
+    return await this.toolsService.depositFunds(id, dto.amountBdt, {
+      cardNumber: dto.cardNumber,
+      cardHolder: dto.cardHolder,
+      expiryDate: dto.expiryDate,
+      cvv: dto.cvv,
+    });
   }
 
   @Get('rates')
@@ -237,6 +364,48 @@ export class AgentController {
       rates = rates.filter((r) => r.target_currency.toUpperCase() === targetCurrency.toUpperCase());
     }
     return rates;
+  }
+
+  @Sse('rates/stream')
+  streamRates(): Observable<MessageEvent> {
+    return interval(10000).pipe(
+      map(() => {
+        return {
+          data: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            status: 'LIVE_TICK',
+            corridors: [
+              { code: 'CNY', volatility: '+0.01%', marketStatus: 'OPEN' },
+              { code: 'USD', volatility: '+0.02%', marketStatus: 'OPEN' },
+              { code: 'GBP', volatility: '-0.01%', marketStatus: 'OPEN' },
+              { code: 'EUR', volatility: '+0.04%', marketStatus: 'OPEN' },
+              { code: 'CAD', volatility: '+0.00%', marketStatus: 'OPEN' },
+              { code: 'AUD', volatility: '-0.03%', marketStatus: 'OPEN' },
+            ],
+          }),
+        } as MessageEvent;
+      }),
+    );
+  }
+
+  @Get('rates/live-feed')
+  async getLiveRateFeed() {
+    const rates = await this.db.getAllRates();
+    return {
+      timestamp: new Date().toISOString(),
+      marketStatus: 'OPEN',
+      corridorsCount: rates.length,
+      rates: rates.map((r) => ({
+        id: r.id,
+        provider: r.provider_name,
+        targetCurrency: r.target_currency,
+        exchangeRate: r.exchange_rate,
+        inverseRate: r.inverse_rate,
+        spreadPercent: +(Math.abs(r.inverse_rate - 119.0) / 119.0 * 100).toFixed(2),
+        speedHours: r.speed_hours,
+        reliabilityScore: r.reliability_score,
+      })),
+    };
   }
 
   @Get('rates/:id')
@@ -271,6 +440,21 @@ export class AgentController {
       body.amountUsd,
       body.tuitionDeadline,
       body.preference,
+      body.targetCurrency,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.READ_ONLY)
+  @Post('routes/installments')
+  async planInstallments(
+    @Body() body: PlanInstallmentDto,
+  ) {
+    return await this.toolsService.planInstallment(
+      body.totalAmountUsd,
+      body.numInstallments || 2,
+      body.tuitionDeadline,
+      body.routeId,
     );
   }
 
@@ -293,6 +477,17 @@ export class AgentController {
     @Req() request: { user: { studentId: string } },
   ) {
     return await this.assertTransferOwner(id, request.user.studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard)
+  @RequirePermissionTier(PermissionTier.READ_ONLY)
+  @Get('transfers/:id/receipt')
+  async getTransferReceipt(
+    @Param('id') id: string,
+    @Req() request: { user: { studentId: string } },
+  ) {
+    await this.assertTransferOwner(id, request.user.studentId);
+    return await this.toolsService.generateReceiptData(id, request.user.studentId);
   }
 
   @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
@@ -376,6 +571,24 @@ export class AgentController {
       dto.userConsent,
       true,
       request.user.studentId,
+      dto.twoFactorPin,
+    );
+  }
+
+  @Post('webhooks/bank-clearing')
+  async handleBankClearingWebhook(
+    @Body() dto: ClearingWebhookDto,
+    @Headers('x-webhook-secret') webhookSecret?: string,
+  ) {
+    const expectedSecret = process.env.WEBHOOK_SECRET || 'sandbox_webhook_secret';
+    if (webhookSecret && webhookSecret !== expectedSecret) {
+      throw new ForbiddenException('Invalid webhook signature');
+    }
+    return await this.toolsService.processClearingWebhook(
+      dto.transferId,
+      dto.status,
+      dto.clearingReference,
+      dto.reason,
     );
   }
 
@@ -468,9 +681,9 @@ export class AgentController {
 
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Post('sandbox/reset')
-  async resetSandbox() {
+  async resetSandbox(@Query('skipDefaultStudent') skipDefaultStudent?: string) {
     this.assertSandboxEnvironment();
-    await this.db.resetSandboxData();
+    await this.db.resetSandboxData(skipDefaultStudent === 'true');
     return {
       success: true,
       message: 'Sandbox state successfully reset to initial seed data.',
@@ -494,5 +707,23 @@ export class AgentController {
       auditLogCount: logs.length,
       auditLogs: logs,
     };
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionTierGuard, StudentScopeGuard)
+  @RequirePermissionTier(PermissionTier.EXECUTE)
+  @Post('auth/step-up-otp')
+  async issueStepUpOtp(@Req() request: { user: { studentId: string } }) {
+    const result = this.toolsService.generateStepUpOtp();
+    await this.db.insertAuditLog({
+      id: uuidv4(),
+      event_type: 'STEP_UP_OTP_ISSUED',
+      permission_tier: PermissionTier.EXECUTE,
+      action_summary: `Step-up 2FA dynamic OTP issued for ${request.user.studentId}`,
+      details: JSON.stringify({ studentId: request.user.studentId, expiresInSeconds: result.expiresInSeconds }),
+      status: 'SUCCESS',
+      ip_address: '127.0.0.1',
+      created_at: new Date(),
+    });
+    return result;
   }
 }

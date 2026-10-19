@@ -13,7 +13,21 @@
 
 ---
 
-## Enterprise Architectural Patterns
+## Advanced Faculty-Recommended Features
+
+1. **Salt & Scrypt Password Security:** User credentials are protected using a 16-byte cryptographically secure random salt and the `scrypt` key derivation function (64-byte key length), verified via `crypto.timingSafeEqual` to prevent side-channel timing attacks.
+2. **SHA-256 Transaction Fingerprinting:** Every confirmed tuition transfer generates a SHA-256 integrity checksum recorded in the append-only audit trail and rendered on the certificate.
+3. **Official PDF Tuition Payment Certificate:** Built with a pure TypeScript PDF 1.4 vector generator ([pdf-generator.ts](frontend/src/lib/pdf-generator.ts)) providing downloadable and printable A4 certificates with verification URL and integrity checksum.
+4. **Smart Tuition Installment Planner:** Formulates 2- or 3-part split payment milestones ([tuition-calculation.service.ts](backend/src/agent/services/tuition-calculation.service.ts)) ensuring each settlement strictly respects the 400,000 BDT per-transfer limit and course registration deadlines.
+5. **Sandbox Card Deposit & Top-Up Modal:** Interactive virtual credit card modal allowing students to top up account balances using test card numbers (`4242 4242 4242 4242`) with automatic card number masking (`**** **** **** 4242`) in the audit log.
+6. **Step-Up 2FA & Dynamic OTP Verification:** Financial settlements (`EXECUTE` tier) enforce mandatory step-up 2FA verification using a 6-digit time-sensitive one-time PIN (OTP) issued dynamically (`POST /api/auth/step-up-otp`) and validated alongside the single-use one-time confirmation token, preventing automated or hijacked fund debits.
+
+> [!NOTE]
+> **Sandbox Evaluation Notice:** All remittance corridors, foreign exchange rates, mock bank clearing gateways, and account balances run in a simulated sandbox environment for demonstration and algorithmic evaluation (not connected to live production SWIFT rails or real currency).
+
+---
+
+## Architectural Design Patterns
 
 | Feature | Pattern | How it is used |
 |---|---|---|
@@ -44,7 +58,7 @@
 ## Monorepo Project Structure
 
 ```
-├── backend/                   # NestJS Enterprise Backend API
+├── backend/                   # NestJS Hardened Backend API
 │   ├── src/
 │   │   ├── agent/             # Gemini LLM Service, Agent Tools, & Policy Guardrails
 │   │   │   ├── guardrails/    # Permission tiers, financial limits, prompt injection filter
@@ -117,29 +131,60 @@ docker compose up --build
 Once started:
 - **Frontend UI:** [http://localhost:4567](http://localhost:4567)
 - **Backend API:** [http://localhost:4568](http://localhost:4568)
-- **PostgreSQL Database:** `localhost:5432`
+- **PostgreSQL Database:** `localhost:5433` (internal container port 5432, preventing conflicts with local PostgreSQL)
+
+#### Step-Up 2FA in Docker & Local Runs
+When confirming a payment transfer draft in the UI:
+1. In the chat draft card under **2FA Step-Up Verification**, click **"Request Live OTP"**.
+2. The server dynamically issues a 6-digit OTP (`POST /api/auth/step-up-otp`), displays a notification with the issued code, and automatically auto-populates the OTP verification input.
+3. Click **"Authorize & Confirm Payment"** to finalize settlement.
+*(In Docker where `NODE_ENV=production`, the static developer test PINs `123456`/`000000` are disabled by default, but can be enabled if desired by setting `ALLOW_SANDBOX_MFA_BYPASS=true` in `.env`. In the sandbox, the OTP is shown in the UI as a stand-in for SMS or authenticator delivery; in production it would be delivered out-of-band).*
 
 ---
 
-### Option 2: Running Locally (Development Mode)
+### Option 2: Running Locally Without Docker (Lightweight In-Memory Mode)
 
-In development, the backend uses an in-memory sandbox store if PostgreSQL is unavailable. In production mode it requires PostgreSQL and fails startup rather than silently falling back to ephemeral storage. Demo student credentials are seeded only outside production.
+This mode runs the complete application using built production artifacts and the high-fidelity in-memory sandbox engine. It requires zero external database installations or container runtimes, while maintaining identical financial calculations, multi-objective ranking, and safety guardrails:
 
-1. **Install and run Backend:**
+1. **Build and start Backend:**
    ```bash
    cd backend
    npm install
-   npm run start:dev
+   npm run build
+   PORT=4568 FORCE_MEMORY_DB=true ALLOW_DEMO_SEED=true node dist/main.js
+   ```
+   *Windows PowerShell:*
+   ```powershell
+   cd backend
+   npm install
+   npm run build
+   $env:PORT="4568"; $env:FORCE_MEMORY_DB="true"; $env:ALLOW_DEMO_SEED="true"; node dist/main.js
    ```
    *Backend starts at http://localhost:4568*
 
-2. **In a separate terminal, install and run Frontend:**
+2. **In a separate terminal, build and start Frontend:**
    ```bash
    cd frontend
    npm install
-   npm run dev
+   npm run build
+   PORT=4567 NEXT_PUBLIC_API_URL=http://localhost:4568/api npm start
+   ```
+   *Windows PowerShell:*
+   ```powershell
+   cd frontend
+   npm install
+   npm run build
+   $env:PORT="4567"; $env:NEXT_PUBLIC_API_URL="http://localhost:4568/api"; npm start
    ```
    *Frontend starts at http://localhost:4567*
+
+---
+
+### Option 3: Local Development (Live Watch Mode)
+
+For live code editing with hot module replacement:
+1. **Backend:** `cd backend && npm install && npm run start:dev` (runs at http://localhost:4568)
+2. **Frontend:** `cd frontend && npm install && npm run dev` (runs at http://localhost:4567)
 
 ---
 
@@ -175,10 +220,12 @@ The database automatically seeds an initial student persona, authentication cred
 - **Daily Spending Limit:** `1,000,000.00 BDT`
 
 ### Authentication Endpoints:
+- `POST /api/auth/registration` - Register a new student account and auto-provision sandbox balance (aliases `POST /api/auth/register`)
 - `POST /api/auth/login` - Authenticate credentials (`studentIdOrEmail`, `password`) and receive signed JWT
-- `GET /api/auth/session` - Verify active JWT bearer token and retrieve student profile
+- `GET /api/auth/session` - Verify active JWT bearer token and retrieve student profile (aliases `GET /api/auth/me`)
 - `POST /api/auth/logout` - Terminate session and record audit event
 - `GET /api/auth/demo-credentials` - Quick sandbox demo credentials
+- `POST /api/auth/step-up-otp` - Issue time-sensitive 6-digit 2FA step-up OTP for settlement authorization
 
 ### Mock Corridors:
 | Provider | Inverse Rate | Fees | Speed | Reliability | Rating |
@@ -195,21 +242,28 @@ The database automatically seeds an initial student persona, authentication cred
 The system implements complete RESTful HTTP operations using `@Param()`, `@Body()`, `@Query()`, `@Get()`, `@Post()`, `@Put()`, `@Patch()`, and `@Delete()`:
 
 - `POST /api/chat` - Natural language query processing (`@Body()`)
+- `POST /api/invoice/extract` - University tuition invoice document parsing (`@Body()`)
 - `GET /api/accounts/:id` - Fetch student account balance & limits (`@Param('id')`)
 - `PUT /api/accounts/:id/limits` - Update student daily limit (`@Param('id')`, `@Body()`)
 - `POST /api/accounts/:id/deposit` - Deposit funds to student account (`@Param('id')`, `@Body()`)
+- `POST /api/accounts/:id/card-deposit` - Student virtual credit card sandbox deposit (`@Param('id')`, `@Body()`)
 - `GET /api/rates` - Remittance corridor rates with query filtering (`@Query('activeOnly')`, `@Query('targetCurrency')`)
+- `GET /api/rates/stream` - Server-Sent Events (SSE) live rate ticker stream
+- `GET /api/rates/live-feed` - Real-time market feed with spread calculations
 - `GET /api/rates/:id` - Remittance corridor rate by ID (`@Param('id')`)
 - `PUT /api/rates/:id` - Update remittance corridor rate or status (`@Param('id')`, `@Body()`)
 - `DELETE /api/rates/:id` - Deactivate corridor rate (`@Param('id')`)
 - `POST /api/routes/compare` - Compare remittance corridors with multi-objective scoring (`@Body()`)
+- `POST /api/routes/installments` - Smart tuition installment split planner (`@Body()`)
 - `GET /api/transfers` - List student transfers with status filtering (`@Query('studentId')`, `@Query('status')`)
 - `GET /api/transfers/:id` - Transfer details by ID (`@Param('id')`)
+- `GET /api/transfers/:id/receipt` - Official transfer verification receipt & checksum (`@Param('id')`)
 - `POST /api/transfers/draft` - Create pending transfer draft (`@Body()`)
 - `PUT /api/transfers/:id` - Update draft recipient before confirmation (`@Param('id')`, `@Body()`)
 - `PATCH /api/transfers/:id` - Partial update of unconfirmed transfer draft (`@Param('id')`, `@Body()`)
 - `DELETE /api/transfers/:id` - Discard transfer draft (`@Param('id')`)
-- `POST /api/transfers/:id/confirm` - User-consented transfer execution (`@Param('id')`, `@Body()`)
+- `POST /api/transfers/:id/confirm` - User-consented transfer execution with 2FA step-up OTP (`@Param('id')`, `@Body()`)
+- `POST /api/webhooks/bank-clearing` - Inbound bank clearing settlement webhook with secret verification (`@Body()`, `@Headers()`)
 - `POST /api/transfers/:id/compensate` - Saga compensating transaction rollback (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/rollback` - Unified Saga rollback restoring student balance and unreserving gateway funds (`@Param('id')`, `@Body()`)
 - `POST /api/transfers/:id/cancel` - Cancel transfer draft (`@Param('id')`)
@@ -218,6 +272,7 @@ The system implements complete RESTful HTTP operations using `@Param()`, `@Body(
 - `DELETE /api/audit/:id` - Sandbox development audit log pruning (AdminRoleGuard only) (`@Param('id')`)
 - `POST /api/sandbox/reset` - Reset sandbox database to seed data (AdminRoleGuard & non-production only)
 - `GET /api/sandbox/export-logs` - Export full audit records archive (AdminRoleGuard only)
+- `POST /api/auth/step-up-otp` - Issue time-sensitive 6-digit 2FA step-up OTP (`@Req()`)
 
 ---
 
@@ -266,6 +321,7 @@ All official FinTechathon submission documents are prepared in the repository:
 5. **Execution Evidence:** [docs/EXECUTION_EVIDENCE.md](docs/EXECUTION_EVIDENCE.md) & [docs/execution-evidence.json](docs/execution-evidence.json)
 6. **Open-Source License:** [LICENSE](LICENSE) & [docs/LICENSE](docs/LICENSE)
 7. **Source Code & Tests:** [backend/](backend/) & [frontend/](frontend/)
+8. **Automated Evidence Generator Script:** [scratch/run_demo_and_export.js](scratch/run_demo_and_export.js)
 
 ---
 

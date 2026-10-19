@@ -14,18 +14,23 @@
 
 ---
 
-### Segment 2: Happy Path Flow — Route Comparison & Payment (0:45 – 2:00)
-- **Visual:** In the Agent Chat Studio, click the suggestion chip: `"Pay my $3,000 tuition from BDT"`.
+### Segment 2: Happy Path Flow — AI Agent Route Comparison, Direct Drafting & 2FA Step-Up Payment (0:45 – 2:00)
+- **Visual:** In the Agent Chat Studio (`/chat`), highlight the conversational stream and real-time tool execution telemetry. Click the suggestion chip: `"Pay my $3,000 tuition from BDT"`.
 - **Action:**
-  - Show the agent executing tool calling: querying the student balance and analyzing 4 active remittance corridors.
-  - Highlight the interactive **Route Comparison Cards**:
-    - **EduPay Prime (Rank #1):** Lowest total cost (Fee + FX loss), 24h speed, 99% reliability score.
+  - Show the AI Agent actively reasoning and visibly triggering tool calls in the chat interface:
+    - Tool Call 1: `getBalance` (fetching student balance: 850,000.00 BDT).
+    - Tool Call 2: `compareRoutes` (ranking 4 remittance corridors based on cost, speed, and reliability).
+  - Highlight the interactive **Route Comparison Cards** rendered directly in the AI chat stream:
+    - **EduPay Prime (Rank #1):** Lowest total cost (Fee + FX spread loss), 24h speed, 99% reliability score.
     - **SwiftWire Express:** Urgent 4h priority rail.
   - Click **"Select & Prepare Transfer Draft"** on EduPay Prime.
-  - The chat dynamically renders the **Transfer Draft Confirmation Card** with status `PENDING_CONFIRMATION` and the unique `confirmationToken`.
+  - The UI triggers direct route draft creation (`POST /api/transfers/draft`) without repetitive conversational loops, generating the **Transfer Draft Confirmation Card** with status `PENDING_CONFIRMATION` and the single-use `confirmationToken`.
 - **Narration:**
-  > *"Notice that even though the draft is created, no money has moved! Under our Tri-Tier Permission Model, autonomous agents operate in the DRAFT tier and cannot unilaterally deduct funds. Fund movement requires explicit human authorization."*
-- **Action:** Click **[Authorize & Confirm Payment]**. Confetti animation triggers, the receipt displays, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 491,545.15 BDT!
+  > *"Notice how the AI agent autonomously queries corridors, evaluates cost trade-offs, and prepares the transfer draft directly. Yet, under our Tri-Tier Permission Model, the AI is bounded in the DRAFT tier and cannot unilaterally deduct funds. Fund movement requires dual-layer human authorization: explicit consent and step-up two-factor authentication."*
+- **Action:**
+  - The UI presents the **Step-Up 2FA Verification** challenge. The student requests their dynamic time-sensitive OTP code (`POST /api/auth/step-up-otp`) and inputs the 6-digit PIN.
+  - The student checks the consent confirmation and clicks **[Authorize & Confirm Payment]** (`POST /api/transfers/:id/confirm`).
+  - Confetti animation triggers, the transaction receipt displays with SHA-256 fingerprint and printable PDF tuition certificate, and the student's available balance in the top right immediately updates from 850,000.00 BDT to 491,545.15 BDT!
 
 ---
 
@@ -37,7 +42,7 @@
   - The agent's backend policy guard (`FinancialLimitsGuard`) immediately blocks draft creation and throws an error badge:
     `"Security Policy Check Failed: Transfer amount of 537,507.28 BDT exceeds the per-transfer security limit of 400,000 BDT."`
 - **Narration:**
-  > *"Our safety guardrails are hardcoded in compiled NestJS middleware, completely independent of model prompts. Even if a user attempts a transfer beyond safe ceilings, the transaction is rejected instantly and logged for compliance."*
+  > *"Our safety guardrails are enforced in compiled NestJS safety guards and domain services, completely independent of model prompts. Even if a user attempts a transfer beyond safe ceilings, the transaction is rejected instantly and logged for compliance."*
 
 ---
 

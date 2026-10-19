@@ -139,7 +139,7 @@ jobs:
           "
 
   deployment-simulation:
-    name: Deployment Verification
+    name: Deployment Verification & Docker Smoke Test
     runs-on: ubuntu-latest
     needs: [backend-ci, frontend-ci, docker-verification, security-scan]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Eashan'
@@ -153,4 +153,72 @@ jobs:
           test -f .env.example
           test -f backend/Dockerfile
           test -f frontend/Dockerfile
-          echo "Deployment artifacts and manifests verified successfully."
+          test -f backend/package-lock.json
+          test -f frontend/package-lock.json
+          echo "Deployment manifests verified."
+
+      - name: Prepare Sandbox Environment
+        run: cp .env.example .env
+
+      - name: Launch Full Stack via Docker Compose
+        run: docker compose up -d --build
+
+      - name: Wait for Containers to Initialize
+        run: |
+          echo "Waiting for PostgreSQL, Backend, and Frontend to become responsive..."
+          for i in {1..40}; do
+            if curl -s http://localhost:4568/api/rates > /dev/null 2>&1 && curl -s http://localhost:4567 > /dev/null 2>&1; then
+              echo "Services responsive after $i attempts."
+              break
+            fi
+            echo "Attempt $i: waiting for services..."
+            sleep 3
+          done
+
+      - name: Execute End-to-End Container Smoke Tests
+        run: |
+          set -x
+          echo "Verifying Backend Rates Endpoint..."
+          curl -i -f http://localhost:4568/api/rates
+
+          echo "Verifying PostgreSQL Seeded Student Authentication..."
+          LOGIN_RES=$(curl -s -f -X POST http://localhost:4568/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"studentIdOrEmail":"STU-2026-BDT01","password":"student123","permissionTier":"EXECUTE"}')
+          echo "Login Response: $LOGIN_RES"
+          TOKEN=$(echo "$LOGIN_RES" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+          if [ -z "$TOKEN" ]; then
+            echo "Failed to acquire JWT bearer token from containerized backend."
+            exit 1
+          fi
+          echo "JWT Authentication successful."
+
+          echo "Verifying Remittance Route Optimization Engine..."
+          curl -i -f -X POST http://localhost:4568/api/routes/compare \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            -d '{"amountUsd":3000,"preference":"balanced"}'
+
+          echo "Verifying Step-Up 2FA OTP Generation..."
+          OTP_RES=$(curl -s -f -X POST http://localhost:4568/api/auth/step-up-otp \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN")
+          echo "OTP Response: $OTP_RES"
+
+          echo "Verifying Frontend HTML Rendering..."
+          curl -i -f http://localhost:4567
+
+          echo "All containerized smoke tests passed successfully."
+
+      - name: Output Container Logs on Failure
+        if: always()
+        run: |
+          echo "### Docker Container Logs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          docker compose logs >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          docker compose logs
+
+      - name: Teardown Containers
+        if: always()
+        run: docker compose down -v

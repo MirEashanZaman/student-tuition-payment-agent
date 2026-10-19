@@ -310,6 +310,18 @@ describe('API rate limiting', () => {
       const data = await response.json();
       expect(data.message).toContain('Security Shield Alert');
       expect(data.threatType).toBe('SHELL_BOMB');
+
+      const winResponse = await fetch(`${baseUrl}/chat`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: '%0|%0' }),
+      });
+      expect(winResponse.status).toBe(403);
+      const winData = await winResponse.json();
+      expect(winData.threatType).toBe('SHELL_BOMB');
     });
 
     it('blocks command injection and shell execution attacks', async () => {
@@ -319,6 +331,8 @@ describe('API rate limiting', () => {
         '`whoami`',
         'cat /etc/passwd',
         'powershell -enc aW52b2tlLWV4cHJlc3Npb24=',
+        '<script>alert(document.cookie)</script>',
+        '<img src=x onerror=alert(1)>',
       ];
       for (const vector of attackVectors) {
         const response = await fetch(`${baseUrl}/chat`, {
@@ -352,6 +366,13 @@ describe('API rate limiting', () => {
       const data = await response.json();
       expect(data.message).toContain('Security Shield Alert');
       expect(data.threatType).toBe('SQL_INJECTION');
+
+      const panResponse = await fetch(`${baseUrl}/transfers?pan=4111222233334444`, {
+        headers: { Authorization: `Bearer ${tokenFor('STU-2026-BDT01')}` },
+      });
+      expect(panResponse.status).toBe(403);
+      const panData = await panResponse.json();
+      expect(panData.threatType).toBe('PAN_ATTACK_DETECTED');
     });
 
     it('blocks prototype pollution payload attempts', async () => {

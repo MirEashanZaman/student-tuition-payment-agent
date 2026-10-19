@@ -1,6 +1,7 @@
 export interface FinancialBoundaries {
   perTransferLimit: number;
   dailyLimit: number;
+  annualQuota: number;
   defaultCurrency: string;
   systemTimezone: string;
   apiBaseUrl: string;
@@ -11,6 +12,8 @@ export function getFinancialBoundaries(): FinancialBoundaries {
     parseFloat(process.env.NEXT_PUBLIC_MAX_TRANSFER_LIMIT || '') || 400000.0;
   const dailyLimit =
     parseFloat(process.env.NEXT_PUBLIC_DAILY_TRANSFER_LIMIT || '') || 1000000.0;
+  const annualQuota =
+    parseFloat(process.env.NEXT_PUBLIC_ANNUAL_STUDENT_QUOTA_BDT || '') || 1500000.0;
   const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'BDT';
   const systemTimezone =
     process.env.NEXT_PUBLIC_TIMEZONE ||
@@ -20,6 +23,7 @@ export function getFinancialBoundaries(): FinancialBoundaries {
   return {
     perTransferLimit,
     dailyLimit,
+    annualQuota,
     defaultCurrency,
     systemTimezone,
     apiBaseUrl,

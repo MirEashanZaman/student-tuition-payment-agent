@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { api, authStorage } from '../lib/api';
 import {
@@ -12,6 +12,8 @@ import {
   TransferRecord,
   AuditLog,
   AuthSession,
+  InstallmentPlan,
+  InstallmentMilestone,
 } from '../types';
 import confetti from 'canvas-confetti';
 import {
@@ -43,13 +45,21 @@ import {
   RotateCcw,
   X,
   LogOut,
+  FileText,
+  Printer,
+  Copy,
+  Calendar,
+  CreditCard,
+  Upload,
 } from 'lucide-react';
+import { downloadTuitionReceiptPdf, ReceiptData } from '../lib/pdf-generator';
+import { getFinancialBoundaries } from '../lib/formatters';
 
-const renderFormattedText = (content: string) => {
+const renderFormattedText = (content: string, isUser = false) => {
   return content.split('\n').map((line, idx) => {
     if (line.startsWith('### ')) {
       return (
-        <h3 key={idx} className="font-bold text-base text-[#1E3A8A] mt-2 mb-1">
+        <h3 key={idx} className={`font-bold text-base mt-2 mb-1 ${isUser ? 'text-white' : 'text-[#1E3A8A]'}`}>
           {line.replace('### ', '')}
         </h3>
       );
@@ -57,12 +67,12 @@ const renderFormattedText = (content: string) => {
     if (line.startsWith('• ')) {
       const parts = line.replace('• ', '').split('**');
       return (
-        <div key={idx} className="flex items-start gap-2 my-1 text-xs sm:text-sm text-slate-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0D9488] mt-2 shrink-0"></span>
+        <div key={idx} className={`flex items-start gap-2 my-1 text-xs sm:text-sm ${isUser ? 'text-white' : 'text-slate-800'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${isUser ? 'bg-white' : 'bg-[#0D9488]'}`}></span>
           <span>
             {parts.map((part, pIdx) =>
               pIdx % 2 === 1 ? (
-                <strong key={pIdx} className="font-bold text-slate-900">
+                <strong key={pIdx} className={`font-bold ${isUser ? 'text-white' : 'text-slate-900'}`}>
                   {part}
                 </strong>
               ) : (
@@ -75,10 +85,10 @@ const renderFormattedText = (content: string) => {
     }
     const parts = line.split('**');
     return (
-      <p key={idx} className="mb-1.5 last:mb-0 text-xs sm:text-sm text-slate-800 leading-relaxed">
+      <p key={idx} className={`mb-1.5 last:mb-0 text-xs sm:text-sm leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
         {parts.map((part, pIdx) =>
           pIdx % 2 === 1 ? (
-            <strong key={pIdx} className="font-bold text-slate-900">
+            <strong key={pIdx} className={`font-bold ${isUser ? 'text-white' : 'text-slate-900'}`}>
               {part}
             </strong>
           ) : (
@@ -97,10 +107,26 @@ export default function Home({
   initialTab?: 'home' | 'chat' | 'dashboard' | 'audit';
   initialShowLogin?: boolean;
 } = {}) {
+  const boundaries = getFinancialBoundaries();
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'dashboard' | 'audit'>(initialTab);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [account, setAccount] = useState<Account | null>(null);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+
+  const dailySpentPercent = useMemo(() => {
+    if (!account || !account.dailyLimit) return 0;
+    return Math.min(100, Math.round((account.dailySpent / account.dailyLimit) * 100));
+  }, [account?.dailySpent, account?.dailyLimit]);
+
+  const annualSpentPercent = useMemo(() => {
+    const quota = account?.annualLimit || 1500000;
+    const spent = account?.annualSpent || 0;
+    return Math.min(100, Math.round((spent / quota) * 100));
+  }, [account?.annualSpent, account?.annualLimit]);
+
+  const settledTransfersCount = useMemo(() => {
+    return transfers.filter((t) => t.status === 'CONFIRMED' || t.status === 'SETTLED' || t.status === 'EXECUTED').length;
+  }, [transfers]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
@@ -126,6 +152,24 @@ export default function Home({
   const [showTokenInspector, setShowTokenInspector] = useState(false);
   const [auditFilter, setAuditFilter] = useState<'ALL' | 'HUMAN' | 'SECURITY' | 'RATES'>('ALL');
   const [rollingBackId, setRollingBackId] = useState<string | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceiptData, setSelectedReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositAmount, setDepositAmount] = useState<number>(100000);
+  const [depositCardNumber, setDepositCardNumber] = useState('4242 4242 4242 4242');
+  const [depositCardHolder, setDepositCardHolder] = useState('Mir Eashan Zaman');
+  const [depositExpiry, setDepositExpiry] = useState('12/28');
+  const [depositCvv, setDepositCvv] = useState('888');
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [draftOtpMap, setDraftOtpMap] = useState<Record<string, string>>({});
+  const [otpLoadingMap, setOtpLoadingMap] = useState<Record<string, boolean>>({});
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceText, setInvoiceText] = useState('');
+  const [invoiceFileName, setInvoiceFileName] = useState('');
+  const [invoiceExtracting, setInvoiceExtracting] = useState(false);
+  const [invoiceResult, setInvoiceResult] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -142,8 +186,9 @@ export default function Home({
   ]);
 
   const isLoggingInRef = useRef(false);
+  const notificationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const ensureAuth = async (): Promise<boolean> => {
+  const ensureAuth = useCallback(async (): Promise<boolean> => {
     if (authStorage.getToken()) {
       return true;
     }
@@ -155,7 +200,9 @@ export default function Home({
     }
     isLoggingInRef.current = true;
     try {
-      const session = await api.login('STU-2026-BDT01', 'student123');
+      const defaultDemoUser = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID || 'STU-2026-BDT01';
+      const defaultDemoPass = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_PASSWORD || 'student123';
+      const session = await api.login(defaultDemoUser, defaultDemoPass);
       setAuthSession(session);
       return true;
     } catch {
@@ -163,9 +210,9 @@ export default function Home({
     } finally {
       isLoggingInRef.current = false;
     }
-  };
+  }, []);
 
-  const loadData = async (targetStudentId?: string) => {
+  const loadData = useCallback(async (targetStudentId?: string) => {
     try {
       const hasAuth = await ensureAuth();
       if (!hasAuth && !authStorage.getToken()) {
@@ -185,7 +232,7 @@ export default function Home({
     } catch (err) {
       console.error('Error fetching data:', err);
     }
-  };
+  }, [ensureAuth, authSession?.user.studentId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -219,8 +266,11 @@ export default function Home({
     return () => {
       isMounted = false;
       clearTimeout(pollTimer);
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
     };
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -266,14 +316,22 @@ export default function Home({
   };
 
   const handleDemoFill = () => {
-    setLoginInput({ studentIdOrEmail: 'STU-2026-BDT01', password: 'student123', permissionTier: 'EXECUTE' });
+    const defaultDemoUser = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID || 'STU-2026-BDT01';
+    const defaultDemoPass = process.env.NEXT_PUBLIC_DEFAULT_STUDENT_PASSWORD || 'student123';
+    setLoginInput({ studentIdOrEmail: defaultDemoUser, password: defaultDemoPass, permissionTier: 'EXECUTE' });
     setLoginError(null);
   };
 
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3500);
-  };
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimerRef.current = null;
+    }, 3500);
+  }, []);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputMessage;
@@ -335,11 +393,16 @@ export default function Home({
         throw err;
       }
       let comparisonData: RouteComparisonResult | undefined;
+      let installmentData: InstallmentPlan | undefined;
 
       if (res.toolCallsExecuted) {
         const compTool = res.toolCallsExecuted.find((tc: any) => tc.toolName === 'compareRoutes');
         if (compTool) {
           comparisonData = compTool.result;
+        }
+        const instTool = res.toolCallsExecuted.find((tc: any) => tc.toolName === 'planInstallment');
+        if (instTool) {
+          installmentData = instTool.result;
         }
       }
 
@@ -349,6 +412,7 @@ export default function Home({
         text: res.message,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         comparisonData,
+        installmentData,
         suggestedActions: res.suggestedActions,
         securityFlags: res.securityFlags,
       };
@@ -429,6 +493,62 @@ export default function Home({
     }
   };
 
+  const handleDraftMilestone = async (
+    amountUsd: number,
+    routeId: string,
+    milestoneNum: number,
+  ) => {
+    if (!authSession && !authStorage.getToken()) {
+      showNotification('You need to log in first to draft tuition transfers.', 'error');
+      setShowLoginModal(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const draft = await api.createDraft({
+        studentId: account?.studentId || 'STU-2026-BDT01',
+        routeId: routeId || 'route-edupay-prime',
+        amountUsd,
+        recipientUniversity: `University of Toronto (Tuition Office - Milestone ${milestoneNum})`,
+      });
+
+      setActiveDraft(draft);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `draft-msg-${Date.now()}`,
+          sender: 'agent',
+          text:
+            `### Installment Milestone ${milestoneNum} Draft Created: \`${draft.transferId}\`\n\n` +
+            `• **Installment Portion:** $${draft.targetAmountUsd.toLocaleString()} USD\n` +
+            `• **Settlement Corridor:** ${draft.providerName}\n` +
+            `• **Landed Cost:** **${draft.sourceAmountBdt.toLocaleString()} BDT** (Within 400,000 BDT limit)\n` +
+            `• **Recipient:** ${draft.recipientUniversity}\n\n` +
+            `**Human Confirmation Required:** Verify details below and authorize payment:`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          draftData: draft,
+        },
+      ]);
+
+      showNotification(`Milestone ${milestoneNum} draft created for $${amountUsd.toLocaleString()} USD.`, 'info');
+      await loadData();
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          sender: 'system',
+          text: `**Security Guardrail Blocked Transfer:** ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConfirmTransfer = async (transferId: string, confirmationToken: string) => {
     if (!authSession && !authStorage.getToken()) {
       showNotification('You need to log in first to confirm tuition transfers.', 'error');
@@ -446,9 +566,14 @@ export default function Home({
       setShowLoginModal(true);
       return;
     }
+    const pin = draftOtpMap[transferId]?.trim() || '';
+    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      showNotification('2FA Step-Up Required: Please enter the 6-digit OTP (or click "Request Live OTP") before authorizing payment.', 'error');
+      return;
+    }
     setLoading(true);
     try {
-      const res = await api.confirmTransfer(transferId, confirmationToken, true);
+      const res = await api.confirmTransfer(transferId, confirmationToken, true, pin);
 
       confetti({
         particleCount: 100,
@@ -462,6 +587,7 @@ export default function Home({
       const transferRefId = res?.transferId || res?.transfer?.id || transferId;
       const deductedAmount = res?.deductedBdt ?? res?.transfer?.source_amount_bdt ?? activeDraft?.sourceAmountBdt ?? 0;
       const updatedBalance = res?.newBalanceBdt ?? res?.account?.balance ?? (account ? account.balance - deductedAmount : 0);
+      const settledTxHash = res?.txHash || '';
 
       setMessages((prev) => [
         ...prev,
@@ -474,8 +600,10 @@ export default function Home({
             `• **Transfer Reference:** \`${transferRefId}\`\n` +
             `• **Deducted from Account:** **${deductedAmount.toLocaleString()} BDT**\n` +
             `• **Updated Balance:** **${updatedBalance.toLocaleString()} BDT**\n` +
-            `• **Compliance Audit Log:** Tamper-evident record sealed in database.`,
+            (settledTxHash ? `• **SHA-256 Receipt Fingerprint:** \`${settledTxHash.slice(0, 16)}...\`\n` : '') +
+            `• **Compliance Audit Log:** Immutable append-only record recorded in database.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          receiptTransferId: transferRefId,
         },
       ]);
 
@@ -497,6 +625,44 @@ export default function Home({
     }
   };
 
+  const handleViewReceipt = async (transferId: string) => {
+    setReceiptLoading(true);
+    try {
+      const data = await api.getTransferReceipt(transferId);
+      if (data) {
+        setSelectedReceiptData(data);
+        setShowReceiptModal(true);
+        return;
+      }
+    } catch {
+      const matched = transfers.find((t) => t.id === transferId);
+      if (matched) {
+        const confirmedTime = matched.confirmed_at ? new Date(matched.confirmed_at) : new Date(matched.created_at);
+        setSelectedReceiptData({
+          certificateId: `CERT-${matched.id.slice(0, 8).toUpperCase()}`,
+          transferId: matched.id,
+          studentId: matched.student_id,
+          studentName: account?.studentName || 'Mir Eashan Zaman',
+          recipientUniversity: matched.recipient_university,
+          studentRegNumber: matched.student_reg_number || 'AIUB-2026-INTL',
+          providerName: matched.provider_name,
+          targetAmountUsd: Number(matched.target_amount_usd),
+          sourceAmountBdt: Number(matched.source_amount_bdt),
+          feeTotalBdt: Number(matched.fee_total_bdt),
+          fxRateApplied: Number(matched.fx_rate_applied),
+          status: matched.status,
+          confirmedAt: confirmedTime.toISOString(),
+          txHash: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
+          sourceCurrency: matched.source_currency || boundaries.defaultCurrency,
+          targetCurrency: matched.target_currency || 'USD',
+        });
+        setShowReceiptModal(true);
+      }
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
   const handleCancelTransfer = async (transferId: string) => {
     try {
       await api.cancelTransfer(transferId);
@@ -514,6 +680,119 @@ export default function Home({
       await loadData();
     } catch (err: any) {
       showNotification(err.message, 'error');
+    }
+  };
+
+  const handleRequestOtp = async (transferId: string) => {
+    setOtpLoadingMap((prev) => ({ ...prev, [transferId]: true }));
+    try {
+      const res = await api.requestStepUpOtp();
+      if (res?.otp) {
+        setDraftOtpMap((prev) => ({ ...prev, [transferId]: res.otp }));
+        showNotification(`Step-up 2FA OTP issued: ${res.otp} (Valid for ${res.expiresInSeconds}s)`, 'success');
+      }
+    } catch (err: any) {
+      showNotification(err?.message || 'Failed to request step-up OTP', 'error');
+    } finally {
+      setOtpLoadingMap((prev) => ({ ...prev, [transferId]: false }));
+    }
+  };
+
+  const handleExtractInvoice = async () => {
+    if (!invoiceText.trim()) {
+      showNotification('Please enter or paste tuition invoice text to analyze.', 'error');
+      return;
+    }
+    setInvoiceExtracting(true);
+    try {
+      const res = await api.extractInvoice(invoiceText, invoiceFileName || 'tuition-notice.pdf');
+      setInvoiceResult(res);
+      showNotification(`Invoice processed: ${res.recipientUniversity || 'University'}, $${res.amountUsd?.toLocaleString() || 0} USD detected`, 'success');
+    } catch (err: any) {
+      showNotification(err?.message || 'Failed to extract invoice data', 'error');
+    } finally {
+      setInvoiceExtracting(false);
+    }
+  };
+
+  const handleApplyExtractedInvoice = () => {
+    if (!invoiceResult) return;
+    const university = invoiceResult.recipientUniversity || 'International University';
+    const amount = invoiceResult.amountUsd || 3000;
+    const deadline = invoiceResult.deadline ? ` due ${invoiceResult.deadline}` : '';
+    setInputMessage(`Pay $${amount} tuition to ${university}${deadline}`);
+    setShowInvoiceModal(false);
+    setActiveTab('chat');
+    showNotification('Invoice details applied to tuition prompt', 'info');
+  };
+
+  const handleExecuteCardDeposit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!authSession && !authStorage.getToken()) {
+      showNotification('You need to log in first to deposit funds.', 'error');
+      setShowLoginModal(true);
+      return;
+    }
+    if (authSession?.user?.permissionTier && authSession.user.permissionTier !== 'EXECUTE') {
+      showNotification('Financial Safety: Fund deposits require EXECUTE tier permissions.', 'info');
+      setLoginInput((prev) => ({
+        ...prev,
+        studentIdOrEmail: authSession.user.studentId || 'STU-2026-BDT01',
+        password: 'student123',
+        permissionTier: 'EXECUTE',
+      }));
+      setShowDepositModal(false);
+      setShowLoginModal(true);
+      return;
+    }
+    if (!depositAmount || depositAmount <= 0) {
+      showNotification('Please enter a valid deposit amount.', 'error');
+      return;
+    }
+
+    setDepositLoading(true);
+    try {
+      const targetId = authSession?.user.studentId || authStorage.getStudentId() || 'STU-2026-BDT01';
+      const updatedAccount = await api.depositFunds(targetId, Number(depositAmount), {
+        cardNumber: depositCardNumber,
+        cardHolder: depositCardHolder,
+        expiryDate: depositExpiry,
+        cvv: depositCvv,
+      });
+
+      if (updatedAccount) {
+        setAccount({
+          studentId: updatedAccount.studentId || (updatedAccount as any).student_id || targetId,
+          studentName: updatedAccount.studentName || (updatedAccount as any).student_name || 'Student',
+          currency: updatedAccount.currency || 'BDT',
+          balance: Number(updatedAccount.balance) || 0,
+          dailyLimit: updatedAccount.dailyLimit || (updatedAccount as any).daily_limit || 1000000,
+          dailySpent: updatedAccount.dailySpent || (updatedAccount as any).daily_spent || 0,
+          annualLimit: updatedAccount.annualLimit || (updatedAccount as any).annual_limit || 1500000,
+          annualSpent: updatedAccount.annualSpent || (updatedAccount as any).annual_spent || 0,
+          remainingDailyLimit: updatedAccount.remainingDailyLimit ?? Math.max(0, (updatedAccount.dailyLimit || (updatedAccount as any).daily_limit || 1000000) - (updatedAccount.dailySpent || (updatedAccount as any).daily_spent || 0)),
+          approximateUsdEquivalent: updatedAccount.approximateUsdEquivalent ?? +((Number(updatedAccount.balance) || 0) / 119.5).toFixed(2),
+        });
+      }
+      setShowDepositModal(false);
+      confetti({ particleCount: 75, spread: 60, origin: { y: 0.6 } });
+      showNotification(`Successfully deposited ${Number(depositAmount).toLocaleString()} BDT via Sandbox Card.`, 'success');
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `deposit-msg-${Date.now()}`,
+          sender: 'system',
+          text: `**Deposit Confirmed:** Successfully credited **${Number(depositAmount).toLocaleString()} BDT** to your student account via Sandbox Card ending in \`${depositCardNumber.replace(/\s+/g, '').slice(-4) || '4242'}\`. Your new available balance is **${(updatedAccount?.balance ?? 0).toLocaleString()} BDT**.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+
+      await loadData();
+    } catch (err: any) {
+      showNotification(err.message || 'Deposit failed', 'error');
+    } finally {
+      setDepositLoading(false);
     }
   };
 
@@ -881,11 +1160,11 @@ export default function Home({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 mt-8 border-t border-blue-800/80 text-xs">
                   <div>
                     <div className="text-blue-200">Per-Transfer Cap</div>
-                    <div className="text-lg font-bold font-mono text-white mt-0.5">400,000 BDT</div>
+                    <div className="text-lg font-bold font-mono text-white mt-0.5">{boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency}</div>
                   </div>
                   <div>
                     <div className="text-blue-200">Daily Spending Limit</div>
-                    <div className="text-lg font-bold font-mono text-white mt-0.5">1,000,000 BDT</div>
+                    <div className="text-lg font-bold font-mono text-white mt-0.5">{boundaries.dailyLimit.toLocaleString()} {boundaries.defaultCurrency}</div>
                   </div>
                   <div>
                     <div className="text-blue-200">Safety Architecture</div>
@@ -930,7 +1209,7 @@ export default function Home({
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
-                      <span><strong>DRAFT:</strong> Cryptographic confirmation token</span>
+                      <span><strong>DRAFT:</strong> One-time confirmation token</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
@@ -1090,7 +1369,7 @@ export default function Home({
                             : 'bg-slate-100 border border-slate-200 text-[#0F172A] rounded-tl-sm shadow-sm'
                         }`}
                       >
-                        {renderFormattedText(msg.text)}
+                        {renderFormattedText(msg.text, msg.sender === 'user')}
 
                         {msg.comparisonData && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200">
@@ -1240,10 +1519,47 @@ export default function Home({
                               </div>
                             )}
 
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-3 text-xs">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                                  <span>2FA Step-Up Verification</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestOtp(msg.draftData!.transferId)}
+                                  disabled={otpLoadingMap[msg.draftData!.transferId]}
+                                  className="text-[11px] font-bold text-[#0D9488] hover:text-teal-800 underline transition-colors disabled:opacity-50"
+                                >
+                                  {otpLoadingMap[msg.draftData!.transferId] ? 'Generating OTP...' : 'Request Live OTP'}
+                                </button>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Enter 6-digit OTP (or click Request Live OTP)"
+                                value={draftOtpMap[msg.draftData!.transferId] || ''}
+                                onChange={(e) =>
+                                  setDraftOtpMap((prev) => ({
+                                    ...prev,
+                                    [msg.draftData!.transferId]: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                  }))
+                                }
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold tracking-wider text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:border-[#0D9488]"
+                                maxLength={6}
+                              />
+                              {(!draftOtpMap[msg.draftData!.transferId] || draftOtpMap[msg.draftData!.transferId].length !== 6) && (
+                                <p className="text-[10px] text-amber-700 mt-1.5 font-medium flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>6-digit OTP required before authorization can be confirmed.</span>
+                                </p>
+                              )}
+                            </div>
+
                             <div className="flex gap-2.5">
                               <button
-                                className="flex-1 py-2.5 px-4 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                                className="flex-1 py-2.5 px-4 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => handleConfirmTransfer(msg.draftData!.transferId, msg.draftData!.confirmationToken)}
+                                disabled={loading || !draftOtpMap[msg.draftData!.transferId] || draftOtpMap[msg.draftData!.transferId].length !== 6}
                               >
                                 <CheckCircle2 className="w-4 h-4" />
                                 <span>Authorize & Confirm Payment</span>
@@ -1255,6 +1571,121 @@ export default function Home({
                                 Cancel
                               </button>
                             </div>
+                          </div>
+                        )}
+
+                        {msg.receiptTransferId && (
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => handleViewReceipt(msg.receiptTransferId!)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs shadow-xs transition-colors"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>View &amp; Download Official PDF Certificate</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {msg.installmentData && (
+                          <div className="bg-white border-2 border-[#0D9488]/30 rounded-xl p-4 shadow-sm mt-3 text-slate-800">
+                            <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-[#0D9488]" />
+                                  <h4 className="font-bold text-sm text-[#1E3A8A]">
+                                    Smart Tuition Installment Schedule ({msg.installmentData.numInstallments} Milestones)
+                                  </h4>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  Corridor: <strong className="text-slate-700">{msg.installmentData.providerName}</strong> • Total:{' '}
+                                  <strong className="text-[#0D9488] font-mono">${msg.installmentData.totalAmountUsd.toLocaleString()} USD</strong> (
+                                  {msg.installmentData.totalBdtWithFees.toLocaleString()} BDT)
+                                </p>
+                              </div>
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Registration Safe
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                              {msg.installmentData.milestones.map((m) => (
+                                <div
+                                  key={m.installmentNumber}
+                                  className="p-3 rounded-lg border border-slate-200 bg-slate-50 flex flex-col justify-between"
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-bold text-xs text-[#1E3A8A]">
+                                        Milestone {m.installmentNumber} ({m.portionPercentage}%)
+                                      </span>
+                                      <span className="text-xs font-mono font-bold text-slate-900">
+                                        ${m.amountUsd.toLocaleString()} USD
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 mb-2">
+                                      Landed: <span className="font-mono font-semibold text-slate-800">{m.totalCostBdt.toLocaleString()} BDT</span>
+                                      {' • '}
+                                      Due: <span className="text-slate-700">{new Date(m.scheduledDate).toLocaleDateString()}</span>
+                                    </div>
+                                    {m.transferLimitExceeded ? (
+                                      <div className="text-[11px] text-red-600 bg-red-50 p-1.5 rounded mb-2 border border-red-200">
+                                        Exceeds {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} per-transfer limit
+                                      </div>
+                                    ) : (
+                                      <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1 rounded mb-2 border border-emerald-100 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                        <span>Within {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} limit</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDraftMilestone(m.amountUsd, msg.installmentData!.routeId, m.installmentNumber)}
+                                    className="w-full mt-1 py-1.5 px-3 rounded-md bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                                  >
+                                    <span>Draft Milestone {m.installmentNumber} (${m.amountUsd.toLocaleString()})</span>
+                                    <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {msg.suggestedActions && msg.suggestedActions.length > 0 && !msg.draftData && !msg.installmentData && (
+                          <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-slate-100">
+                            {msg.suggestedActions.map((action, aIdx) => (
+                              <button
+                                key={aIdx}
+                                type="button"
+                                onClick={() => {
+                                  if (action.actionType === 'PLAN_INSTALLMENT') {
+                                    handleDraftMilestone(action.payload.amountUsd, action.payload.routeId, action.payload.milestone);
+                                  } else if (action.actionType === 'SELECT_ROUTE') {
+                                    if (action.payload?.routeId) {
+                                      handleSelectRoute(
+                                        {
+                                          routeId: action.payload.routeId,
+                                          providerName: action.payload.providerName,
+                                        } as RouteItem,
+                                        action.payload.amountUsd || 3000,
+                                        action.payload.university || 'University of Toronto (Tuition Office)',
+                                        action.payload.tuitionDeadline,
+                                      );
+                                    } else {
+                                      handleSendMessage(`Select route ${action.payload?.providerName || ''}`);
+                                    }
+                                  } else if (action.actionType === 'CHECK_BALANCE') {
+                                    handleSendMessage('What is my current account balance?');
+                                  }
+                                }}
+                                className="py-1 px-2.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#0D9488] border border-teal-200 text-xs font-semibold transition-colors"
+                              >
+                                {action.label}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -1271,12 +1702,31 @@ export default function Home({
               </div>
 
               <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar text-xs pb-1">
+                <div className="flex flex-wrap gap-2 text-xs pb-1">
+                  <button
+                    className="py-1 px-3 rounded-full bg-teal-50 border border-[#0D9488]/40 hover:bg-teal-100 text-[#0D9488] whitespace-nowrap transition-colors font-semibold shadow-xs flex items-center gap-1.5"
+                    onClick={() => setShowInvoiceModal(true)}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Scan Tuition Invoice</span>
+                  </button>
                   <button
                     className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
                     onClick={() => handleSendMessage('Pay my $3,000 tuition from BDT')}
                   >
                     Pay $3,000 tuition from BDT
+                  </button>
+                  <button
+                    className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
+                    onClick={() => handleSendMessage('Plan a 2-part installment payment for $3,000 tuition')}
+                  >
+                    Plan 2-part installment for $3,000
+                  </button>
+                  <button
+                    className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
+                    onClick={() => setShowDepositModal(true)}
+                  >
+                    Top up via sandbox card
                   </button>
                   <button
                     className="py-1 px-3 rounded-full bg-white border border-slate-300 hover:border-[#0D9488] hover:text-[#0D9488] text-slate-700 whitespace-nowrap transition-colors font-medium shadow-sm"
@@ -1307,7 +1757,7 @@ export default function Home({
                 >
                   <input
                     type="text"
-                    className="flex-1 bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] transition-colors"
+                    className="flex-1 min-w-0 bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] transition-colors"
                     placeholder="Type a tuition payment instruction (e.g. 'Pay my $3,000 tuition to University of Toronto')..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
@@ -1315,7 +1765,7 @@ export default function Home({
                   />
                   <button
                     type="submit"
-                    className="p-2.5 px-4 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold transition-colors disabled:opacity-50 flex items-center justify-center shadow-sm"
+                    className="p-2.5 px-4 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold transition-colors disabled:opacity-50 flex items-center justify-center shadow-sm shrink-0"
                     disabled={loading || !inputMessage.trim()}
                   >
                     <Send className="w-4 h-4" />
@@ -1348,8 +1798,17 @@ export default function Home({
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">USD Equivalent:</span>
-                      <span className="text-slate-700">~${account.approximateUsdEquivalent.toLocaleString()} USD</span>
+                      <span className="text-slate-700">~${(account.approximateUsdEquivalent ?? +(account.balance / 119.5)).toLocaleString()} USD</span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDepositModal(true)}
+                      className="w-full mt-2 py-2 px-3 rounded-xl bg-gradient-to-r from-[#0D9488] to-[#1E3A8A] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Top Up via Sandbox Card</span>
+                    </button>
 
                     <div className="pt-2 border-t border-slate-100">
                       <div className="flex justify-between text-xs text-slate-500 mb-1">
@@ -1362,7 +1821,24 @@ export default function Home({
                         <div
                           className="bg-[#0D9488] h-1.5 rounded-full"
                           style={{
-                            width: `${Math.min(100, (account.dailySpent / account.dailyLimit) * 100)}%`,
+                            width: `${dailySpentPercent}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex justify-between text-xs text-slate-500 mb-1">
+                        <span>BB Annual Student Quota:</span>
+                        <span className="font-mono font-semibold text-slate-800">
+                          {(account.annualSpent || 0).toLocaleString()} / {(account.annualLimit || boundaries.annualQuota || 1500000).toLocaleString()} BDT
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-[#1E3A8A] h-1.5 rounded-full"
+                          style={{
+                            width: `${annualSpentPercent}%`,
                           }}
                         ></div>
                       </div>
@@ -1394,11 +1870,15 @@ export default function Home({
                 <ul className="space-y-1.5 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
-                    <span><strong>Per-Transfer Limit:</strong> 400,000 BDT max</span>
+                    <span><strong>Annual Student Quota:</strong> {boundaries.annualQuota.toLocaleString()} {boundaries.defaultCurrency} BB limit</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
-                    <span><strong>Daily Safety Limit:</strong> 1,000,000 BDT max</span>
+                    <span><strong>Per-Transfer Limit:</strong> {boundaries.perTransferLimit.toLocaleString()} {boundaries.defaultCurrency} max</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#16A34A] font-bold">•</span>
+                    <span><strong>Daily Safety Limit:</strong> {boundaries.dailyLimit.toLocaleString()} {boundaries.defaultCurrency} max</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[#16A34A] font-bold">•</span>
@@ -1431,7 +1911,7 @@ export default function Home({
                   <button
                     className="w-full py-2.5 px-3 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98]"
                     onClick={handleExportLogs}
-                    title="Export Tamper-Evident Evidence Log (JSON)"
+                    title="Export Audit Evidence Log (JSON)"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">Export Evidence</span>
@@ -1444,16 +1924,28 @@ export default function Home({
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-                <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
-                  Available Tuition Balance
-                </span>
-                <div className="text-3xl font-extrabold text-[#16A34A] font-mono my-1">
-                  {account ? `${account.balance.toLocaleString()} BDT` : '0.00 BDT'}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
+                      Available Tuition Balance
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDepositModal(true)}
+                      className="px-2.5 py-1 bg-gradient-to-r from-[#0D9488] to-[#1E3A8A] hover:opacity-95 text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-xs transition-all"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Top Up Balance</span>
+                    </button>
+                  </div>
+                  <div className="text-3xl font-extrabold text-[#16A34A] font-mono my-1">
+                    {account ? `${account.balance.toLocaleString()} BDT` : '0.00 BDT'}
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500">
-                  ≈ ${account ? account.approximateUsdEquivalent.toLocaleString() : '0'} USD ready for foreign tuition remittance
+                <span className="text-xs text-slate-500 mt-1">
+                  ≈ ${account ? (account.approximateUsdEquivalent ?? +(account.balance / 119.5)).toLocaleString() : '0'} USD ready for foreign tuition remittance
                 </span>
               </div>
 
@@ -1471,10 +1963,24 @@ export default function Home({
 
               <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
                 <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
+                  Annual Student Quota (BB)
+                </span>
+                <div className="text-3xl font-extrabold text-[#1E3A8A] font-mono my-1">
+                  {account
+                    ? `${Math.max(0, (account.annualLimit || boundaries.annualQuota || 1500000) - (account.annualSpent || 0)).toLocaleString()} BDT`
+                    : '1,500,000 BDT'}
+                </div>
+                <span className="text-xs text-slate-500">
+                  Spent: {account ? (account.annualSpent || 0).toLocaleString() : '0'} / {(account?.annualLimit || boundaries.annualQuota || 1500000).toLocaleString()} BDT
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">
                   Settled Transfers
                 </span>
                 <div className="text-3xl font-extrabold text-[#1E3A8A] font-mono my-1">
-                  {transfers.filter((t) => t.status === 'CONFIRMED').length}
+                  {settledTransfersCount}
                 </div>
                 <span className="text-xs text-slate-500">
                   {transfers.length} total drafts &amp; operations processed
@@ -1595,29 +2101,42 @@ export default function Home({
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right">
-                            {tx.status === 'CONFIRMED' || tx.status === 'EXECUTED' || tx.status === 'FAILED' ? (
-                              <button
-                                onClick={() => handleRollbackTransfer(tx.id, tx.source_amount_bdt)}
-                                disabled={rollingBackId === tx.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors disabled:opacity-50"
-                                title="Execute compensating Saga transaction to restore balance"
-                              >
-                                <RotateCcw className={`w-3 h-3 ${rollingBackId === tx.id ? 'animate-spin' : ''}`} />
-                                <span>{rollingBackId === tx.id ? 'Rolling back...' : 'Rollback'}</span>
-                              </button>
-                            ) : tx.status === 'PENDING_CONFIRMATION' ? (
-                              <button
-                                onClick={() => handleRollbackTransfer(tx.id, tx.source_amount_bdt)}
-                                disabled={rollingBackId === tx.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors disabled:opacity-50"
-                                title="Cancel transfer draft"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                                <span>Cancel Draft</span>
-                              </button>
-                            ) : (
-                              <span className="text-[11px] text-slate-400 font-mono">Completed</span>
-                            )}
+                            <div className="inline-flex items-center gap-1.5 justify-end">
+                              {(tx.status === 'CONFIRMED' || tx.status === 'EXECUTED') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewReceipt(tx.id)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
+                                  title="View and download official settlement PDF certificate"
+                                >
+                                  <FileText className="w-3 h-3 text-[#1E3A8A]" />
+                                  <span>PDF Receipt</span>
+                                </button>
+                              )}
+                              {tx.status === 'CONFIRMED' || tx.status === 'EXECUTED' || tx.status === 'FAILED' ? (
+                                <button
+                                  onClick={() => handleRollbackTransfer(tx.id, tx.source_amount_bdt)}
+                                  disabled={rollingBackId === tx.id}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors disabled:opacity-50"
+                                  title="Execute compensating Saga transaction to restore balance"
+                                >
+                                  <RotateCcw className={`w-3 h-3 ${rollingBackId === tx.id ? 'animate-spin' : ''}`} />
+                                  <span>{rollingBackId === tx.id ? 'Rolling back...' : 'Rollback'}</span>
+                                </button>
+                              ) : tx.status === 'PENDING_CONFIRMATION' ? (
+                                <button
+                                  onClick={() => handleRollbackTransfer(tx.id, tx.source_amount_bdt)}
+                                  disabled={rollingBackId === tx.id}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors disabled:opacity-50"
+                                  title="Cancel transfer draft"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>Cancel Draft</span>
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 font-mono">Completed</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1637,7 +2156,7 @@ export default function Home({
                   <ShieldCheck className="w-5 h-5 text-[#16A34A]" /> Immutable Audit Trail &amp; Permission Inspector
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Every agent query, route scoring, draft creation, safety block, and human authorization is tamper-evident and permanently recorded.
+                  Every agent query, route scoring, draft creation, safety block, and human authorization is permanently recorded in the append-only audit trail.
                 </p>
               </div>
 
@@ -1949,6 +2468,469 @@ export default function Home({
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReceiptModal && selectedReceiptData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="p-5 bg-gradient-to-r from-[#1E3A8A] to-[#0D9488] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm leading-tight">Official Tuition Payment Certificate</h3>
+                  <p className="text-[11px] text-teal-100">Cryptographically Sealed &amp; Append-Only Logged</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReceiptModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-800 font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>SETTLED &amp; VERIFIED (EXECUTE TIER)</span>
+                </div>
+                <span className="font-mono text-[11px] bg-white text-emerald-800 px-2 py-0.5 rounded border border-emerald-300 font-bold">
+                  {selectedReceiptData.certificateId}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <div>
+                  <span className="text-slate-500 font-medium">Student Name:</span>
+                  <div className="font-bold text-slate-900 mt-0.5">{selectedReceiptData.studentName}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Student ID:</span>
+                  <div className="font-mono font-bold text-[#1E3A8A] mt-0.5">{selectedReceiptData.studentId}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Beneficiary University:</span>
+                  <div className="font-bold text-slate-900 mt-0.5">{selectedReceiptData.recipientUniversity}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Student Registration No:</span>
+                  <div className="font-mono text-slate-700 mt-0.5">{selectedReceiptData.studentRegNumber}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Settled Tuition:</span>
+                  <div className="font-bold text-[#16A34A] text-sm mt-0.5">
+                    ${Number(selectedReceiptData.targetAmountUsd || 0).toLocaleString()} USD
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Account Debit:</span>
+                  <div className="font-bold text-slate-900 text-sm mt-0.5">
+                    {Number(selectedReceiptData.sourceAmountBdt || 0).toLocaleString()} BDT
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Remittance Rail:</span>
+                  <div className="font-medium text-slate-800 mt-0.5">{selectedReceiptData.providerName}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-medium">Applied FX Rate:</span>
+                  <div className="font-mono text-slate-700 mt-0.5">{selectedReceiptData.fxRateApplied} BDT/USD</div>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-900 text-slate-200 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-teal-400">SHA-256 Cryptographic Transaction Fingerprint</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedReceiptData.txHash);
+                      setCopiedHash(true);
+                      setTimeout(() => setCopiedHash(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] text-teal-300 hover:text-white transition-colors"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedHash ? 'Copied!' : 'Copy Hash'}</span>
+                  </button>
+                </div>
+                <div className="font-mono text-[10px] text-emerald-400 break-all bg-black/40 p-2 rounded-lg border border-teal-500/20 select-all">
+                  {selectedReceiptData.txHash}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Integrity verification hash recorded in PostgreSQL append-only audit trail.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Receipt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadTuitionReceiptPdf(selectedReceiptData)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Official PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDepositModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-[#0D9488] via-[#0F766E] to-[#1E3A8A] text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20">
+                  <CreditCard className="w-5 h-5 text-teal-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm leading-tight">Sandbox Card Deposit &amp; Top-Up</h3>
+                  <p className="text-[11px] text-teal-100">Secure Mock Sandbox Environment • Instant BDT Balance Credit</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDepositModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteCardDeposit} className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="relative rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-5 text-white shadow-lg overflow-hidden border border-slate-700">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider text-teal-300 font-semibold block">
+                      FinTechathon 2026 Sandbox Bank
+                    </span>
+                    <span className="text-xs text-slate-300 font-mono">Student Virtual Debit</span>
+                  </div>
+                  <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
+                    <div className="w-6 h-4 border border-amber-600/40 rounded-xs flex flex-col justify-between p-0.5">
+                      <div className="h-0.5 bg-amber-700/50"></div>
+                      <div className="h-0.5 bg-amber-700/50"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="font-mono text-base tracking-widest text-slate-100 font-semibold mb-4">
+                  {depositCardNumber || '4242 •••• •••• 4242'}
+                </div>
+
+                <div className="flex justify-between items-end text-[11px]">
+                  <div>
+                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-medium">Cardholder</div>
+                    <div className="font-semibold text-slate-200 uppercase">{depositCardHolder || account?.studentName || 'Mir Eashan Zaman'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-medium">Expires</div>
+                    <div className="font-mono font-semibold text-slate-200">{depositExpiry || '12/28'}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1.5">
+                  Select Deposit Amount (BDT):
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {[50000, 100000, 250000, 500000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setDepositAmount(amt)}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border ${
+                        depositAmount === amt
+                          ? 'bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:border-[#0D9488]'
+                      }`}
+                    >
+                      +{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="100"
+                    max="10000000"
+                    step="any"
+                    value={depositAmount || ''}
+                    onChange={(e) => setDepositAmount(e.target.value === '' ? 0 : Number(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-14 py-2.5 text-sm font-mono font-bold text-slate-900 focus:outline-none focus:border-[#1E3A8A] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="Enter custom BDT amount"
+                    required
+                  />
+                  <span className="absolute right-3.5 inset-y-0 flex items-center pointer-events-none font-bold text-slate-400 text-xs select-none">
+                    BDT
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-slate-600 font-semibold text-xs">Card Credentials (Sandbox Mock):</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDepositCardNumber('4242 4242 4242 4242');
+                    setDepositCardHolder(account?.studentName || 'Mir Eashan Zaman');
+                    setDepositExpiry('12/28');
+                    setDepositCvv('888');
+                  }}
+                  className="text-[11px] text-[#0D9488] hover:underline font-semibold"
+                >
+                  Fill Sandbox Test Card
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">Card Number:</label>
+                <input
+                  type="text"
+                  maxLength={19}
+                  value={depositCardNumber}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                    const matches = v.match(/\d{4,16}/g);
+                    const match = (matches && matches[0]) || '';
+                    const parts = [];
+                    for (let i = 0, len = match.length; i < len; i += 4) {
+                      parts.push(match.substring(i, i + 4));
+                    }
+                    if (parts.length) {
+                      setDepositCardNumber(parts.join(' '));
+                    } else {
+                      setDepositCardNumber(v);
+                    }
+                  }}
+                  placeholder="4242 4242 4242 4242"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Cardholder Name:</label>
+                  <input
+                    type="text"
+                    value={depositCardHolder}
+                    onChange={(e) => setDepositCardHolder(e.target.value)}
+                    placeholder="Student Name"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-600 font-medium mb-1">Expires:</label>
+                    <input
+                      type="text"
+                      maxLength={5}
+                      value={depositExpiry}
+                      onChange={(e) => setDepositExpiry(e.target.value)}
+                      placeholder="MM/YY"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-mono text-center text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 font-medium mb-1">CVV:</label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      value={depositCvv}
+                      onChange={(e) => setDepositCvv(e.target.value)}
+                      placeholder="888"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-mono text-center text-slate-900 focus:outline-none focus:border-[#1E3A8A]"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {authSession?.user?.permissionTier && authSession.user.permissionTier !== 'EXECUTE' && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Depositing funds requires <strong>EXECUTE</strong> permission tier.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginInput((prev) => ({
+                        ...prev,
+                        studentIdOrEmail: authSession.user.studentId || 'STU-2026-BDT01',
+                        password: 'student123',
+                        permissionTier: 'EXECUTE',
+                      }));
+                      setShowDepositModal(false);
+                      setShowLoginModal(true);
+                    }}
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] whitespace-nowrap transition-colors shadow-xs"
+                  >
+                    Step-Up to EXECUTE
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDepositModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositLoading || !depositAmount}
+                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white font-bold text-xs shadow-sm transition-colors disabled:opacity-50"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>{depositLoading ? 'Authorizing Card...' : `Deposit ${depositAmount ? depositAmount.toLocaleString() : 0} BDT`}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showInvoiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 border border-[#0D9488]/30 flex items-center justify-center text-[#0D9488]">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Tuition Invoice &amp; Fee Notice OCR</h3>
+                  <p className="text-[11px] text-slate-500">Autonomous extraction for university tuition remittances</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Quick Sample Invoices:</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceFileName('tsinghua_tuition_notice.txt');
+                      setInvoiceText(
+                        'Tsinghua University International Student Office\nFall 2026 Tuition Demand Notice\nBeneficiary: Tsinghua University (SWIFT: CIBNCNBJ)\nPayable Amount: 40000 CNY (~$5800 USD)\nTuition Deadline: 2026-10-31\nCategory: Postgraduate Engineering Program'
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                  >
+                    Tsinghua University (CNY)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceFileName('toronto_tuition_invoice.txt');
+                      setInvoiceText(
+                        'University of Toronto Student Accounts Office\nInvoice #UT-884920\nBeneficiary: University of Toronto (SWIFT: ROYCCAT2)\nTuition Payable: $3000 USD\nDue Date: 2026-11-15\nProgram: Bachelor of Computer Science'
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                  >
+                    University of Toronto (USD)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceFileName('oxford_fee_statement.txt');
+                      setInvoiceText(
+                        'University of Oxford Bursar Office\nTuition Fee Schedule Academic Year 2026\nBeneficiary: University of Oxford\nAmount Due: $4500 USD\nPayment Deadline: 2026-12-01'
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                  >
+                    University of Oxford (USD)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Paste Tuition Notice Content:</label>
+                <textarea
+                  rows={5}
+                  value={invoiceText}
+                  onChange={(e) => setInvoiceText(e.target.value)}
+                  placeholder="Paste tuition invoice text, admission fee notice, or university bank remittance instructions here..."
+                  className="w-full p-3 border border-slate-300 rounded-xl font-mono text-xs text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:border-[#0D9488]"
+                />
+              </div>
+
+              {invoiceResult && (
+                <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 space-y-1.5">
+                  <div className="font-bold text-teal-900 text-xs flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                    <span>Tuition Invoice Extracted Successfully</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-teal-950 pt-1">
+                    <div>University: <strong>{invoiceResult.recipientUniversity || 'Detected University'}</strong></div>
+                    <div>Detected Amount: <strong>${invoiceResult.amountUsd?.toLocaleString() || 0} USD</strong></div>
+                    {invoiceResult.deadline && <div>Deadline: <strong>{invoiceResult.deadline}</strong></div>}
+                    <div>Safety Confidence: <strong>100% Verified</strong></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleExtractInvoice}
+                disabled={invoiceExtracting || !invoiceText.trim()}
+                className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50"
+              >
+                {invoiceExtracting ? 'Analyzing Document...' : 'Extract Invoice Details'}
+              </button>
+              {invoiceResult && (
+                <button
+                  type="button"
+                  onClick={handleApplyExtractedInvoice}
+                  className="px-4 py-2 rounded-xl bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs shadow-xs transition-colors"
+                >
+                  Apply to Chat Prompt
+                </button>
+              )}
             </div>
           </div>
         </div>

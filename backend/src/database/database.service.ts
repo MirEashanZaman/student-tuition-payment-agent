@@ -21,6 +21,8 @@ export interface AccountRecord {
   balance: number;
   daily_limit: number;
   daily_spent: number;
+  annual_limit?: number;
+  annual_spent?: number;
   password_hash?: string;
   role?: string;
   created_at: Date;
@@ -92,6 +94,84 @@ export interface AuditRecord {
   created_at: Date;
 }
 
+const EMBEDDED_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS accounts (
+  id VARCHAR(64) PRIMARY KEY,
+  student_id VARCHAR(64) UNIQUE NOT NULL,
+  student_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  currency VARCHAR(10) NOT NULL DEFAULT 'BDT',
+  balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+  daily_limit NUMERIC(14, 2) NOT NULL DEFAULT 1000000.00,
+  daily_spent NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+  password_hash VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'STUDENT',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS rates (
+  id VARCHAR(64) PRIMARY KEY,
+  provider_name VARCHAR(255) NOT NULL,
+  source_currency VARCHAR(10) NOT NULL DEFAULT 'BDT',
+  target_currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+  exchange_rate NUMERIC(12, 6) NOT NULL,
+  inverse_rate NUMERIC(12, 4) NOT NULL,
+  transfer_fee_flat_bdt NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  transfer_fee_percent NUMERIC(6, 4) NOT NULL DEFAULT 0.00,
+  speed_hours INTEGER NOT NULL,
+  speed_description VARCHAR(100) NOT NULL,
+  reliability_score NUMERIC(4, 2) NOT NULL DEFAULT 0.95,
+  compliance_rating VARCHAR(20) NOT NULL DEFAULT 'A+',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS transfers (
+  id VARCHAR(64) PRIMARY KEY,
+  account_id VARCHAR(64) NOT NULL,
+  student_id VARCHAR(64) NOT NULL,
+  recipient_university VARCHAR(255) NOT NULL,
+  student_reg_number VARCHAR(100),
+  source_currency VARCHAR(10) DEFAULT 'BDT',
+  target_currency VARCHAR(10) DEFAULT 'USD',
+  target_amount_usd NUMERIC(12, 2) NOT NULL,
+  source_amount_bdt NUMERIC(14, 2) NOT NULL,
+  fee_total_bdt NUMERIC(10, 2) NOT NULL,
+  fx_rate_applied NUMERIC(12, 4) NOT NULL,
+  rate_id VARCHAR(64) NOT NULL,
+  provider_name VARCHAR(255) NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+  tuition_deadline TIMESTAMP WITH TIME ZONE,
+  estimated_delivery TIMESTAMP WITH TIME ZONE,
+  deadline_warning BOOLEAN DEFAULT FALSE,
+  confirmation_token VARCHAR(128),
+  confirmed_at TIMESTAMP WITH TIME ZONE,
+  why_recommended TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id VARCHAR(64) PRIMARY KEY,
+  event_type VARCHAR(64) NOT NULL,
+  permission_tier VARCHAR(30) NOT NULL,
+  account_id VARCHAR(64),
+  transfer_id VARCHAR(64),
+  action_summary VARCHAR(255) NOT NULL,
+  details TEXT,
+  status VARCHAR(30) NOT NULL,
+  ip_address VARCHAR(64) DEFAULT '127.0.0.1',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_transfers_account ON transfers(account_id);
+CREATE INDEX IF NOT EXISTS idx_transfers_status ON transfers(status);
+CREATE INDEX IF NOT EXISTS idx_transfers_student ON transfers(student_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_tier ON audit_log(permission_tier);
+`;
+
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
@@ -109,9 +189,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const dbUrl = process.env.DATABASE_URL;
     if (dbUrl && !process.env.FORCE_MEMORY_DB) {
       try {
+        const poolMax = parseInt(process.env.DB_POOL_MAX || '', 10) || 20;
+        const idleTimeout = parseInt(process.env.DB_IDLE_TIMEOUT_MS || '', 10) || 30000;
+        const connTimeout = parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '', 10) || 3000;
         this.pool = new Pool({
           connectionString: dbUrl,
-          connectionTimeoutMillis: 3000,
+          max: poolMax,
+          idleTimeoutMillis: idleTimeout,
+          connectionTimeoutMillis: connTimeout,
+        });
+        this.pool.on('error', (err) => {
+          this.logger.error(`Unexpected idle PostgreSQL client error: ${err.message}`);
         });
         const client = await this.pool.connect();
         client.release();
@@ -152,12 +240,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private async runPostgresMigrations() {
     if (!this.pool) return;
     try {
-      const schemaPath = path.join(__dirname, 'schema.sql');
-      if (fs.existsSync(schemaPath)) {
-        const sql = fs.readFileSync(schemaPath, 'utf8');
-        await this.pool.query(sql);
-        this.logger.log('PostgreSQL schema migrations executed.');
+      const candidates = [
+        path.join(__dirname, 'schema.sql'),
+        path.join(__dirname, 'database', 'schema.sql'),
+        path.join(process.cwd(), 'dist', 'database', 'schema.sql'),
+        path.join(process.cwd(), 'src', 'database', 'schema.sql'),
+      ];
+      let sql = '';
+      for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+          sql = fs.readFileSync(candidate, 'utf8');
+          break;
+        }
       }
+      if (!sql) {
+        sql = EMBEDDED_SCHEMA_SQL;
+      }
+      await this.pool.query(sql);
+      this.logger.log('PostgreSQL schema migrations executed.');
     } catch (err) {
       this.logger.error(`Migration error: ${err.message}`);
       if (process.env.NODE_ENV === 'production') {
@@ -166,7 +266,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async seedInitialData() {
+  async seedInitialData(skipDefaultStudent = false) {
     const defaultAccount: AccountRecord = {
       id: 'acc-stu-2026-bdt',
       student_id: 'STU-2026-BDT01',
@@ -176,6 +276,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
       daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
       daily_spent: 0.00,
+      annual_limit: 1500000.00,
+      annual_spent: 0.00,
+      password_hash: PasswordHasher.hashPassword('student123'),
+      role: 'STUDENT',
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    const cnyAccount: AccountRecord = {
+      id: 'acc-stu-2026-cny',
+      student_id: 'STU-2026-CNY01',
+      student_name: 'Li Wei',
+      email: 'liwei.student@fintechathon.org',
+      currency: 'BDT',
+      balance: parseFloat(process.env.INITIAL_STUDENT_BALANCE || '') || 850000.00,
+      daily_limit: parseFloat(process.env.DAILY_TRANSFER_LIMIT_BDT || process.env.DAILY_TRANSFER_LIMIT || '') || 1000000.00,
+      daily_spent: 0.00,
+      annual_limit: 1500000.00,
+      annual_spent: 0.00,
       password_hash: PasswordHasher.hashPassword('student123'),
       role: 'STUDENT',
       created_at: new Date(),
@@ -247,11 +366,107 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         is_active: true,
         created_at: new Date(),
       },
+      {
+        id: 'route-uk-campus-direct',
+        provider_name: 'UK Campus Direct (BACS / Faster Payments)',
+        source_currency: 'BDT',
+        target_currency: 'GBP',
+        exchange_rate: 0.006450,
+        inverse_rate: 155.0388,
+        transfer_fee_flat_bdt: 450.00,
+        transfer_fee_percent: 0.0018,
+        speed_hours: 24,
+        speed_description: '24 Hours (Next-day UK Clearing)',
+        reliability_score: 0.98,
+        compliance_rating: 'Tier-1 UK Higher Ed Rail',
+        is_active: true,
+        created_at: new Date(),
+      },
+      {
+        id: 'route-canada-student-pay',
+        provider_name: 'Canada Student Pay (Interac & Wire Rail)',
+        source_currency: 'BDT',
+        target_currency: 'CAD',
+        exchange_rate: 0.011400,
+        inverse_rate: 87.7193,
+        transfer_fee_flat_bdt: 400.00,
+        transfer_fee_percent: 0.0016,
+        speed_hours: 24,
+        speed_description: '24 Hours (Canadian University Rail)',
+        reliability_score: 0.97,
+        compliance_rating: 'FINTRAC Compliant Corridor',
+        is_active: true,
+        created_at: new Date(),
+      },
+      {
+        id: 'route-euro-sepa-edupay',
+        provider_name: 'EuroZone SEPA EduPay (Direct IBAN)',
+        source_currency: 'BDT',
+        target_currency: 'EUR',
+        exchange_rate: 0.007750,
+        inverse_rate: 129.0323,
+        transfer_fee_flat_bdt: 500.00,
+        transfer_fee_percent: 0.0017,
+        speed_hours: 24,
+        speed_description: '24 Hours (SEPA Instant Clearing)',
+        reliability_score: 0.98,
+        compliance_rating: 'EU Central Bank Regulated',
+        is_active: true,
+        created_at: new Date(),
+      },
+      {
+        id: 'route-aus-uni-settle',
+        provider_name: 'Australia Campus Settle (NPP Direct)',
+        source_currency: 'BDT',
+        target_currency: 'AUD',
+        exchange_rate: 0.012800,
+        inverse_rate: 78.1250,
+        transfer_fee_flat_bdt: 450.00,
+        transfer_fee_percent: 0.0018,
+        speed_hours: 24,
+        speed_description: '24 Hours (NPP Australia Express)',
+        reliability_score: 0.96,
+        compliance_rating: 'AUSTRAC Compliant Partner',
+        is_active: true,
+        created_at: new Date(),
+      },
+      {
+        id: 'route-cips-china-direct',
+        provider_name: 'China UnionPay & CIPS Direct (Cross-Border Clearing)',
+        source_currency: 'BDT',
+        target_currency: 'CNY',
+        exchange_rate: 0.059347,
+        inverse_rate: 16.8500,
+        transfer_fee_flat_bdt: 280.00,
+        transfer_fee_percent: 0.0012,
+        speed_hours: 12,
+        speed_description: '12 Hours (CIPS Real-Time Clearing / PBOC Regulated)',
+        reliability_score: 0.99,
+        compliance_rating: 'PBOC & SAFE Regulated Corridor',
+        is_active: true,
+        created_at: new Date(),
+      },
+      {
+        id: 'route-alipay-cny-express',
+        provider_name: 'Alipay Global Education Remit (Ant International Rail)',
+        source_currency: 'BDT',
+        target_currency: 'CNY',
+        exchange_rate: 0.059171,
+        inverse_rate: 16.9000,
+        transfer_fee_flat_bdt: 350.00,
+        transfer_fee_percent: 0.0015,
+        speed_hours: 2,
+        speed_description: '2 Hours (Alipay / WeChat Pay Campus Direct)',
+        reliability_score: 0.98,
+        compliance_rating: 'SAFE Tier-1 Authorized MTO',
+        is_active: true,
+        created_at: new Date(),
+      },
     ];
 
     if (!this.useMemoryStore && this.pool) {
       try {
-        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true') {
+        if (!skipDefaultStudent && (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true')) {
           await this.pool.query(
             `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -267,6 +482,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               defaultAccount.daily_spent,
               defaultAccount.password_hash,
               defaultAccount.role,
+            ],
+          );
+        }
+        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SEED === 'true') {
+          await this.pool.query(
+            `INSERT INTO accounts (id, student_id, student_name, email, currency, balance, daily_limit, daily_spent, password_hash, role)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (student_id) DO UPDATE SET balance = $6, daily_spent = $8, password_hash = $9, role = $10;`,
+            [
+              cnyAccount.id,
+              cnyAccount.student_id,
+              cnyAccount.student_name,
+              cnyAccount.email,
+              cnyAccount.currency,
+              cnyAccount.balance,
+              cnyAccount.daily_limit,
+              cnyAccount.daily_spent,
+              cnyAccount.password_hash,
+              cnyAccount.role,
             ],
           );
         }
@@ -305,8 +539,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
-      this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+      if (!skipDefaultStudent) {
+        this.memoryStore.accounts.set(defaultAccount.student_id, { ...defaultAccount });
+        this.memoryStore.accounts.set(defaultAccount.id, { ...defaultAccount });
+      }
+      this.memoryStore.accounts.set(cnyAccount.student_id, { ...cnyAccount });
+      this.memoryStore.accounts.set(cnyAccount.id, { ...cnyAccount });
     }
     defaultRates.forEach((r) => this.memoryStore.rates.set(r.id, { ...r }));
     this.logger.log(`In-memory database initialized with ${defaultRates.length} remittance routes.`);
@@ -375,18 +613,27 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return account;
   }
 
-  async updateAccountBalance(id: string, newBalance: number, newDailySpent: number): Promise<AccountRecord> {
+  async updateAccountBalance(id: string, newBalance: number, newDailySpent: number, newAnnualSpent?: number): Promise<AccountRecord> {
+    const safeBalance = !isNaN(newBalance) && Number.isFinite(newBalance) ? +Number(newBalance).toFixed(2) : 0;
+    const safeDailySpent = !isNaN(newDailySpent) && Number.isFinite(newDailySpent) ? +Number(newDailySpent).toFixed(2) : 0;
+    const safeAnnualSpent = newAnnualSpent !== undefined && !isNaN(newAnnualSpent) && Number.isFinite(newAnnualSpent) ? +Number(newAnnualSpent).toFixed(2) : undefined;
     if (!this.useMemoryStore && this.pool) {
-      const res = await this.pool.query(
-        'UPDATE accounts SET balance = $1, daily_spent = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
-        [newBalance, newDailySpent, id],
-      );
+      const query = safeAnnualSpent !== undefined
+        ? 'UPDATE accounts SET balance = $1, daily_spent = $2, annual_spent = $3, updated_at = NOW() WHERE id = $4 RETURNING *'
+        : 'UPDATE accounts SET balance = $1, daily_spent = $2, updated_at = NOW() WHERE id = $3 RETURNING *';
+      const params = safeAnnualSpent !== undefined
+        ? [safeBalance, safeDailySpent, safeAnnualSpent, id]
+        : [safeBalance, safeDailySpent, id];
+      const res = await this.pool.query(query, params);
       return this.formatAccount(res.rows[0]);
     }
     const acc = this.memoryStore.accounts.get(id);
     if (!acc) throw new Error(`Account ${id} not found`);
-    acc.balance = newBalance;
-    acc.daily_spent = newDailySpent;
+    acc.balance = safeBalance;
+    acc.daily_spent = safeDailySpent;
+    if (safeAnnualSpent !== undefined) {
+      acc.annual_spent = safeAnnualSpent;
+    }
     acc.updated_at = new Date();
     this.memoryStore.accounts.set(id, acc);
     this.memoryStore.accounts.set(acc.student_id, acc);
@@ -504,6 +751,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           `UPDATE accounts
            SET balance = balance + $1,
                daily_spent = GREATEST(0, daily_spent - $1),
+               annual_spent = GREATEST(0, COALESCE(annual_spent, 0) - $1),
                updated_at = NOW()
            WHERE id = $2
            RETURNING *`,
@@ -545,6 +793,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     account.balance = +(account.balance + transfer.source_amount_bdt).toFixed(2);
     account.daily_spent = +Math.max(0, account.daily_spent - transfer.source_amount_bdt).toFixed(2);
+    account.annual_spent = +Math.max(0, (account.annual_spent || 0) - transfer.source_amount_bdt).toFixed(2);
     account.updated_at = new Date();
     transfer.status = 'ROLLED_BACK';
     transfer.updated_at = new Date();
@@ -751,7 +1000,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return logs.slice(0, limit);
   }
 
-  async resetSandboxData() {
+  async resetSandboxData(skipDefaultStudent = false) {
     this.memoryStore.accounts.clear();
     this.memoryStore.rates.clear();
     this.memoryStore.transfers.clear();
@@ -760,7 +1009,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (!this.useMemoryStore && this.pool) {
       await this.pool.query('TRUNCATE TABLE transfers, audit_log CASCADE');
     }
-    await this.seedInitialData();
+    await this.seedInitialData(skipDefaultStudent);
   }
 
   private formatAccount(row: any): AccountRecord {
@@ -769,6 +1018,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       balance: parseFloat(row.balance),
       daily_limit: parseFloat(row.daily_limit),
       daily_spent: parseFloat(row.daily_spent),
+      annual_limit: row.annual_limit ? parseFloat(row.annual_limit) : 1500000.00,
+      annual_spent: row.annual_spent ? parseFloat(row.annual_spent) : 0.00,
       password_hash: row.password_hash,
       role: row.role || 'STUDENT',
     };

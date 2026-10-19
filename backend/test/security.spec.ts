@@ -364,6 +364,12 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
       expect(confirmed.status).toBe('CONFIRMED');
       expect(confirmed.newBalanceBdt).toBeLessThan(initialBalance);
       expect(confirmed.dailySpentBdt).toBeGreaterThan(0);
+      expect(confirmed.txHash).toBeDefined();
+      expect(confirmed.txHash).toHaveLength(64);
+
+      const receipt = await toolsService.generateReceiptData(confirmed.transferId, 'STU-2026-BDT01');
+      expect(receipt.certificateId).toContain('CERT-');
+      expect(receipt.txHash).toBe(confirmed.txHash);
 
       const logs = await db.getAuditLogs(5);
       const successAudit = logs.find((l) => l.event_type === 'CONFIRM_SUCCESS');
@@ -852,6 +858,12 @@ describe('FinTechathon 2026: Security & Core Flow Evaluation Suite', () => {
 
       const deadline = calc.evaluateDeadline(24, new Date(Date.now() + 48 * 3600 * 1000).toISOString());
       expect(deadline.deadlineWarning).toBe(false);
+
+      const installmentPlan = calc.calculateInstallmentPlan(3000, 2, mockRoute);
+      expect(installmentPlan.numInstallments).toBe(2);
+      expect(installmentPlan.milestones.length).toBe(2);
+      expect(installmentPlan.allWithinTransferCap).toBe(true);
+      expect(installmentPlan.milestones[0].amountUsd).toBe(1500);
     });
 
     it('O - Open/Closed Principle: SafetyRuleEngine is open for extension with custom rules without altering core code', async () => {

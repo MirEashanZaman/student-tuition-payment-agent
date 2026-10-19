@@ -7,6 +7,12 @@ import { SecurityArmorMiddleware } from './security/security-armor.middleware';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  process.on('unhandledRejection', (reason) => {
+    logger.error(`Unhandled Promise Rejection: ${reason}`);
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error(`Uncaught Exception: ${err.message}`);
+  });
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.enableShutdownHooks();
   const server = app.getHttpAdapter().getInstance();
@@ -16,6 +22,8 @@ async function bootstrap() {
   app.use((_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
+    response.setHeader('X-XSS-Protection', '1; mode=block');
+    response.setHeader('X-Download-Options', 'noopen');
     response.setHeader('Referrer-Policy', 'no-referrer');
     response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     response.setHeader(
@@ -32,7 +40,7 @@ async function bootstrap() {
       .filter(Boolean),
   );
   app.enableCors({
-    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has('*') || allowedOrigins.has(origin)),
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
