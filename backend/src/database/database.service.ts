@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS accounts (
   balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
   daily_limit NUMERIC(14, 2) NOT NULL DEFAULT 1000000.00,
   daily_spent NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+  annual_limit NUMERIC(14, 2) NOT NULL DEFAULT 1500000.00,
+  annual_spent NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
   password_hash VARCHAR(255),
   role VARCHAR(50) DEFAULT 'STUDENT',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -271,6 +273,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         await this.pool.query(`
           ALTER TABLE rates ALTER COLUMN compliance_rating TYPE VARCHAR(100);
           ALTER TABLE rates ALTER COLUMN speed_description TYPE VARCHAR(255);
+          ALTER TABLE accounts ADD COLUMN IF NOT EXISTS annual_limit NUMERIC(14, 2) NOT NULL DEFAULT 1500000.00;
+          ALTER TABLE accounts ADD COLUMN IF NOT EXISTS annual_spent NUMERIC(14, 2) NOT NULL DEFAULT 0.00;
         `);
       } catch (alterErr: any) {
         this.logger.warn(`Column alter notice: ${alterErr.message}`);
