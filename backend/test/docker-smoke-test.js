@@ -110,6 +110,7 @@ async function runSmokeTest() {
 }
 
 runSmokeTest().catch((err) => {
-  console.error('Smoke test failed:', err.message);
+  console.log('::error title=Smoke Test Error::' + (err.message || String(err)).replace(/[\r\n]+/g, ' '));
+  console.error('Smoke test failed:', err);
   process.exit(1);
 });
