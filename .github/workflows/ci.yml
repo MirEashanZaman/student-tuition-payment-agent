@@ -225,45 +225,45 @@ jobs:
             -d '{"amountUsd":3000,"preference":"balanced"}'
 
           echo "Verifying Transfer Draft Creation in PostgreSQL..."
-          DRAFT_RES=$(curl -s -f -X POST http://localhost:4568/api/transfers/draft \
+          DRAFT_RES=$(curl -s -X POST http://localhost:4568/api/transfers/draft \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $TOKEN" \
-            -d '{"routeId":"route-edupay-prime","amountUsd":3000,"recipientUniversity":"University of Oxford"}')
+            -d '{"studentId":"STU-2026-BDT01","routeId":"route-edupay-prime","amountUsd":3000,"recipientUniversity":"University of Oxford"}')
           echo "Draft Response: $DRAFT_RES"
-          TRANSFER_ID=$(node -e "console.log(JSON.parse(process.argv[1]).transferId)" "$DRAFT_RES")
-          CONFIRM_TOKEN=$(node -e "console.log(JSON.parse(process.argv[1]).confirmationToken)" "$DRAFT_RES")
-          if [ -z "$TRANSFER_ID" ] || [ -z "$CONFIRM_TOKEN" ]; then
-            echo "Failed to create transfer draft."
+          TRANSFER_ID=$(echo "$DRAFT_RES" | jq -r .transferId)
+          CONFIRM_TOKEN=$(echo "$DRAFT_RES" | jq -r .confirmationToken)
+          if [ -z "$TRANSFER_ID" ] || [ "$TRANSFER_ID" = "null" ]; then
+            echo "Failed to create transfer draft: $DRAFT_RES"
             exit 1
           fi
 
           echo "Verifying Step-Up 2FA OTP Generation..."
-          OTP_RES=$(curl -s -f -X POST http://localhost:4568/api/auth/step-up-otp \
+          OTP_RES=$(curl -s -X POST http://localhost:4568/api/auth/step-up-otp \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $TOKEN")
           echo "OTP Response: $OTP_RES"
-          OTP=$(node -e "console.log(JSON.parse(process.argv[1]).otp)" "$OTP_RES")
-          if [ -z "$OTP" ]; then
-            echo "Failed to issue Step-Up OTP."
+          OTP=$(echo "$OTP_RES" | jq -r .otp)
+          if [ -z "$OTP" ] || [ "$OTP" = "null" ]; then
+            echo "Failed to issue Step-Up OTP: $OTP_RES"
             exit 1
           fi
 
           echo "Verifying Confirmed Payment Execution in Container..."
-          CONFIRM_RES=$(curl -s -f -X POST "http://localhost:4568/api/transfers/$TRANSFER_ID/confirm" \
+          CONFIRM_RES=$(curl -s -X POST "http://localhost:4568/api/transfers/$TRANSFER_ID/confirm" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $TOKEN" \
             -d "{\"confirmationToken\":\"$CONFIRM_TOKEN\",\"userConsent\":true,\"twoFactorPin\":\"$OTP\"}")
           echo "Confirm Response: $CONFIRM_RES"
-          CONFIRMED_STATUS=$(node -e "console.log(JSON.parse(process.argv[1]).status)" "$CONFIRM_RES")
-          NEW_BALANCE=$(node -e "console.log(JSON.parse(process.argv[1]).newBalance)" "$CONFIRM_RES")
+          CONFIRMED_STATUS=$(echo "$CONFIRM_RES" | jq -r .status)
+          NEW_BALANCE=$(echo "$CONFIRM_RES" | jq -r .newBalance)
           if [ "$CONFIRMED_STATUS" != "CONFIRMED" ]; then
-            echo "Expected status CONFIRMED but got $CONFIRMED_STATUS"
+            echo "Payment confirmation failed: $CONFIRM_RES"
             exit 1
           fi
           echo "Payment confirmed successfully in container. Debited balance: $NEW_BALANCE BDT"
 
           echo "Verifying PostgreSQL Transfer History Persistence..."
-          TX_LIST=$(curl -s -f -X GET http://localhost:4568/api/transfers \
+          TX_LIST=$(curl -s -X GET http://localhost:4568/api/transfers \
             -H "Authorization: Bearer $TOKEN")
           echo "Transfers List: $TX_LIST"
 
