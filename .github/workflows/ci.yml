@@ -166,14 +166,20 @@ jobs:
       - name: Wait for Containers to Initialize
         run: |
           echo "Waiting for PostgreSQL, Backend, and Frontend to become responsive..."
+          SUCCESS=0
           for i in {1..40}; do
-            if curl -s http://localhost:4568/api/rates > /dev/null 2>&1 && curl -s http://localhost:4567 > /dev/null 2>&1; then
+            if curl -s -f http://localhost:4568/api/rates > /dev/null 2>&1 && curl -s -f http://localhost:4567 > /dev/null 2>&1; then
               echo "Services responsive after $i attempts."
+              SUCCESS=1
               break
             fi
             echo "Attempt $i: waiting for services..."
             sleep 3
           done
+          if [ $SUCCESS -eq 0 ]; then
+            echo "Error: Services failed to become healthy within timeout."
+            exit 1
+          fi
 
       - name: Execute End-to-End Container Smoke Tests
         run: |
