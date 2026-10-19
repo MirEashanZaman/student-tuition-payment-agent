@@ -183,7 +183,7 @@ jobs:
           echo "Verifying PostgreSQL Seeded Student Authentication..."
           LOGIN_RES=$(curl -s -f -X POST http://localhost:4568/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"studentIdOrEmail":"STU-2026-BDT01","password":"student123"}')
+            -d '{"studentIdOrEmail":"STU-2026-BDT01","password":"student123","permissionTier":"EXECUTE"}')
           echo "Login Response received."
           TOKEN=$(echo "$LOGIN_RES" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
           if [ -z "$TOKEN" ]; then
