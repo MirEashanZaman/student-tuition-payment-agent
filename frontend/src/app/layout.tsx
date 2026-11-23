@@ -4,12 +4,11 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'FinTechathon 2026 | Student Tuition Payment Agent',
   description:
-    'Autonomous AI-powered Cross-Border Student Tuition Payment Assistant with Permission Tiers, Multi-Objective Route Optimization, and Financial Safety Guardrails for International Students.',
+    'Cross-border student tuition payment desk with permission tiers, corridor route scoring, and financial safety limits for international students.',
   keywords: [
     'FinTechathon 2026',
     'Student Tuition Payment',
     'Cross-Border Remittance',
-    'AI Agent',
     'Permission Tiers',
     'FinTech Security',
   ],
@@ -27,7 +26,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </head>
-      <body>{children}</body>
+      <body className="bg-[#F5F7FA] text-[#111827] antialiased selection:bg-[#0F766E] selection:text-white">
+        {children}
+      </body>
     </html>
   );
 }

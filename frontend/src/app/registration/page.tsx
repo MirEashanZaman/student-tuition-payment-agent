@@ -5,20 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 import {
-  Lock,
   ShieldCheck,
   ArrowRight,
   AlertCircle,
-  Zap,
-  User,
-  Mail,
-  Wallet,
   CheckCircle2,
-  Globe,
-  Building2,
-  Coins,
-  Landmark,
-  Home as HomeIcon,
 } from 'lucide-react';
 
 interface CountryConfig {
@@ -39,16 +29,16 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
     currencyName: 'Bangladeshi Taka',
     idPrefix: 'STU-2026-BDT',
     isPrimaryRail: true,
-    grantLabel: '850,000.00 BDT (Active Sandbox Rail)',
+    grantLabel: '850,000 BDT (Active sandbox rail)',
   },
   {
     code: 'CN',
     name: 'China',
     currencyCode: 'CNY',
-    currencyName: 'Chinese Yuan / RMB (¥)',
+    currencyName: 'Chinese Yuan (¥)',
     idPrefix: 'STU-2026-CNY',
     isPrimaryRail: false,
-    grantLabel: '52,000.00 CNY Equiv (850k BDT Rail)',
+    grantLabel: '52,000 CNY equiv (850k BDT rail)',
   },
   {
     code: 'IN',
@@ -57,7 +47,7 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
     currencyName: 'Indian Rupee',
     idPrefix: 'STU-2026-INR',
     isPrimaryRail: false,
-    grantLabel: '600,000.00 INR Equiv (850k BDT Rail)',
+    grantLabel: '600,000 INR equiv (850k BDT rail)',
   },
   {
     code: 'NP',
@@ -66,7 +56,7 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
     currencyName: 'Nepalese Rupee',
     idPrefix: 'STU-2026-NPR',
     isPrimaryRail: false,
-    grantLabel: '950,000.00 NPR Equiv (850k BDT Rail)',
+    grantLabel: '950,000 NPR equiv (850k BDT rail)',
   },
   {
     code: 'MY',
@@ -75,7 +65,7 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
     currencyName: 'Malaysian Ringgit',
     idPrefix: 'STU-2026-MYR',
     isPrimaryRail: false,
-    grantLabel: '33,000.00 MYR Equiv (850k BDT Rail)',
+    grantLabel: '33,000 MYR equiv (850k BDT rail)',
   },
   {
     code: 'NG',
@@ -84,12 +74,12 @@ const SUPPORTED_COUNTRIES: CountryConfig[] = [
     currencyName: 'Nigerian Naira',
     idPrefix: 'STU-2026-NGN',
     isPrimaryRail: false,
-    grantLabel: '10,500,000.00 NGN Equiv (850k BDT Rail)',
+    grantLabel: '10,500,000 NGN equiv (850k BDT rail)',
   },
 ];
 
 const TARGET_CORRIDORS = [
-  { code: 'CNY', symbol: '¥', name: 'China (Host)', sample: 'Tsinghua, Peking, Fudan' },
+  { code: 'CNY', symbol: '¥', name: 'China', sample: 'Tsinghua, Peking, Fudan' },
   { code: 'USD', symbol: '$', name: 'United States', sample: 'Harvard, MIT, Stanford' },
   { code: 'GBP', symbol: '£', name: 'United Kingdom', sample: 'Oxford, Cambridge, UCL' },
   { code: 'EUR', symbol: '€', name: 'European Union', sample: 'TU Munich, ETH Zurich' },
@@ -141,7 +131,7 @@ export default function RegistrationPage() {
         router.push('/');
       }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Registration failed. Please check inputs.');
+      setError(err.message || 'Registration failed. Check your inputs and try again.');
       setLoading(false);
     }
   };
@@ -162,347 +152,261 @@ export default function RegistrationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-between font-sans selection:bg-[#0D9488] selection:text-white">
-      <header className="sticky top-0 z-40 bg-[#1E3A8A] border-b border-[#1E3A8A] text-white px-4 sm:px-8 py-3 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none">
-            <div className="w-9 h-9 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
-                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-[#0D9488] text-white">
-                  Topic C
-                </span>
-              </div>
-              <p className="text-[11px] text-blue-100 font-medium">Cross-Border Student Tuition Agent</p>
-            </div>
+    <div className="min-h-screen bg-[#F5F7FA] text-[#111827] flex flex-col justify-between font-sans">
+      <header className="sticky top-0 z-40 h-16 bg-white/95 backdrop-blur-sm border-b border-[#111827]/[0.08] px-6 sm:px-8 flex items-center">
+        <div className="max-w-7xl w-full mx-auto flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] rounded-md"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#0F766E]" aria-hidden="true" />
+            <span className="text-base font-medium text-[#111827]">FinTechathon 2026</span>
+            <span className="hidden sm:inline font-mono text-xs text-[#6B7487]">BDT → USD</span>
           </Link>
 
-          <nav className="flex items-center gap-2 text-xs">
+          <nav className="flex items-center gap-2 text-sm">
             <Link
               href="/"
-              className="px-3 py-1.5 rounded-lg font-semibold text-blue-100 hover:text-white hover:bg-[#172E6F] transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              <HomeIcon className="w-3.5 h-3.5" />
-              <span>Overview</span>
+              Overview
             </Link>
             <Link
               href="/login"
-              className="px-3 py-1.5 rounded-lg font-semibold text-blue-100 hover:text-white hover:bg-[#172E6F] transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              <Lock className="w-3.5 h-3.5 text-teal-300" />
-              <span>Sign In</span>
+              Sign in
             </Link>
             <Link
               href="/chat"
-              className="py-1.5 px-3 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+              className="h-9 px-4 rounded-lg bg-[#111827] hover:bg-[#1F2937] text-white text-sm font-medium inline-flex items-center gap-2 transition-colors duration-150 ease-unslop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2"
             >
-              <span>Agent Chat</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>Payment studio</span>
+              <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
             </Link>
           </nav>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <div className="max-w-xl w-full bg-white border border-[#E2E8F0] rounded-xl shadow-sm p-6 sm:p-8">
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#1E3A8A] flex items-center justify-center text-white shadow-sm font-bold">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">Student Registration</h1>
-                <p className="text-xs text-[#64748B] font-medium">Cross-Border Tuition Payment Agent</p>
-              </div>
+      <main className="flex-1 flex items-center justify-center px-6 py-10">
+        <div className="max-w-xl w-full bg-white border border-[#111827]/[0.08] rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <div>
+              <h1 className="text-2xl font-medium text-[#111827] leading-tight">Student registration</h1>
+              <p className="text-sm text-[#4B5565] mt-1">
+                Create a sandbox student profile to route tuition payments to accredited foreign universities
+              </p>
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-[11px] font-semibold">
-              <Globe className="w-3.5 h-3.5" />
-              <span>Global Rail</span>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <p className="text-xs text-[#64748B]">
-              Register your verified student profile to route cross-border tuition directly to foreign universities with zero-trust safety guardrails.
-            </p>
+            <span className="hidden sm:inline font-mono text-xs text-[#6B7487] bg-[#ECEFF4] px-2 py-1 rounded-md shrink-0">
+              {activeCountry.currencyCode} → USD
+            </span>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-[#DC2626]" />
+            <div className="mt-4 p-3 rounded-lg bg-[#FEF2F2] border border-[#DC2626]/20 text-[#DC2626] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-[#16A34A] text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-[#16A34A]" />
-              <span>Registration successful! Launching student dashboard...</span>
+            <div className="mt-4 p-3 rounded-lg bg-[#F0FDF4] border border-[#16A34A]/20 text-[#16A34A] text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+              <span>Registration complete. Redirecting to overview...</span>
             </div>
           )}
 
-          <form onSubmit={handleRegistration} className="space-y-4">
-            <div className="p-3.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-[#0D9488]" />
-                  <span>Country of Origin &amp; Currency</span>
+          <form onSubmit={handleRegistration} className="space-y-4 mt-6">
+            <div className="p-4 rounded-xl bg-[#F5F7FA] border border-[#111827]/[0.08] space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium text-[#111827]">
+                  Origin country and currency
                 </label>
-                <span className="text-[11px] font-mono font-semibold text-[#0D9488] bg-[#F0FDFA] border border-[#CCFBF1] px-2 py-0.5 rounded">
-                  {activeCountry.currencyCode} - {activeCountry.currencyName}
+                <span className="text-xs font-mono text-[#0F766E]">
+                  {activeCountry.currencyCode} · {activeCountry.currencyName}
                 </span>
               </div>
 
               <select
                 value={selectedCountryCode}
                 onChange={(e) => handleCountryChange(e.target.value)}
-                className="w-full bg-white border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#0D9488] transition-colors cursor-pointer"
+                className="w-full h-10 bg-white border border-[#111827]/[0.12] rounded-lg px-3 text-sm text-[#111827] focus:outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 transition-colors duration-150 ease-unslop cursor-pointer"
               >
                 {SUPPORTED_COUNTRIES.map((country) => (
-                  <option key={country.code} value={country.code} className="bg-white text-[#0F172A]">
-                    {country.name} ({country.currencyCode} - {country.currencyName})
+                  <option key={country.code} value={country.code}>
+                    {country.name} ({country.currencyCode} — {country.currencyName})
                   </option>
                 ))}
               </select>
 
-              <div className="pt-2 border-t border-[#E2E8F0]">
+              <div className="pt-3 border-t border-[#111827]/[0.08]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider flex items-center gap-1">
-                    <Landmark className="w-3 h-3 text-[#64748B]" />
-                    <span>Destination Tuition Corridors</span>
+                  <span className="text-xs font-medium text-[#4B5565]">
+                    Destination tuition corridors
                   </span>
-                  <span className="text-[10px] text-[#64748B]">Foreign University Endpoints</span>
+                  <span className="text-xs text-[#6B7487]">University clearing endpoints</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                   {TARGET_CORRIDORS.map((corridor) => (
                     <div
                       key={corridor.code}
-                      className="p-1.5 rounded-lg bg-white border border-[#E2E8F0] flex flex-col items-center text-center"
+                      className="p-2 rounded-lg bg-white border border-[#111827]/[0.08] flex flex-col items-center text-center"
                     >
-                      <span className="text-xs font-bold text-[#0F172A] font-mono">
-                        {corridor.code} ({corridor.symbol})
+                      <span className="text-xs font-medium text-[#111827] font-mono">
+                        {corridor.code} {corridor.symbol}
                       </span>
-                      <span className="text-[10px] text-[#64748B] truncate w-full">{corridor.name}</span>
+                      <span className="text-[11px] text-[#6B7487] truncate w-full mt-0.5">{corridor.name}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
+                <label className="block text-sm font-medium text-[#4B5565] mb-1">
                   Student ID
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    required
-                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors font-mono"
-                    placeholder="STU-2026-BDT02"
-                  />
-                  <User className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
-                </div>
+                <input
+                  type="text"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  required
+                  className="w-full h-10 bg-white border border-[#111827]/[0.12] rounded-lg px-3 text-sm text-[#111827] placeholder-[#6B7487] focus:outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 transition-colors duration-150 ease-unslop font-mono"
+                  placeholder="STU-2026-BDT02"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
-                  Student Full Name
+                <label className="block text-sm font-medium text-[#4B5565] mb-1">
+                  Full name
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    required
-                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors"
-                    placeholder="Ayesha Khan"
-                  />
-                  <User className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
-                </div>
+                <input
+                  type="text"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  required
+                  className="w-full h-10 bg-white border border-[#111827]/[0.12] rounded-lg px-3 text-sm text-[#111827] placeholder-[#6B7487] focus:outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 transition-colors duration-150 ease-unslop"
+                  placeholder="Ayesha Khan"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
-                  Email Address
+                <label className="block text-sm font-medium text-[#4B5565] mb-1">
+                  Email address
                 </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors"
-                    placeholder="ayesha.student@fintechathon.org"
-                  />
-                  <Mail className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
-                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full h-10 bg-white border border-[#111827]/[0.12] rounded-lg px-3 text-sm text-[#111827] placeholder-[#6B7487] focus:outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 transition-colors duration-150 ease-unslop"
+                  placeholder="ayesha.student@fintechathon.org"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
+                <label className="block text-sm font-medium text-[#4B5565] mb-1">
                   Password
                 </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#0D9488] transition-colors"
-                    placeholder="Minimum 6 characters"
-                  />
-                  <Lock className="w-4 h-4 text-[#94A3B8] absolute right-3.5 top-2.5" />
-                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full h-10 bg-white border border-[#111827]/[0.12] rounded-lg px-3 text-sm text-[#111827] placeholder-[#6B7487] focus:outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 transition-colors duration-150 ease-unslop"
+                  placeholder="Minimum 6 characters"
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#64748B] mb-1.5 uppercase tracking-wider">
-                Initial Authorization Tier
+              <label className="block text-sm font-medium text-[#4B5565] mb-1">
+                Initial authorization tier
               </label>
               <select
                 value={permissionTier}
                 onChange={(e) => setPermissionTier(e.target.value as 'READ_ONLY' | 'DRAFT' | 'EXECUTE')}
-                className="w-full bg-white border border-[#E2E8F0] rounded-lg px-4 py-2.5 text-xs text-[#0F172A] focus:outline-none focus:border-[#0D9488] transition-colors"
+                className="w-full h-10 bg-white border border-[#111827]/[0.12] rounded-lg px-3 text-sm text-[#111827] focus:outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/15 transition-colors duration-150 ease-unslop"
               >
-                <option value="EXECUTE">EXECUTE - Full Transfer Execution</option>
-                <option value="DRAFT">DRAFT - Route Comparison and Drafts</option>
-                <option value="READ_ONLY">READ_ONLY - Inquiries and Balances Only</option>
+                <option value="EXECUTE">EXECUTE — Full transfer execution</option>
+                <option value="DRAFT">DRAFT — Route comparison and drafts</option>
+                <option value="READ_ONLY">READ_ONLY — Inquiries and balances only</option>
               </select>
             </div>
 
-            <div className="p-3.5 rounded-lg bg-[#F0FDFA] border border-[#CCFBF1] text-xs text-[#0D9488] flex items-start gap-2.5">
-              <Wallet className="w-4 h-4 shrink-0 text-[#0D9488] mt-0.5" />
-              <div>
-                <div className="font-semibold text-[#0F172A]">
-                  Sandbox Initial Grant: {activeCountry.grantLabel}
-                </div>
-                <div className="text-[11px] text-[#64748B] mt-0.5">
-                  Provides initial liquidity for testing tuition settlements to China, US, UK, and European universities through AI-optimized banking corridors.
-                </div>
+            <div className="p-4 rounded-xl bg-[#F5F7FA] border border-[#111827]/[0.08] text-xs space-y-1">
+              <div className="font-medium text-[#111827] font-mono tabular-figures">
+                Sandbox initial grant: {activeCountry.grantLabel}
               </div>
+              <p className="text-[#4B5565]">
+                Provides sandbox liquidity for testing tuition settlements to China, US, UK, and European universities.
+              </p>
             </div>
 
             <div className="pt-2">
               <button
                 type="submit"
                 disabled={loading || success}
-                className="w-full py-2.5 px-4 rounded-lg bg-[#1E3A8A] hover:bg-[#172E6F] text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                className="w-full h-10 px-4 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white font-medium text-sm inline-flex items-center justify-center gap-2 transition-[background-color,transform] duration-150 ease-unslop active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2"
               >
-                <span>{loading ? 'Processing Registration...' : 'Complete Registration'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{loading ? 'Processing registration...' : 'Complete registration'}</span>
+                <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
               </button>
             </div>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-[#E2E8F0]">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
-                International Demo Personas
+          <div className="mt-6 pt-4 border-t border-[#111827]/[0.08]">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#4B5565]">
+                Demo student personas
               </span>
-              <span className="text-[11px] text-[#64748B]">1-Click Auto-Fill</span>
+              <span className="text-xs text-[#6B7487]">Click to fill</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  handleQuickDemoFill(
-                    'BD',
-                    'STU-2026-BDT02',
-                    'Ayesha Khan',
-                    'ayesha.student@fintechathon.org',
-                    'student123',
-                  )
-                }
-                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
-              >
-                <div className="text-xs font-bold text-[#0F172A] truncate">Ayesha Khan</div>
-                <div className="text-[10px] text-[#0D9488] font-mono">BD - BDT (STU-02)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  handleQuickDemoFill(
-                    'CN',
-                    'STU-2026-CNY01',
-                    'Li Wei',
-                    'liwei.student@fintechathon.org',
-                    'student123',
-                  )
-                }
-                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
-              >
-                <div className="text-xs font-bold text-[#0F172A] truncate">Li Wei</div>
-                <div className="text-[10px] text-[#0D9488] font-mono">CN - CNY (STU-01)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  handleQuickDemoFill(
-                    'IN',
-                    'STU-2026-INR01',
-                    'Priya Sharma',
-                    'priya.student@fintechathon.org',
-                    'student123',
-                  )
-                }
-                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
-              >
-                <div className="text-xs font-bold text-[#0F172A] truncate">Priya Sharma</div>
-                <div className="text-[10px] text-[#0D9488] font-mono">IN - INR (STU-01)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  handleQuickDemoFill(
-                    'NP',
-                    'STU-2026-NPR01',
-                    'Rohan Shrestha',
-                    'rohan.student@fintechathon.org',
-                    'student123',
-                  )
-                }
-                className="text-left p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0D9488] transition-colors"
-              >
-                <div className="text-xs font-bold text-[#0F172A] truncate">Rohan Shrestha</div>
-                <div className="text-[10px] text-[#0D9488] font-mono">NP - NPR (STU-01)</div>
-              </button>
+              {[
+                { country: 'BD', id: 'STU-2026-BDT02', name: 'Ayesha Khan', mail: 'ayesha.student@fintechathon.org', meta: 'BD · BDT' },
+                { country: 'CN', id: 'STU-2026-CNY01', name: 'Li Wei', mail: 'liwei.student@fintechathon.org', meta: 'CN · CNY' },
+                { country: 'IN', id: 'STU-2026-INR01', name: 'Priya Sharma', mail: 'priya.student@fintechathon.org', meta: 'IN · INR' },
+                { country: 'NP', id: 'STU-2026-NPR01', name: 'Rohan Shrestha', mail: 'rohan.student@fintechathon.org', meta: 'NP · NPR' },
+              ].map((persona) => (
+                <button
+                  key={persona.id}
+                  type="button"
+                  onClick={() =>
+                    handleQuickDemoFill(persona.country, persona.id, persona.name, persona.mail, 'student123')
+                  }
+                  className="text-left p-3 rounded-lg bg-[#F5F7FA] border border-[#111827]/[0.08] hover:border-[#0F766E] transition-colors duration-150 ease-unslop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
+                >
+                  <div className="text-xs font-medium text-[#111827] truncate">{persona.name}</div>
+                  <div className="text-[11px] text-[#6B7487] font-mono mt-0.5">{persona.meta}</div>
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="mt-5 text-center">
-            <p className="text-xs text-[#64748B]">
-              Already registered?{' '}
-              <button
-                type="button"
-                onClick={() => router.push('/login')}
-                className="font-semibold text-[#0D9488] hover:text-[#0F766E] underline underline-offset-4 transition-colors"
-              >
-                Return to Login
-              </button>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-sm text-[#4B5565]">
+            Already registered?{' '}
+            <button
+              type="button"
+              onClick={() => router.push('/login')}
+              className="font-medium text-[#0F766E] hover:text-[#115E59] underline underline-offset-4 transition-colors duration-150 ease-unslop"
+            >
+              Sign in
+            </button>
+          </p>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-[#64748B] text-xs pt-4 border-t border-[#E2E8F0]">
-            <ShieldCheck className="w-4 h-4 text-[#0D9488]" />
-            <span>Secured with Scrypt Password Hashing and JWT Sessions</span>
+          <div className="mt-6 pt-4 border-t border-[#111827]/[0.08] flex items-center justify-center gap-2 text-[#6B7487] text-xs">
+            <ShieldCheck className="w-4 h-4 text-[#6B7487]" strokeWidth={1.5} />
+            <span>Scrypt password hashing and HMAC-SHA256 JWT sessions</span>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-[#64748B] py-6 border-t border-[#E2E8F0] bg-white">
-        FinTechathon 2026 • Cross-Border Student Tuition Payment Agent
+      <footer className="text-center text-xs text-[#6B7487] py-6 border-t border-[#111827]/[0.08] bg-white">
+        FinTechathon 2026 · Cross-border student tuition payment desk
       </footer>
     </div>
   );
