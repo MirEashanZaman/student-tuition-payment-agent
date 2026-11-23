@@ -1,14 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import {
-  HelpCircle,
-  ShieldCheck,
-  Zap,
-  ArrowRight,
-  Home as HomeIcon,
-  Activity,
-  Layers,
-} from 'lucide-react';
+import { ShieldCheck, ArrowRight } from 'lucide-react';
 
 export const dynamic = 'force-static';
 
@@ -18,139 +10,125 @@ export default function FaqPage() {
       id: 'real-money',
       question: 'Is this real money?',
       answer:
-        'No. This system operates entirely within a high-fidelity institutional sandbox simulation. All student balances, correspondent banking rails, and university accounts are sandboxed to demonstrate real-world production safety without capital exposure.',
+        'No. This system operates inside a sandbox simulation. Student balances, correspondent banking rails, and university accounts are sandboxed to demonstrate production safety without real capital exposure.',
       highlight:
-        'Sandbox environment: safe for full functional evaluation without real monetary debit.',
+        'Sandbox environment for full evaluation without monetary debit',
     },
     {
       id: 'protection',
       question: 'How is my payment protected?',
       answer:
-        'Every transaction is guarded through defense-in-depth: (1) Hard compiled velocity limits of 400,000 BDT per transfer and 1,000,000 BDT daily, (2) Pre-draft balance validation and atomic balance reservation, (3) Single-use one-time confirmation tokens that expire, (4) Pre-settlement re-verification, and (5) Append-only immutable audit logging.',
+        'Every transaction passes five layers of protection: compiled velocity limits of 400,000 BDT per transfer and 1,000,000 BDT daily, pre-draft balance validation and atomic reservation, single-use expiring confirmation tokens, pre-settlement re-verification, and append-only audit logging.',
       highlight:
-        'Compiled security controls cannot be overridden by conversational prompts or agent instructions.',
+        'Compiled limits cannot be overridden by conversational prompts or agent instructions',
     },
     {
       id: 'unilateral-move',
-      question: 'Can the AI agent move funds without my explicit approval?',
+      question: 'Can the agent move funds without my approval?',
       answer:
-        'Never. By architectural design, the AI agent is strictly quarantined to READ_ONLY and DRAFT permission tiers. The agent can only fetch corridors, compare quotes, and generate a draft. The EXECUTE tier is locked to human students; funds cannot move until you physically confirm the transfer details.',
+        'No. The agent is restricted to READ_ONLY and DRAFT permission tiers. It can fetch corridors, compare quotes, and prepare a transfer draft. The EXECUTE tier requires human confirmation with a 6-digit step-up OTP before funds move.',
       highlight:
-        'Zero-trust execution: human confirmation is mandatory for every single financial movement.',
+        'Human confirmation is mandatory for every financial movement',
     },
     {
       id: 'failure-rollback',
       question: 'What happens if a corridor clearance or wire transfer fails?',
       answer:
-        'The system executes an automated Saga compensation workflow. If any clearing rail fails or a university receiving bank rejects the transaction, the transfer status transitions to FAILED and a compensating transaction immediately unreserves and restores the funds back into your available balance.',
+        'The system runs an automated Saga compensation workflow. If a clearing rail fails or a university receiving bank rejects the transfer, the record transitions to FAILED and a compensating transaction restores the reserved funds to your available balance.',
       highlight:
-        'Deterministic rollback: no funds can be stranded in pending or indeterminate states.',
+        'Deterministic rollback prevents funds from staying stuck in pending states',
     },
     {
       id: 'route-ranking',
-      question: 'How are cross-border payment routes ranked and scored?',
+      question: 'How are cross-border payment routes ranked?',
       answer:
-        'Corridors are evaluated using a multi-objective formula: 40% Net Landed Cost (FX spread + rail fees), 30% Settlement Speed, 20% Historical Rail Reliability, and 10% Deadline Buffer. If a route delivery date exceeds the student tuition deadline, a heavy penalty is applied to safeguard students against late payment fees.',
+        'Corridors are scored using a multi-objective formula weighing Net Landed Cost (FX spread plus rail fees), Settlement Speed, Historical Rail Reliability, and Deadline Buffer. Routes arriving past the tuition deadline receive a penalty to help avoid late fees.',
       highlight:
-        'Transparent scoring: complete itemized breakdown of FX margins and landing fees.',
+        'Itemized breakdown of FX margins, flat fees, and arrival time',
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#0D9488] selection:text-white">
-      <header className="sticky top-0 z-40 bg-[#1E3A8A] border-b border-[#1E3A8A] text-white px-4 sm:px-8 py-3 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 text-left focus:outline-none">
-            <div className="w-9 h-9 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm font-bold">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-white tracking-tight">FinTechathon 2026</span>
-                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-[#0D9488] text-white">
-                  Topic C
-                </span>
-              </div>
-              <p className="text-[11px] text-blue-100 font-medium">Cross-Border Student Tuition Agent</p>
-            </div>
+    <div className="min-h-screen bg-[#F5F7FA] text-[#111827] flex flex-col font-sans">
+      <header className="sticky top-0 z-40 h-16 bg-white/95 backdrop-blur-sm border-b border-[#111827]/[0.08] px-6 sm:px-8 flex items-center">
+        <div className="max-w-7xl w-full mx-auto flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] rounded-md"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#0F766E]" aria-hidden="true" />
+            <span className="text-base font-medium text-[#111827]">FinTechathon 2026</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1.5 bg-[#172E6F] border border-[#2B4C9B] p-1 rounded-lg">
+          <nav className="hidden md:flex items-center gap-1 text-sm">
             <Link
               href="/"
-              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              <HomeIcon className="w-3.5 h-3.5" />
-              <span>Overview</span>
+              Overview
             </Link>
             <Link
               href="/chat"
-              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              <Activity className="w-3.5 h-3.5" />
-              <span>Studio</span>
+              Studio
             </Link>
             <Link
               href="/dashboard"
-              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
+              Dashboard
             </Link>
             <Link
               href="/audit"
-              className="px-3 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Audit</span>
+              Audit
             </Link>
-            <span className="w-px h-4 bg-[#2B4C9B] my-auto mx-1"></span>
+            <span className="w-px h-4 bg-[#111827]/[0.12] mx-1" aria-hidden="true" />
             <Link
               href="/rates"
-              className="px-2.5 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              Rates (ISR)
+              Rates
             </Link>
             <Link
               href="/status"
-              className="px-2.5 py-1.5 rounded text-xs font-semibold text-blue-100 hover:text-white hover:bg-[#1E3A8A] transition-colors"
+              className="px-3 py-2 rounded-lg text-[#4B5565] hover:text-[#111827] hover:bg-[#ECEFF4] transition-colors duration-150 ease-unslop"
             >
-              Status (SSR)
+              Status
             </Link>
             <Link
               href="/faq"
-              className="px-3 py-1.5 rounded text-xs font-semibold bg-[#0D9488] text-white shadow-sm"
+              className="px-3 py-2 rounded-lg bg-[#ECEFF4] text-[#111827] font-medium"
             >
-              FAQ (SSG)
+              FAQ
             </Link>
           </nav>
 
           <Link
             href="/chat"
-            className="py-2 px-3.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-xs shadow-sm flex items-center gap-1.5 transition-colors"
+            className="h-9 px-4 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white font-medium text-sm inline-flex items-center gap-2 transition-colors duration-150 ease-unslop"
           >
-            <span>Launch Studio</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <span>Open studio</span>
+            <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-xs font-semibold">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Institutional Compliance &amp; Architectural Answers</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#EFF6FF] border border-[#DBEAFE] text-[#1E3A8A] text-xs font-bold font-mono">
-              <span>SSG: Pre-rendered Build-Time Static Page</span>
-            </div>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 sm:px-8 py-8 space-y-6">
+        <div className="bg-white border border-[#111827]/[0.08] rounded-xl p-6 sm:p-8 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span className="font-mono text-xs text-[#6B7487]">Compliance and architecture reference</span>
+            <span className="font-mono text-xs text-[#6B7487] bg-[#ECEFF4] px-2 py-1 rounded-md">
+              SSG · static build
+            </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A] mb-2">
-            How It Works &amp; Security FAQ
+          <h1 className="text-3xl font-medium text-[#111827] leading-tight">
+            How it works and security FAQ
           </h1>
-          <p className="text-sm sm:text-base text-[#64748B] max-w-3xl leading-relaxed">
-            Transparent explanations on fund custody, velocity limits, zero-trust human confirmation, and autonomous agent safety for evaluators and international students.
+          <p className="text-sm text-[#4B5565] max-w-3xl mt-2 leading-relaxed">
+            How fund custody, velocity limits, human confirmation, and corridor scoring operate for evaluators and international students.
           </p>
         </div>
 
@@ -158,21 +136,21 @@ export default function FaqPage() {
           {faqItems.map((item, idx) => (
             <div
               key={item.id}
-              className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-xl p-6 shadow-sm transition-all"
+              className="bg-white border border-[#111827]/[0.08] hover:border-[#111827]/[0.18] rounded-xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 ease-unslop"
             >
               <div className="flex items-start gap-4">
-                <span className="w-8 h-8 rounded-lg bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] text-xs font-bold flex items-center justify-center shrink-0">
-                  Q{idx + 1}
+                <span className="w-8 h-8 rounded-lg bg-[#ECEFF4] text-[#4B5565] font-mono text-xs font-medium flex items-center justify-center shrink-0 tabular-figures">
+                  0{idx + 1}
                 </span>
-                <div className="flex-1 space-y-2">
-                  <h2 className="font-bold text-base sm:text-lg text-[#0F172A]">
+                <div className="flex-1 space-y-3">
+                  <h2 className="font-medium text-base text-[#111827]">
                     {item.question}
                   </h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
+                  <p className="text-sm text-[#4B5565] leading-relaxed">
                     {item.answer}
                   </p>
-                  <div className="p-3 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E3A8A] text-xs font-medium flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-[#0D9488] shrink-0 mt-0.5" />
+                  <div className="p-3 rounded-lg bg-[#F5F7FA] border border-[#111827]/[0.06] text-[#4B5565] text-xs flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#0F766E] shrink-0" strokeWidth={1.5} />
                     <span>{item.highlight}</span>
                   </div>
                 </div>
@@ -181,35 +159,35 @@ export default function FaqPage() {
           ))}
         </div>
 
-        <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+        <div className="bg-white border border-[#111827]/[0.08] rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
           <div>
-            <h3 className="font-bold text-base text-[#0F172A]">
-              Ready to evaluate live tuition payment processing?
+            <h3 className="font-medium text-base text-[#111827]">
+              Evaluate live tuition payment processing
             </h3>
-            <p className="text-xs text-[#64748B] mt-1">
-              Launch the Agent Chat Studio to test quotes, route ranking, and human-in-the-loop confirmation.
+            <p className="text-sm text-[#4B5565] mt-1">
+              Open the Payment Studio to compare quotes, rank corridors, and test human confirmation
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/"
-              className="py-2 px-4 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold transition-colors"
+              className="h-10 px-4 rounded-lg bg-[#ECEFF4] hover:bg-[#E2E8F0] border border-[#111827]/[0.08] text-[#111827] text-sm font-medium inline-flex items-center transition-colors duration-150 ease-unslop"
             >
-              Back to Overview
+              Back to overview
             </Link>
             <Link
               href="/chat"
-              className="py-2 px-4 rounded-lg bg-[#1E3A8A] hover:bg-[#172E6F] text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-colors"
+              className="h-10 px-4 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white font-medium text-sm inline-flex items-center gap-2 transition-colors duration-150 ease-unslop"
             >
-              <span>Launch Studio</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Open studio</span>
+              <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
             </Link>
           </div>
         </div>
       </main>
 
-      <footer className="text-center text-xs text-[#64748B] py-6 border-t border-[#E2E8F0] bg-white">
-        FinTechathon 2026 • Cross-Border Student Tuition Payment Agent
+      <footer className="text-center text-xs text-[#6B7487] py-6 border-t border-[#111827]/[0.08] bg-white">
+        FinTechathon 2026 · Cross-border student tuition payment desk
       </footer>
     </div>
   );
